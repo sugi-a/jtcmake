@@ -56,11 +56,12 @@ class Group:
         for p in realpaths:
             if p in self._root._path_str_set:
                 raise ValueError(f'path {p} is already used by another rule')
-        self._root._path_str_set.update(realpaths)
 
         trg = create_rule(self._root, path, (*self._name, name), method, args, kwargs)
 
         trg_ptr = _create_rule_wrapper(self._root, trg, path)
+
+        self._root._path_str_set.update(realpaths)
 
         self._children[name] = trg_ptr
 
@@ -335,7 +336,7 @@ def _add_pfx_to_simple_path(path_prefix, simple_path):
     elif isinstance(simple_path, NoPfxPath):
         return simple_path.path
     else:
-        raise ValueError(f'Terminal element of a nested path must be str or NoPfxPath. Given {simple_path}')
+        raise TypeError(f'Terminal element of a nested path must be str or NoPfxPath. Given {simple_path}')
 
 
 def _make_wrapper(trgs, dry_run, stop_on_fail, logfile, nthreads):
