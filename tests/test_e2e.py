@@ -1,4 +1,4 @@
-import sys, os, shutil, glob
+import sys, os, shutil, glob, time
 from pathlib import Path
 
 import pytest
@@ -11,10 +11,14 @@ def touch(*dst):
         Path(p).touch()
 
 
-def add_text(dst, src, text=None):
-    s = '' if src is None else Path(src).read_text()
-    t = '' if text is None else text
-    Path(dst).write_text(s + t)
+def add_text(dst, src, text=None, t=0):
+    src = '' if src is None else Path(src).read_text()
+    text = '' if text is None else text
+
+    if t > 0:
+        time.sleep(t)
+
+    Path(dst).write_text(src + text)
 
 
 def cp_1_to_n(dsts, src):
@@ -162,17 +166,22 @@ def test_4(tmp_path):
     
     g.add('a', 'a.txt', touch)
     g.add('b1', 'b1.txt', fail, g.a)
-    g.add('b2', 'b2.txt', add_text, g.a)
-    g.add('c', 'c.txt', add_text, g.b1)
+    g.add('b2', 'b2.txt', add_text, g.a, t=1)
+    g.add('c1', 'c1.txt', add_text, g.b1)
+    g.add('c2', 'c2.txt', add_text, g.b2)
 
     # make (don't stop on fail)
     g.make(stop_on_fail=False)
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b2.txt'])
+    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
+
+    # make (don't stop on fail; multi-thread)
+    g.make(stop_on_fail=False, nthreads=2)
+    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     g.clean()
     assert globfiles(tmp_path_str) == []
 
     # make (stop on fail)
-    g.make(stop_on_fail=True)
-    assert globfiles(tmp_path_str) == sorted(['a.txt'])
+    g.make(stop_on_fail=True, nthreads=2)
+    assert 'c2.txt' not in globfiles(tmp_path_str)
 
