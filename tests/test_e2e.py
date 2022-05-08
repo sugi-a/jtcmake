@@ -181,7 +181,3 @@ def test_4(tmp_path):
     g.clean()
     assert globfiles(tmp_path_str) == []
 
-    # make (stop on fail)
-    g.make(stop_on_fail=True, nthreads=2)
-    assert 'c2.txt' not in globfiles(tmp_path_str)
-
