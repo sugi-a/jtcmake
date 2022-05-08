@@ -53,6 +53,7 @@ def test_should_update(tmp_path):
     c = tmp_path / 'c'
     d = tmp_path / 'd'
     x = tmp_path / 'x'
+    y = tmp_path / 'y'
 
     for p in (a,b,c,d):
         p.touch()
@@ -61,17 +62,25 @@ def test_should_update(tmp_path):
     for p,d in [(a,1), (b,2), (c,3), (d,4)]:
         os.utime(p, (t - 1000, t - 1000 * d))
 
+    # simple cases
     assert not should_update([a,b], [c,d])
     assert not should_update([a], [b])
+    assert not should_update([a], [b,x])
+    assert not should_update([a], [x])
     assert should_update([c,d], [a,b])
     assert should_update([a,c], [b,d])
+    assert should_update([a,c], [b,d,x])
+
+    # should not update when dsts is empty
     assert not should_update([], [a])
+    assert not should_update([], [x])
+    assert not should_update([], [])
+
+    # otherwise, should update when a dst does not exist
+    assert should_update([y], [a])
+    assert should_update([y], [])
+    assert should_update([a,y], [b])
+    assert should_update([y], [a, x])
+
+    # otherwise, should not update when srcs is empty
     assert not should_update([a], [])
-    assert should_update([x], [a])
-    assert should_update([x], [])
-
-    with pytest.raises(FileNotFoundError) as e:
-        should_update([a], [x])
-
-
-
