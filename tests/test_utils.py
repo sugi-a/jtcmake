@@ -1,7 +1,7 @@
 import sys, os, time
 import pytest
 
-from lightmake.utils import map_nested, flatten_nested, get_deep, should_update
+from omochamake.utils import map_nested, flatten_nested, get_deep, should_update
 
 def add1(x):
     return x + 1

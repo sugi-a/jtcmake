@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from lightmake import create_group, SELF, nopfx
+from omochamake import create_group, SELF, nopfx
 
 
 def touch(*dst):
