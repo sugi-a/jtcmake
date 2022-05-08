@@ -2,10 +2,12 @@ import sys, os, traceback, inspect
 from threading import Condition, Thread
 from collections import defaultdict, deque
 
-from .make import process_rule
+from .make import process_rule, OK, SKIP, FAIL, DryRunInfo
 
 def make_multi_thread(rules, dry_run, stop_on_fail, writer, nthreads):
     assert isinstance(nthreads, int) and nthreads > 0
+
+    dry_run_info = DryRunInfo() if dry_run else None
 
     if len(rules) == 0:
         return
@@ -54,7 +56,7 @@ def make_multi_thread(rules, dry_run, stop_on_fail, writer, nthreads):
         with cv:
             processing.remove(rule)
 
-            if not res:
+            if res == FAIL:
                 if stop_on_fail:
                     stop = True
             else:
@@ -66,7 +68,7 @@ def make_multi_thread(rules, dry_run, stop_on_fail, writer, nthreads):
             cv.notify_all()
             
 
-    args = (get_rule_fn, set_result_fn, dry_run, writer)
+    args = (get_rule_fn, set_result_fn, dry_run_info, writer)
     threads = [Thread(target=worker, args=(*args, i), name=f'lightmake{i}') for i in range(nthreads)]
 
     for t in threads: t.start()
@@ -76,7 +78,7 @@ def make_multi_thread(rules, dry_run, stop_on_fail, writer, nthreads):
         writer('Stopped by a failure\n', logkind='warning')
 
 
-def worker(get_rule_fn, set_result_fn, dry_run, writer, thread_id):
+def worker(get_rule_fn, set_result_fn, dry_run_info, writer, thread_id):
     while True:
         t = get_rule_fn()
 
@@ -85,10 +87,10 @@ def worker(get_rule_fn, set_result_fn, dry_run, writer, thread_id):
 
         rule, silent_skip = t
         
-        res = False
+        res = FAIL
 
         try:
-            res = process_rule(rule, dry_run, writer, silent_skip=silent_skip, thread_id=thread_id)
+            res = process_rule(rule, dry_run_info, writer, silent_skip=silent_skip, thread_id=thread_id)
         except:
             traceback.print_exc()
             writer(f'Failed to make {rule.name}\n', logkind='error')

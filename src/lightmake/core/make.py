@@ -3,9 +3,15 @@ import sys, os, re, traceback, inspect
 from .decls import NOP
 from ..utils import should_update
 
+OK = 0
+SKIP = 1
+FAIL = 2
+
 def make(rules, dry_run, stop_on_fail, writer):
     if len(rules) == 0:
         return
+
+    dry_run_info = DryRunInfo() if dry_run else None
 
     rules = set(rules)
 
@@ -35,19 +41,19 @@ def make(rules, dry_run, stop_on_fail, writer):
             continue
 
         try:
-            result = process_rule(t, dry_run, writer, silent_skip=t not in rules)
+            result = process_rule(t, dry_run_info, writer, silent_skip=t not in rules)
         except Exception as e:
             traceback.print_exc()
             msg = f'Failed to make {t.name}\n'
             writer(msg, logkind='error')
-            result = False
+            result = FAIL
 
-        if not result and stop_on_fail:
+        if result == FAIL and stop_on_fail:
             writer(f'Stop\n')
             return
         
 
-def process_rule(rule, dry_run, writer, silent_skip=False, thread_id=None):
+def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
     if thread_id is not None:
         th_sfx = f'(THREAD {thread_id}) '
     else:
@@ -55,7 +61,7 @@ def process_rule(rule, dry_run, writer, silent_skip=False, thread_id=None):
 
     if rule.method is NOP:
         writer(th_sfx + f'Readonly rule {rule.name}\n', logkind='log')
-        return True
+        return SKIP
 
     method_name = repr_method(rule.method)
 
@@ -63,25 +69,34 @@ def process_rule(rule, dry_run, writer, silent_skip=False, thread_id=None):
     link_map = rule.self_path_set | rule.dep_path_set
     link_map = {repr(v): v for v in link_map if not os.path.isabs(v)}
 
-    if dry_run:
-        msg = f'{rule.name} (dry-run)\n' + \
-            f'  {method_name}\n' + \
-            repr_multi_args(rule.args, idt='    ') + \
-            repr_multi_kwargs(rule.kwargs, idt='    ')
-        writer(th_sfx + msg, link_map=link_map)
+    _should_update = should_update(list(rule.self_path_set), list(rule.dep_path_set))
 
-        return True
+    if dry_run_info is not None:
+        # dry-run
+        if _should_update or any(p in dry_run_info.pups for p in rule.dep_path_set):
+            dry_run_info.pups.update(rule.self_path_set)
+
+            msg = f'{rule.name} (dry-run)\n' + \
+                f'  {method_name}\n' + \
+                repr_multi_args(rule.args, idt='    ') + \
+                repr_multi_kwargs(rule.kwargs, idt='    ')
+            writer(th_sfx + msg, link_map=link_map)
+
+            return OK
+        else:
+            writer(th_sfx + f'Nothing to be done for {rule.name}\n', logkind='log')
+
+            return SKIP
+
     for dep_path in rule.dep_path_set:
         if not os.path.exists(dep_path):
-            msg = f'Failed to make {rule.name}: Cannot find requirement {dep_path}\n'
-            writer(th_sfx + msg, logkind='error')
+            msg = f'WARNING: {rule.name}: Cannot find requirement {dep_path}\n'
+            writer(th_sfx + msg, logkind='warning')
 
-            return False
-
-    if not should_update(list(rule.self_path_set), list(rule.dep_path_set)):
+    if not _should_update:
         if not silent_skip:
             writer(th_sfx + f'Nothing to be done for {rule.name}\n', logkind='log')
-        return True
+        return SKIP
 
     msg = f'{rule.name}\n  {method_name}\n' + \
         repr_multi_args(rule.args, idt='    ') + \
@@ -101,11 +116,11 @@ def process_rule(rule, dry_run, writer, silent_skip=False, thread_id=None):
         msg = f'Failed to make {rule.name}: method {method_name} failed\n'
         writer(th_sfx + msg, logkind='error')
 
-        return False
+        return FAIL
 
     writer(th_sfx + f'Done {rule.name}\n', logkind='success')
 
-    return True
+    return OK
 
 def repr_method(method):
     try:
@@ -159,3 +174,7 @@ def repr_var_trunc(v, maxlen):
         s = s[:n] + ' ... ' + s[-n:]
     return s
 
+
+class DryRunInfo:
+    def __init__(self):
+        self.pups = set() # potentially updated paths
