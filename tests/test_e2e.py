@@ -181,3 +181,20 @@ def test_4(tmp_path):
     g.clean()
     assert globfiles(tmp_path_str) == []
 
+
+def test_5(tmp_path):
+    # readonly feature
+    tmp_path_str = str(tmp_path)
+
+    (tmp_path / 'a.txt').touch()
+    (tmp_path / 'b.txt').touch()
+
+    g = create_group(tmp_path_str + '/')
+    
+    g.add_readonly('a', 'a.txt')
+    g.add('b', 'b.txt', touch)
+
+    g.clean()
+    assert globfiles(tmp_path_str) == ['a.txt']
+
+
