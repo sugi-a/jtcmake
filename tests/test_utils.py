@@ -67,7 +67,6 @@ def test_should_update(tmp_path):
     assert should_update([a,c], [b,d])
     assert not should_update([], [a])
     assert not should_update([a], [])
-    assert not should_update([a], [])
     assert should_update([x], [a])
     assert should_update([x], [])
 
