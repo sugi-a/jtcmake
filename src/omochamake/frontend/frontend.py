@@ -1,12 +1,12 @@
 import sys, os, pathlib, re, abc, contextlib, collections
 from collections import namedtuple
 
-from .utils import map_nested, flatten_nested, get_deep
-from .core.decls import NOP, Rule
-from .core.make import make
-from .core import misc
-from .core.make_mt import make_multi_thread
-from .writer.writer import get_default_writer, HTMLWriter, Writer
+from ..utils import map_nested, flatten_nested, get_deep
+from ..core.decls import NOP, Rule
+from ..core.make import make
+from ..core import misc
+from ..core.make_mt import make_multi_thread
+from ..writer.writer import get_default_writer, HTMLWriter, Writer
 
 _default_writer = get_default_writer()
 
