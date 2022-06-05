@@ -34,13 +34,24 @@ class Self:
 
 SELF = Self(())
 
-def create_group(path_prefix):
+def create_group(dirname=None, path_prefix=None):
+    """
+    Call signatures:
+        create_group(dirname)
+        create_group(path_prefix=path_prefix)
+    """
+    if dirname is None == path_prefix is None:
+        raise TypeError('Either dirname or path_prefix must be specified')
+
+    if dirname is not None:
+        path_prefix = os.path.normpath(str(dirname)) + '/'
+
     return Group(None, path_prefix, ())
 
 
 class Group:
     # APIs
-    def add(self, name, path, method, *args, **kwargs):
+    def _add(self, name, path, memo_save_path, method, *args, **kwargs):
         if not isinstance(name, (str, int)):
             raise ValueError(f'name must be str or int')
 
@@ -53,44 +64,11 @@ class Group:
         path = map_nested(path, lambda p: _add_pfx_to_simple_path(self._path_prefix, p))
 
         realpaths = set(map(os.path.realpath, flatten_nested(path)))
-        for p in realpaths:
-            if p in self._root._path_str_set:
-                raise ValueError(f'path {p} is already used by another rule')
 
-        trg = create_rule(self._root, path, (*self._name, name), method, args, kwargs, None)
+        if memo_save_path is not None:
+            memo_save_path = _add_pfx_to_simple_path(self._path_prefix, memo_save_path)
+            realpaths.add(os.path.realpath(memo_save_path))
 
-        trg_ptr = _create_rule_wrapper(self._root, trg, path)
-
-        self._root._path_str_set.update(realpaths)
-
-        self._children[name] = trg_ptr
-
-        if _ismembername(name):
-            self.__dict__[name] = trg_ptr
-
-        return trg_ptr
-
-    def adder(self, path, *args,**kwargs):
-        def adder(method):
-            return self.add(method.__name__, path, method, *args, **kwargs)
-        
-        return adder
-
-
-    def add_memo(self, name, path, memo_save_path, method, *args, **kwargs):
-        if not isinstance(name, (str, int)):
-            raise ValueError(f'name must be str or int')
-
-        if name in self._children:
-            raise KeyError(f'name `{name}` already exists')
-
-        if not callable(method) and method is not NOP:
-            raise ValueError('method must be a callable')
-
-        path = map_nested(path, lambda p: _add_pfx_to_simple_path(self._path_prefix, p))
-        memo_save_path = _add_pfx_to_simple_path(self._path_prefix, memo_save_path)
-
-        realpaths = set(map(os.path.realpath, flatten_nested(path)))
         for p in realpaths:
             if p in self._root._path_str_set:
                 raise ValueError(f'path {p} is already used by another rule')
@@ -108,23 +86,108 @@ class Group:
 
         return trg_ptr
 
-    def add_readonly(self, name, path):
-        self.add(name, path, NOP)
 
-
-    def add_group(self, name, path_prefix):
+    def add(self, name, *args, **kwargs):
+        """
+        Call signatures:
+            add(name, [path], method, *args, **kwargs)
+            add(name, [path], None, *args, **kwargs)
+        """
         if not isinstance(name, (str, int)):
-            raise ValueError('name must be str or int') # ToDo
+            raise ValueError(f'name must be str or int')
+
+        if len(args) == 0:
+            raise TypeError('method must be specified')
+
+        if callable(args[0]) or args[0] is None:
+            path = str(name)
+            method, *args = args
+        else:
+            if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
+                raise TypeError('method must be specified')
+
+            path, method, *args = args
+
+        if method is None:
+            def adder(method):
+                return self._add(name, path, None, method, *args, **kwargs)
+            
+            return adder
+
+        return self._add(name, path, None, method, *args, **kwargs)
+
+
+    def add_memo(self, name, *args, **kwargs):
+        """
+        Call signatures:
+            add(name, method, *args, **kwargs)
+            add(name, path, [memo_save_path], method, *args, **kwargs)
+        """
+        if not isinstance(name, (str, int)):
+            raise ValueError(f'name must be str or int')
+
+        for i in range(3):
+            if len(args) > i:
+                if callable(args[i]) or args[i] is None:
+                    break
+            else:
+                raise TypeError('method must be specified')
+
+        if callable(args[0]) or args[0] is None:
+            method, *args = args
+            path = str(name)
+            memo_save_path = str(name) + '.memo'
+        elif callable(args[1]) or args[1] is None:
+            path, method, *args = args
+            memo_save_path = str(name) + '.memo'
+        else:
+            path, memo_save_path, method, *args = args
+
+        if not isinstance(memo_save_path, str):
+            raise TypeError('memo_save_path must be str')
+
+        if method is None:
+            def adder(method):
+                return self._add(name, path, memo_save_path, method, *args, **kwargs)
+            return adder
+
+        return self._add(name, path, memo_save_path, method, *args, **kwargs)
+
+
+    def add_readonly(self, name, path):
+        self._add(name, path, None, NOP)
+
+
+    def add_group(self, name, dirname=None, *, path_prefix=None):
+        """
+        Call signatures:
+            add_group(name, [dirname])
+            add_group(name, path_prefix=path_prefix)
+        """
+        if not isinstance(name, (str, int)):
+            raise TypeError('name must be str or int')
 
         if name in self._children:
             raise KeyError(f'name {repr(name)} already exists in this Group')
 
+        if dirname is not None and path_prefix is not None:
+            raise TypeError('Either dirname or path_prefix can be specified')
+
+        if dirname is None and path_prefix is None:
+            dirname = str(name)
+
+        if dirname is not None:
+            if isinstance(dirname, NoPfxPath):
+                path_prefix = nopfx(os.path.normpath(dirname.path) + '/')
+            elif isinstance(dirname, (str, pathlib.PurePath)):
+                path_prefix = os.path.normpath(str(dirname)) + '/'
+
         if isinstance(path_prefix, str):
-            path_prefix = os.path.join(self._path_prefix, path_prefix)
+            path_prefix = self._path_prefix + path_prefix
         elif isinstance(path_prefix, NoPfxPath):
             path_prefix = path_prefix.path
         else:
-            raise ValueError('path_prefix must be str or NoPfxPath')
+            raise TypeError('path_prefix must be str or NoPfxPath')
 
         r = Group(self._root, path_prefix, (*self._name, name))
 
@@ -167,6 +230,9 @@ class Group:
             self._path_str_set = set()
         else:
             self._root = root
+
+        if not isinstance(path_prefix, str):
+            raise TypeError('path_prefix must be str')
 
         self._path_prefix = path_prefix
         self._name = name
@@ -291,7 +357,7 @@ def create_rule(root, path, name, method, args, kwargs, memo_save_path):
                 raise ValueError(f'Invalid keys for SELF')
 
             has_self = True
-            self_paths.add(p)
+            self_paths.update(flatten_nested(p))
             return p
 
         return arg

@@ -45,15 +45,13 @@ def globfiles(dirname):
 def test_1(nthreads, tmp_path):
     """basics"""
 
-    tmp_path_str = str(tmp_path)
-
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
 
     g.add('a', 'a.txt', add_text, None, 'a')
     g.add('aa', 'aa.txt', add_text, SELF, g.a, 'a')
 
-    @g.adder('aaa.txt', g.aa)
-    def aaa(dst, src):
+    @g.add('aaa', 'aaa.txt', None, g.aa)
+    def _(dst, src):
         add_text(dst, src, 'a')
 
     g1 = g.add_group('g1', 'g1/')
@@ -62,40 +60,38 @@ def test_1(nthreads, tmp_path):
 
     # dry-run
     g.make(dry_run=True, nthreads=nthreads)
-    assert globfiles(tmp_path_str) == []
+    assert globfiles(tmp_path) == []
 
 
     # run all
     g.make(nthreads=nthreads)
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
     assert Path(g.aaa.path()).read_text() == 'aaa'
 
     # clean all
     g.clean()
-    assert globfiles(tmp_path_str) == []
+    assert globfiles(tmp_path) == []
 
     # run some
     g.g1.ab.make(nthreads=nthreads)
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'g1/ab.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'g1/ab.txt'])
 
     # run rest
     mt = os.path.getmtime(g.a.path())
     g.make(nthreads=nthreads)
     assert os.path.getmtime(g.a.path()) == mt
     assert os.path.getmtime(g.aaa.path()) > mt
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
 
     # clean some
     g.a.clean()
     g.g1.clean()
-    assert globfiles(tmp_path_str) == sorted(['aa.txt', 'aaa.txt'])
+    assert globfiles(tmp_path) == sorted(['aa.txt', 'aaa.txt'])
 
 
 def test_2(tmp_path):
     # nested path and args
-    tmp_path_str = str(tmp_path)
-
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
 
     g.add('a', 'a.txt', add_text, None, 'a')
     g.add('b', ('b1.txt', {'x': 'b2.txt'}), cp_1_to_n, [SELF[0], SELF[1].x], g.a)
@@ -103,14 +99,13 @@ def test_2(tmp_path):
 
     # run
     g.make()
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b1.txt', 'b2.txt', 'c.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'b1.txt', 'b2.txt', 'c.txt'])
 
 
 def test_3(tmp_path):
     # safety guards on rule creation
-    tmp_path_str = str(tmp_path)
 
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
 
     g.add('a', 'a.txt', add_text, None, 'a')
 
@@ -139,7 +134,7 @@ def test_3(tmp_path):
     g.sub.add('a', '../sub-a.txt', add_text, g.c)
 
     # foreign rule
-    g2 = create_group(tmp_path_str + '/tmp/')
+    g2 = create_group(tmp_path / 'tmp')
     with pytest.raises(ValueError) as e:
         g2.add('a', 'a.txt', add_text, g.b, 'a')
 
@@ -160,9 +155,7 @@ def test_3(tmp_path):
 
 def test_4(tmp_path):
     # make failure
-    tmp_path_str = str(tmp_path)
-
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
     
     g.add('a', 'a.txt', touch)
     g.add('b1', 'b1.txt', fail, g.a)
@@ -172,36 +165,32 @@ def test_4(tmp_path):
 
     # make (don't stop on fail)
     g.make(stop_on_fail=False)
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     # make (don't stop on fail; multi-thread)
     g.make(stop_on_fail=False, nthreads=2)
-    assert globfiles(tmp_path_str) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
+    assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     g.clean()
-    assert globfiles(tmp_path_str) == []
+    assert globfiles(tmp_path) == []
 
 
 def test_5(tmp_path):
     # readonly feature
-    tmp_path_str = str(tmp_path)
-
     (tmp_path / 'a.txt').touch()
     (tmp_path / 'b.txt').touch()
 
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
     
     g.add_readonly('a', 'a.txt')
     g.add('b', 'b.txt', touch)
 
     g.clean()
-    assert globfiles(tmp_path_str) == ['a.txt']
+    assert globfiles(tmp_path) == ['a.txt']
 
 
 def test_mem(tmp_path):
     # test memoization rules
-    tmp_path_str = str(tmp_path);
-
     ran = False
     def method(dst, *args):
         nonlocal ran
@@ -210,7 +199,7 @@ def test_mem(tmp_path):
 
     (tmp_path / 'a.txt').write_text('abc')
 
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
     g.add_readonly('a', 'a.txt')
     g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 1)
 
@@ -227,7 +216,7 @@ def test_mem(tmp_path):
     assert not ran
 
     # re-create the rule and run (skipped)
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
     g.add_readonly('a', 'a.txt')
     g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 1)
     ran = False
@@ -235,7 +224,7 @@ def test_mem(tmp_path):
     assert not ran
 
     # re-create the rule with different input and run (executed)
-    g = create_group(tmp_path_str + '/')
+    g = create_group(tmp_path)
     g.add_readonly('a', 'a.txt')
     g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 2)
     ran = False
