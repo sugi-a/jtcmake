@@ -1,6 +1,6 @@
 import sys, os, re, traceback, inspect
 
-from .decls import NOP
+from .decls import NOP, RuleMemo
 from ..utils import should_update
 
 OK = 0
@@ -69,11 +69,9 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
     link_map = rule.opaths | rule.ipaths
     link_map = {repr(v): v for v in link_map if not os.path.isabs(v)}
 
-    _should_update = should_update(list(rule.opaths), list(rule.ipaths))
-
     if dry_run_info is not None:
         # dry-run
-        if _should_update or any(p in dry_run_info.pups for p in rule.ipaths):
+        if rule.should_update_dryrun(dry_run_info.pups):
             dry_run_info.pups.update(rule.opaths)
 
             msg = f'{rule.name} (dry-run)\n' + \
@@ -93,7 +91,7 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
             msg = f'WARNING: {rule.name}: Cannot find requirement {ipath}\n'
             writer(th_sfx + msg, logkind='warning')
 
-    if not _should_update:
+    if not rule.should_update():
         if not silent_skip:
             writer(th_sfx + f'Nothing to be done for {rule.name}\n', logkind='log')
         return SKIP
@@ -111,6 +109,9 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
 
     try:
         rule.method(*rule.args, **rule.kwargs)
+        
+        if isinstance(rule, RuleMemo):
+            rule.update_memo()
     except:
         traceback.print_exc()
         msg = f'Failed to make {rule.name}: method {method_name} failed\n'

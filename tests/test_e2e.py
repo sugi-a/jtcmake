@@ -198,3 +198,57 @@ def test_5(tmp_path):
     assert globfiles(tmp_path_str) == ['a.txt']
 
 
+def test_mem(tmp_path):
+    # test memoization rules
+    tmp_path_str = str(tmp_path);
+
+    ran = False
+    def method(dst, *args):
+        nonlocal ran
+        ran = True
+        touch(dst)
+
+    (tmp_path / 'a.txt').write_text('abc')
+
+    g = create_group(tmp_path_str + '/')
+    g.add_readonly('a', 'a.txt')
+    g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 1)
+
+    # first run (executed)
+    ran = False
+    g.make()
+    assert ran
+
+    # 2nd run with touched src (skipped)
+    (tmp_path / 'a.txt').touch()
+    ran = False
+    g.make()
+    assert not ran
+
+    # re-create the rule and run (skipped)
+    g = create_group(tmp_path_str + '/')
+    g.add_readonly('a', 'a.txt')
+    g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 1)
+    ran = False
+    g.make()
+    assert not ran
+
+    # re-create the rule with different input and run (executed)
+    g = create_group(tmp_path_str + '/')
+    g.add_readonly('a', 'a.txt')
+    g.add_memo('b', 'b.txt', 'b.memmem', method, g.a, 2)
+    ran = False
+    g.make()
+    assert ran
+
+    # 2nd run with modified src (executed)
+    (tmp_path / 'a.txt').write_text('xyz')
+    ran = False
+    g.make()
+    assert ran
+
+    # 3rd run (skipped)
+    ran = False
+    g.make()
+    assert not ran
+

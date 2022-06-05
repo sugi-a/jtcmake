@@ -26,7 +26,7 @@ def flatten_nested(nested):
         if isinstance(node, (tuple, list)):
             for v in node:
                 rec(v)
-        elif isinstance(node, dict):
+        elif isinstance(node, (dict, Mapping)):
             for v in node.values():
                 rec(v)
         else:

@@ -2,7 +2,7 @@ import sys, os, pathlib, re, abc, contextlib, collections
 from collections import namedtuple
 
 from ..utils import map_nested, flatten_nested, get_deep
-from ..core.decls import NOP, Rule
+from ..core.decls import NOP, Rule, RuleMemo, MemoSourceFile
 from ..core.make import make
 from ..core import misc
 from ..core.make_mt import make_multi_thread
@@ -57,7 +57,7 @@ class Group:
             if p in self._root._path_str_set:
                 raise ValueError(f'path {p} is already used by another rule')
 
-        trg = create_rule(self._root, path, (*self._name, name), method, args, kwargs)
+        trg = create_rule(self._root, path, (*self._name, name), method, args, kwargs, None)
 
         trg_ptr = _create_rule_wrapper(self._root, trg, path)
 
@@ -75,6 +75,37 @@ class Group:
             return self.add(method.__name__, path, method, *args, **kwargs)
         
         return adder
+
+
+    def add_memo(self, name, path, memo_save_path, method, *args, **kwargs):
+        if not isinstance(name, (str, int)):
+            raise ValueError(f'name must be str or int')
+
+        if name in self._children:
+            raise KeyError(f'name `{name}` already exists')
+
+        if not callable(method) and method is not NOP:
+            raise ValueError('method must be a callable')
+
+        path = map_nested(path, lambda p: _add_pfx_to_simple_path(self._path_prefix, p))
+
+        realpaths = set(map(os.path.realpath, flatten_nested(path)))
+        for p in realpaths:
+            if p in self._root._path_str_set:
+                raise ValueError(f'path {p} is already used by another rule')
+
+        trg = create_rule(self._root, path, (*self._name, name), method, args, kwargs, memo_save_path)
+
+        trg_ptr = _create_rule_wrapper(self._root, trg, path)
+
+        self._root._path_str_set.update(realpaths)
+
+        self._children[name] = trg_ptr
+
+        if _ismembername(name):
+            self.__dict__[name] = trg_ptr
+
+        return trg_ptr
 
     def add_readonly(self, name, path):
         self.add(name, path, NOP)
@@ -228,7 +259,7 @@ class RuleWrapperSimple(TargetSimple, IRuleWrapper):
     pass
 
 
-def create_rule(root, path, name, method, args, kwargs):
+def create_rule(root, path, name, method, args, kwargs, memo_save_path):
     depset = set()
     has_self = False
     self_paths = set()
@@ -264,7 +295,7 @@ def create_rule(root, path, name, method, args, kwargs):
 
         return arg
 
-    args, kwargs = map_nested((args, kwargs), map_fn)
+    method_args, method_kwargs = map_nested((args, kwargs), map_fn)
 
     if has_self:
         # check if all path-strs in path are used in args/kwargs
@@ -273,11 +304,27 @@ def create_rule(root, path, name, method, args, kwargs):
                 #_default_writer(f'WARNING: {repr(p)} will not be passed to the method\n', logkind='warning')
                 raise ValueError(f'{repr(p)} is not be passed to the method')
     else:
-        args = (path, *args)
+        method_args = (path, *method_args)
         self_paths = set(flatten_nested(path))
 
+    if memo_save_path is None:
+        return Rule(
+            repr_rule_name(name), method, method_args, method_kwargs,
+            depset, self_paths, ipaths
+        )
+    else:
+        def map_fn_for_memo(arg):
+            if isinstance(arg, TargetSimple):
+                return MemoSourceFile(arg.path())
+            if isinstance(arg, Self):
+                return None # ToDo: rethink
+            return arg
 
-    return Rule(repr_rule_name(name), method, args, kwargs, depset, self_paths, ipaths)
+        nested_input = map_nested((args, kwargs), map_fn_for_memo)
+        return RuleMemo(
+            repr_rule_name(name), method, method_args, method_kwargs,
+            depset, self_paths, ipaths, nested_input, memo_save_path
+        )
 
 
 def _create_rule_wrapper(root, rule, path):
