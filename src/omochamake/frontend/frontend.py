@@ -88,6 +88,7 @@ class Group:
             raise ValueError('method must be a callable')
 
         path = map_nested(path, lambda p: _add_pfx_to_simple_path(self._path_prefix, p))
+        memo_save_path = _add_pfx_to_simple_path(self._path_prefix, memo_save_path)
 
         realpaths = set(map(os.path.realpath, flatten_nested(path)))
         for p in realpaths:

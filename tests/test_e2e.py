@@ -218,6 +218,7 @@ def test_mem(tmp_path):
     ran = False
     g.make()
     assert ran
+    assert os.path.exists(tmp_path / 'b.memmem')
 
     # 2nd run with touched src (skipped)
     (tmp_path / 'a.txt').touch()
