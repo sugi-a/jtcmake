@@ -11,7 +11,7 @@ def clean_rule(r, writer):
         writer('Skip {r.name}: readonly\n', logkind='log')
         return
 
-    if len(r.self_path_set) == 0:
+    if len(r.opaths) == 0:
         writer('Skip {r.name}: zero files\n', logkind='log')
         return
 
@@ -19,7 +19,7 @@ def clean_rule(r, writer):
 
     cleaned, failed, notfound = [], [], []
 
-    for p in r.self_path_set:
+    for p in r.opaths:
         if os.path.exists(p):
             try:
                 os.remove(p)

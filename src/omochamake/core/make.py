@@ -66,15 +66,15 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
     method_name = repr_method(rule.method)
 
     # for HTML-style log
-    link_map = rule.self_path_set | rule.dep_path_set
+    link_map = rule.opaths | rule.ipaths
     link_map = {repr(v): v for v in link_map if not os.path.isabs(v)}
 
-    _should_update = should_update(list(rule.self_path_set), list(rule.dep_path_set))
+    _should_update = should_update(list(rule.opaths), list(rule.ipaths))
 
     if dry_run_info is not None:
         # dry-run
-        if _should_update or any(p in dry_run_info.pups for p in rule.dep_path_set):
-            dry_run_info.pups.update(rule.self_path_set)
+        if _should_update or any(p in dry_run_info.pups for p in rule.ipaths):
+            dry_run_info.pups.update(rule.opaths)
 
             msg = f'{rule.name} (dry-run)\n' + \
                 f'  {method_name}\n' + \
@@ -88,9 +88,9 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
 
             return SKIP
 
-    for dep_path in rule.dep_path_set:
-        if not os.path.exists(dep_path):
-            msg = f'WARNING: {rule.name}: Cannot find requirement {dep_path}\n'
+    for ipath in rule.ipaths:
+        if not os.path.exists(ipath):
+            msg = f'WARNING: {rule.name}: Cannot find requirement {ipath}\n'
             writer(th_sfx + msg, logkind='warning')
 
     if not _should_update:
@@ -103,7 +103,7 @@ def process_rule(rule, dry_run_info, writer, silent_skip=False, thread_id=None):
         repr_multi_kwargs(rule.kwargs, idt='    ')
     writer(th_sfx + msg, link_map=link_map)
 
-    for p in rule.self_path_set:
+    for p in rule.opaths:
         try:
             os.makedirs(os.path.dirname(p), exist_ok=True)
         except:

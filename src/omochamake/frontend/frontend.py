@@ -232,7 +232,7 @@ def create_rule(root, path, name, method, args, kwargs):
     depset = set()
     has_self = False
     self_paths = set()
-    dep_paths = set()
+    ipaths = set()
 
     if len(flatten_nested(path)) == 0:
         raise ValueError('path must contain at least one str')
@@ -249,7 +249,7 @@ def create_rule(root, path, name, method, args, kwargs):
                 raise ValueError(f'Rule may not depend on Rules under different root Group')
 
             depset.add(dep_rule)
-            dep_paths.add(p)
+            ipaths.add(p)
             return p
 
         if isinstance(arg, Self):
@@ -277,7 +277,7 @@ def create_rule(root, path, name, method, args, kwargs):
         self_paths = set(flatten_nested(path))
 
 
-    return Rule(repr_rule_name(name), method, args, kwargs, depset, self_paths, dep_paths)
+    return Rule(repr_rule_name(name), method, args, kwargs, depset, self_paths, ipaths)
 
 
 def _create_rule_wrapper(root, rule, path):
