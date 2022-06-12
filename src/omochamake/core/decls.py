@@ -22,6 +22,10 @@ class Rule:
     def should_update(self):
         return should_update(list(self.opaths), list(self.ipaths))
 
+    def post_process(self):
+        if self.should_update():
+            raise Exception('still need update after execution')
+
 
 class IMemoSource(abc.ABC):
     @abc.abstractmethod
@@ -77,6 +81,10 @@ class RuleMemo:
     def update_memo(self):
         new_memo = _input_to_memo(self.nested_input)
         _save_memo(self.memo_save_path, new_memo)
+
+
+    def post_process(self):
+        self.update_memo()
 
 
 def _input_to_memo(x):

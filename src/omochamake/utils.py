@@ -43,11 +43,10 @@ def get_deep(nested, keys):
 
 
 def should_update(dsts, srcs):
+    latest = 0 if len(srcs) == 0 else max(map(os.path.getmtime, srcs))
+
     if len(dsts) == 0:
         return False
-
-    srcs = list(filter(os.path.exists, srcs))
-    latest = 0 if len(srcs) == 0 else max(map(os.path.getmtime, srcs))
 
     for f in dsts:
         try:

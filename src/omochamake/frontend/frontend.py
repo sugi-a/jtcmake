@@ -2,11 +2,11 @@ import sys, os, pathlib, re, abc, contextlib, collections
 from collections import namedtuple
 
 from ..utils import map_nested, flatten_nested, get_deep
-from ..core.decls import NOP, Rule, RuleMemo, MemoSourceFile
-from ..core.make import make
-from ..core import misc
-from ..core.make_mt import make_multi_thread
+from ..core import \
+    NOP, Rule, RuleMemo, MemoSourceFile, \
+    make, make_multi_thread, Events, clean
 from ..writer.writer import get_default_writer, HTMLWriter, Writer
+from . import logger
 
 _default_writer = get_default_writer()
 
@@ -260,7 +260,7 @@ class IRuleWrapper(ITarget):
         _make_wrapper([self._rule], dry_run, stop_on_fail, logfile, nthreads)
 
     def clean(self):
-        misc.clean([self._rule], _default_writer)
+        clean([self._rule], _default_writer)
 
 
 class FrozenMap(collections.abc.Mapping):
@@ -464,10 +464,15 @@ def _make_wrapper(trgs, dry_run, stop_on_fail, logfile, nthreads):
             else:
                 writer = Writer(f)
 
+        event_handler = logger.create_event_handler(writer, set(trgs))
+
         if nthreads >= 2:
-            make_multi_thread(trgs, dry_run, stop_on_fail, writer, nthreads)
+            make_multi_thread(
+                trgs, dry_run, stop_on_fail, nthreads, event_handler
+            )
         else:
-            make(trgs, dry_run, stop_on_fail, writer)
+            make(trgs, dry_run, stop_on_fail, event_handler)
+
 
 
 def repr_group_name(group_name):

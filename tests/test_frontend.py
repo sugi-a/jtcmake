@@ -135,3 +135,11 @@ def test_method_args():
     assert g.f._rule.args == ({'a': 'p/f2'}, ['p/f1', 'p/f2'],)
 
 
+def test_illegal_operation():
+    fn = lambda: None
+
+    g = create_group('p')
+    g.add('a', fn)
+
+
+
