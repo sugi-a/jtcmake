@@ -103,7 +103,7 @@ def make(rules, dry_run, stop_on_fail, callback):
         if not result:
             failed_rule.add(t)
             if stop_on_fail:
-                callback(Events.StopOnFail(t))
+                callback(Events.StopOnFail(None))
                 return
         
 
@@ -117,6 +117,7 @@ def process_rule(rule, dry_run_info, callback):
         try:
             should_update = rule.should_update_dryrun(dry_run_info.pups)
         except Exception as e:
+            traceback.print_exc()
             callback(Events.UpdateCheckError(rule, e))
             return False
 
@@ -130,6 +131,7 @@ def process_rule(rule, dry_run_info, callback):
     try:
         should_update = rule.should_update()
     except Exception as e:
+        traceback.print_exc()
         callback(Events.UpdateCheckError(rule, e))
         return False
 
@@ -140,7 +142,7 @@ def process_rule(rule, dry_run_info, callback):
     for p in rule.opaths:
         try:
             os.makedirs(os.path.dirname(p), exist_ok=True)
-        except FileExistsError as e:
+        except Exception as e:
             callback(Events.MkdirError(rule, e))
 
     callback(Events.Start(rule))
@@ -153,7 +155,7 @@ def process_rule(rule, dry_run_info, callback):
         for p in rule.opaths:
             try:
                 os.utime(p, (time.time(), 0))
-            except FileNotFoundError:
+            except Exception:
                 pass
         return False
 

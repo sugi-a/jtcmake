@@ -17,7 +17,7 @@ class Rule:
 
 
     def should_update_dryrun(self, updated_paths):
-        return self.should_update() or any(p in updated_paths for p in self.ipaths)
+        return any(p in updated_paths for p in self.ipaths) or self.should_update()
 
     def should_update(self):
         return should_update(list(self.opaths), list(self.ipaths))
