@@ -1,23 +1,9 @@
 import sys, os, shutil
-from pathlib import Path
 import pytest
 
-from omochamake.core import make, Events, Rule, NOP
-
-
-def touch(*fns):
-    for fn in fns:
-        Path(fn).touch()
-
-
-def write(fn, text):
-    Path(fn).write_text(text)
-
-
-def remove(*fns):
-    for fn in fns:
-        Path(fn).unlink()
-
+from jtcmake.core.rule import Event, IRule
+from jtcmake.core.make import make
+from jtcmake.core import events
 
 def fail(*args, exc=None, **kwargs):
     if exc is None:
@@ -25,243 +11,258 @@ def fail(*args, exc=None, **kwargs):
     raise exc
 
 
-def cmp_event(e1, e2):
-    return e1.__class__ == e2.__class__ and e1.rule() == e2.rule()
+def assert_same_event(e1, e2):
+    assert type(e1) == type(e2)
+    assert e1.__dict__ == e2.__dict__
 
 
-def cmp_events(events1, events2):
-    return len(events1) == len(events2) \
-        and all(cmp_event(e1, e2) for e1,e2 in zip(events1, events2))
+def assert_same_log_item(x1, x2):
+    if isinstance(x1, Event):
+        assert_same_event(x1, x2)
+    else:
+        assert len(x1) == len(x2)
+        for u,v in zip(x1, x2):
+            if isinstance(u, Event):
+                assert_same_event(u, v)
+            else:
+                assert u == v
 
 
-def test_basic(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
+def assert_same_log(log1, log2):
+    for x1, x2 in zip(log1, log2):
+        assert_same_log_item(x1, x2)
 
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', touch, [str(a1)], {}, set(), {str(a1)}, set())
+log = []
 
-    a2 = tmp_path / 'a2'
-    r2 = Rule('name', touch, [str(a2)], {}, {r1}, {str(a2)}, {str(a1)})
+def callback(event):
+    log.append(event)
+
+class MockRule(IRule):
+    def __init__(
+        self, deplist, args, kwargs, method,
+        should_update=True, preprocess_err=None, postprocess_err=None
+    ):
+        self._deplist = deplist
+        self._should_update = should_update
+        self._args = args
+        self._kwargs = kwargs
+        self._method = method
+        self._preprocess_err = preprocess_err
+        self._postprocess_err = postprocess_err
+
+    def should_update(self, updated_rules, dry_run):
+        log.append(('should_update', self, set(updated_rules), dry_run))
+        if isinstance(self._should_update, Exception):
+            raise self._should_update
+        return self._should_update
+
+    def preprocess(self, callback):
+        log.append(('preprocess', self))
+        if self._preprocess_err is not None:
+            raise self._preprocess_err
+
+    def postprocess(self, callback, succ):
+        log.append(('postprocess', self, succ))
+        if self._postprocess_err is not None:
+            raise self._postprocess_err
+
+    @property
+    def method(self): return self._method
+
+    @property
+    def args(self): return self._args
+
+    @property
+    def kwargs(self): return self._kwargs
+
+    @property
+    def deplist(self): return self._deplist
+
+
+def test_basic():
+    args, kwargs = (object(),), {'a': object()}
+
+    def method(*args_, **kwargs_):
+        assert args_ == args
+        assert kwargs_ == kwargs
+        log.append(('method', ))
+
+    r1 = MockRule([], args, kwargs, method)
+    r2 = MockRule([r1], args, kwargs, method)
 
     # pass both
-    events.clear()
+    log.clear()
     make([r1, r2], False, False, callback)
-    assert len(events) == 4
-    assert isinstance(events[0], Events.Start)
-    assert isinstance(events[1], Events.Done)
-    assert isinstance(events[2], Events.Start)
-    assert isinstance(events[3], Events.Done)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r1
-    assert events[2].rule() == r2
-    assert events[3].rule() == r2
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        ('method',),
+        ('postprocess', r1, True),
+        events.Done(r1),
+
+        ('should_update', r2, {r1}, False),
+        events.Start(r2),
+        ('preprocess', r2),
+        ('method',),
+        ('postprocess', r2, True),
+        events.Done(r2),
+    ])
 
     # pass r1
-    events.clear()
-    remove(a1, a2)
+    log.clear()
     make([r1], False, False, callback)
-
-    assert len(events) == 2
-    assert isinstance(events[0], Events.Start)
-    assert isinstance(events[1], Events.Done)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r1
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        ('method',),
+        ('postprocess', r1, True),
+        events.Done(r1)
+    ])
 
     # pass r2
-    events.clear()
-    remove(a1)
+    log.clear()
     make([r2], False, False, callback)
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        ('method',),
+        ('postprocess', r1, True),
+        events.Done(r1),
 
-    assert len(events) == 4
-    assert isinstance(events[0], Events.Start)
-    assert isinstance(events[1], Events.Done)
-    assert isinstance(events[2], Events.Start)
-    assert isinstance(events[3], Events.Done)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r1
-    assert events[2].rule() == r2
-    assert events[3].rule() == r2
+        ('should_update', r2, {r1}, False),
+        events.Start(r2),
+        ('preprocess', r2),
+        ('method',),
+        ('postprocess', r2, True),
+        events.Done(r2),
+    ])
 
 
-def test_skip(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
+def test_skip():
+    args, kwargs = (object(),), {'a': object()}
 
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', touch, [str(a1)], {}, set(), {str(a1)}, set())
+    def method(*args_, **kwargs_):
+        assert args_ == args
+        assert kwargs_ == kwargs
+        log.append(('method', ))
 
-    a2 = tmp_path / 'a2'
-    r2 = Rule('name', touch, [str(a2)], {}, {r1}, {str(a2)}, {str(a1)})
+    r1 = MockRule([], args, kwargs, method)
+    r2 = MockRule([r1], args, kwargs, method)
 
     # skip both
+    log.clear()
+    r1._should_update = False
+    r2._should_update = False
+
     make([r2], False, False, callback)
-    events.clear()
-    make([r2], False, False, callback)
-    assert len(events) == 2
-    assert isinstance(events[0], Events.Skip)
-    assert isinstance(events[1], Events.Skip)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r2
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Skip(r1),
+        ('should_update', r2, set(), False),
+        events.Skip(r2),
+    ])
 
     # skip r1
-    remove(a1, a2)
-    make([r1], False, False, callback)
-    events.clear()
+    log.clear()
+    r1._should_update = False
+    r2._should_update = True
+
     make([r2], False, False, callback)
-    assert len(events) == 3
-    assert isinstance(events[0], Events.Skip)
-    assert isinstance(events[1], Events.Start)
-    assert isinstance(events[2], Events.Done)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r2
-    assert events[2].rule() == r2
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Skip(r1),
+
+        ('should_update', r2, set(), False),
+        events.Start(r2),
+        ('preprocess', r2),
+        ('method',),
+        ('postprocess', r2, True),
+        events.Done(r2),
+    ])
 
 
-def test_dryrun(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', touch, [a1], {}, set(), {a1}, set())
-    a2 = tmp_path / 'a2'
-    r2 = Rule('name', touch, [a2], {}, {r1}, {a2}, {a1})
+def test_dryrun():
+    r1 = MockRule([], (), {}, lambda: None)
+    r2 = MockRule([r1], (), {}, lambda: None)
 
     # dry-run r1
-    events.clear()
+    log.clear()
     make([r1], True, False, callback)
-    assert cmp_events(events, [Events.DryRun(r1)])
+    assert_same_log(log, [
+        ('should_update', r1, set(), True), events.DryRun(r1)
+    ])
 
     # dry-run r2
-    events.clear()
+    log.clear()
     make([r2], True, False, callback)
-    assert cmp_events(events, [Events.DryRun(r1), Events.DryRun(r2)])
+    assert_same_log(log, [
+        ('should_update', r1, set(), True), events.DryRun(r1),
+        ('should_update', r2, {r1}, True), events.DryRun(r2),
+    ])
 
-    # dry-run after real-run
+
+def test_should_update_error():
+    e = Exception()
+    r1 = MockRule([], (), {}, lambda: None, should_update=e)
+
+    log.clear()
     make([r1], False, False, callback)
-    events.clear()
-    make([r2], True, False, callback)
-    assert cmp_events(events, [Events.Skip(r1), Events.DryRun(r2)])
-
-    # r2 is present but r1 is not
-    make([r2], False, False, callback)
-    remove(a1)
-    events.clear()
-    make([r2], True, False, callback)
-    assert cmp_events(events, [Events.DryRun(r1), Events.DryRun(r2)])
-
-
-def test_skip_readonly(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', NOP, [], {}, set(), {}, set())
-    a1.touch()
-
-    a2 = tmp_path / 'a2'
-    r2 = Rule('name', touch, [a2], {}, {r1}, {a2}, {a1})
-
-    # Dry-run
-    events.clear()
-    make([r2], True, False, callback)
-    assert len(events) == 2
-    assert isinstance(events[0], Events.SkipReadonly)
-    assert isinstance(events[1], Events.DryRun)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r2
-
-    # run
-    events.clear()
-    make([r2], False, False, callback)
-    assert len(events) == 3
-    assert isinstance(events[0], Events.SkipReadonly)
-    assert isinstance(events[1], Events.Start)
-    assert isinstance(events[2], Events.Done)
-    assert events[0].rule() == r1
-    assert events[1].rule() == r2
-    assert events[2].rule() == r2
-
-
-def test_mkdir_error(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'd/a1'
-    r1 = Rule('name', touch, [a1], {}, set(), {a1}, set())
-    touch(tmp_path / 'd')
-
-    events.clear()
-    make([r1], False, False, callback)
-    assert cmp_events(
-        events, [
-            Events.MkdirError(r1, None),
-            Events.Start(r1),
-            Events.ExecError(r1, None),
-        ]
-    )
-
-
-def test_exec_error(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'a'
-    r1 = Rule('name', fail, [a1], {}, set(), {a1}, set())
-
-    events.clear()
-    make([r1], False, False, callback)
-    assert cmp_events(
-        events, [
-            Events.Start(r1),
-            Events.ExecError(r1, None),
-        ]
-    )
-
-
-def test_stop_on_fail(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', fail, [a1], {}, set(), {a1}, set())
-    a2 = tmp_path / 'a2'
-    r2 = Rule('name', touch, [a2], {}, {r1}, {a2}, set())
-
-    events.clear()
-    make([r2], False, True, callback)
-    assert cmp_events(
-        events, [
-            Events.Start(r1),
-            Events.ExecError(r1, None),
-            Events.StopOnFail(None),
-        ]
-    )
-
-
-def test_post_proc_error(tmp_path):
-    events = []
-    def callback(event):
-        events.append(event)
-
-    a1 = tmp_path / 'a1'
-    r1 = Rule('name', lambda x:None, [a1], {}, set(), {a1}, set())
-
-    events.clear()
-    make([r1], False, False, callback)
-    assert cmp_events(
-        events, [
-            Events.Start(r1),
-            Events.PostProcError(r1, None),
-        ]
-    )
-
-
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.UpdateCheckError(r1, e),
+        events.StopOnFail()
+    ])
     
+
+def test_preprocess_error():
+    e = Exception()
+    r1 = MockRule([], (), {}, lambda: None, preprocess_err=e)
+
+    log.clear()
+    make([r1], False, False, callback)
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        events.PreProcError(r1, e),
+        events.StopOnFail(),
+    ])
+
+
+def test_exec_error():
+    e = Exception()
+    def raiser():
+        raise e
+    r1 = MockRule([], (), {}, raiser)
+
+    log.clear()
+    make([r1], False, False, callback)
+    print(log)
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        events.ExecError(r1, e),
+        ('postprocess', r1, False),
+        events.StopOnFail()
+    ])
+
+
+def test_postprocess_error(tmp_path):
+    e = Exception()
+    r1 = MockRule([], (), {}, lambda: None, postprocess_err=e)
+
+    log.clear()
+    make([r1], False, False, callback)
+    assert_same_log(log, [
+        ('should_update', r1, set(), False),
+        events.Start(r1),
+        ('preprocess', r1),
+        # method
+        ('postprocess', r1, True),
+        events.PostProcError(r1, e),
+        events.StopOnFail()
+    ])

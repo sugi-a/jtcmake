@@ -1,145 +1,214 @@
 import sys, os, shutil, glob, time
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import pytest
 
-from omochamake import create_group, SELF, nopfx
+from jtcmake.frontend.group import create_group, SELF
+from jtcmake.frontend.file import File, VFile
 
+class _PathLike:
+    def __init__(self, p):
+        self.p = str(p)
 
-def nop(*args, **kwargs):
-    pass
+    def __fspath__(self):
+        return self.p
 
-
-def test_group_nopfxpath(tmp_path):
-    tmp_path_str = str(tmp_path)
-
-    dir1 = tmp_path / 'dir1'
-    dir2 = tmp_path / 'dir2'
-
-    g = create_group(dir1)
+fn = lambda *x,**y: None
     
-    g.add('a1', 'a.txt', nop)
-    g.add('a2', nopfx(f'{dir2}/a.txt'), nop)
-    g.add('a3', nopfx({'a': f'{dir2}/a3-1.txt', 0: [f'{dir2}/a3-2.txt', f'{dir2}/a3-3.txt']}), nop)
 
-    g.add_group('sub1', 'sub/')
-    g.add_group('sub2', nopfx(f'{dir2}/sub/'))
+def test_group_add_group():
+    #### normal cases ####
+    def _test(expect, *args, **kwargs):
+        g = create_group('root').add_group(*args, **kwargs)
+        assert Path(g._prefix + '_') == Path('root') / (expect + '_')
 
-    g.sub1.add('a', 'a.txt', nop)
-    g.sub2.add('a', 'a.txt', nop)
+    # dirname
+    _test('x/y/', 'a', 'x/y')
+    _test('x/y/', 'x/y')
+    _test('x/y/', _PathLike('x/y'))
+    _test(os.path.abspath('x/y/') + '/', os.path.abspath('x/y'))
+
+    # prefix
+    _test('x/y', 'a', prefix='x/y')
+    _test('x/y', 'a', prefix='x/y')
+    _test('x/y', 'a', prefix=_PathLike('x/y'))
+    _test(os.path.abspath('x/y'), 'a', prefix=os.path.abspath('x/y'))
+
+    # accessing as attribute or via dict key
+    g = create_group('root')
+    g.add_group('a')
+    g.add_group('_a')
+    g.add_group('a-')
+    assert hasattr(g, 'a')
+    assert not hasattr(g, '_a')
+    assert not hasattr(g, 'a-')
+    assert all((k in g) for k in ('a', '_a', 'a-'))
 
 
-    assert g.a1.path() == f'{dir1}/a.txt'
-    assert g.a2.path() == f'{dir2}/a.txt'
-    assert g.a3.path() == {'a': f'{dir2}/a3-1.txt', 0: (f'{dir2}/a3-2.txt', f'{dir2}/a3-3.txt')}
-    assert g.sub1.a.path() == f'{dir1}/sub/a.txt'
-    assert g.sub2.a.path() == f'{dir2}/sub/a.txt'
+    #### invalid calls ####
+    # prefix only (name needed)
+    with pytest.raises(Exception):
+        create_group('root').add_group(prefix='a')
+
+    # specify both
+    with pytest.raises(Exception):
+        create_group('root').add_group('a', dirname='dir', prefix='dir/')
+
+    # specify non-(str|PathLike)
+    with pytest.raises(Exception):
+        create_group('root').add_group(11)
+
+    with pytest.raises(Exception):
+        create_group('root').add_group('a', 11)
+
+    # overwriting registration
+    g = create_group('root')
+    g.add_group('a')
+    with pytest.raises(Exception):
+        g.add_group('a')
 
 
-def test_group_path():
-    fn = lambda x: None
-    p = Path('path')
+def test_group_add():
+    APath = lambda p: Path(p).absolute()
 
-    # Rule and readonly Rule
-    g = create_group(p)
-    g.add('a', 'a.txt', fn)
-    g.add('b', ['b1', 'b2'], fn)
-    g.add('c.txt', fn)
-    g.add_readonly('r', 'r')
+    ######## Output file path ########
+    #### atom path ####
+    def _test(expect, *x):
+        assert create_group('r').add(*x).path == APath('r') / expect
+        assert create_group('r').addvf(*x).path == APath('r') / expect
 
-    assert g.a.path() == str(p / 'a.txt')
-    assert g.b.path() == (str(p / 'b1'), str(p / 'b2'))
-    assert g['c.txt'].path() == str(p / 'c.txt')
-    assert g.r.path() == str(p / 'r')
+    # str/PathLike/IFile
+    _test('a1', 'a', 'a1', fn)
+    _test('a1', 'a', _PathLike('a1'), fn)
+    _test('a1', 'a', File('a1'), fn)
+    _test('a1', 'a', VFile('a1'), fn)
 
-    # memoization Rule
-    g = create_group(p)
-    g.add_memo('a', 'a.txt', 'a.m', fn)
-    g.add_memo('b', 'b.txt', fn)
-    g.add_memo('c', fn, 1)
+    # abspath
+    _test(os.path.abspath('a1'), 'a', os.path.abspath('a1'), fn)
 
-    assert g.a.path() == str(p / 'a.txt')
-    assert g.a._rule.memo_save_path == str(p / 'a.m')
-    assert g.b.path() == str(p / 'b.txt')
-    assert g.b._rule.memo_save_path == str(p / 'b.memo')
-    assert g.c.path() == str(p / 'c')
-    assert g.c._rule.memo_save_path == str(p / 'c.memo')
+    # omit path
+    _test('a1', 'a1', fn)
 
-    # sub group
-    g = create_group(p)
-    g.add_group('sub')
-    g.sub.add('a', fn)
-    g['sub'].add_group('sub2').add('a', fn)
-    g.add_group('sub2', 'subdir').add('a', fn)
+    #### structured path ####
+    a = create_group('r').add('a', ['a1', {'x': File('a2')}, ('a3',)], fn)
+    assert a.path == (APath('r/a1'), {'x': APath('r/a2')}, (APath('r/a3'),))
+    a = create_group('r').add('a', ['a1', 'a1'],  fn)
+    assert a.path == (APath('r/a1'), APath('r/a1'))
 
-    assert g.sub.a.path() == str(p / 'sub/a')
-    assert g.sub.sub2.a.path() == str(p / 'sub/sub2/a')
-    assert g.sub2.a.path() == str(p / 'subdir/a')
+    #### decorator ####
+    assert create_group('r').add('a', 'a1', None)(fn).path == APath('r/a1')
+    assert create_group('r').add('a1', None)(fn).path == APath('r/a1')
 
-    # path prefix
-    g = create_group(path_prefix='pfx-')
+    #### kind of IFile ####
+    # add: default is File
+    a = create_group('r').add('a', ['a1', VFile('a2')], fn)
+    assert isinstance(a[0]._file, File)
+    assert isinstance(a[1]._file, VFile)
+
+    # addvf: default is VFile
+    a = create_group('r').addvf('a', ['a1', File('a2')], fn)
+    assert isinstance(a[0]._file, VFile)
+    assert isinstance(a[1]._file, File)
+
+    ######## arguments ########
+    #### args and kwargs
+    g = create_group('r')
+    g.add('a', fn, 1, a=1)
+    g.add('b', fn, 1, {'a': [g.a]}, a=1, b=g.a)
+    assert g.a._rule.args == (g.a.path, 1) 
+    assert g.a._rule.kwargs == {'a': 1} 
+    assert g.b._rule.args == (g.b.path, 1, {'a': [g.a.path]} )
+    assert g.b._rule.kwargs == {'a': 1, 'b': g.a.path}
+
+    g = create_group('r')
+    g.add('a', ['a1', 'a2'], fn)
+    g.add('b', ['b1', 'b2'], fn, g.a[0], SELF[0], SELF[1], a=SELF)
+    assert g.b._rule.args == (g.a[0].path, g.b[0].path, g.b[1].path)
+    assert g.b._rule.kwargs == {'a': list(g.b.path)}
+
+    #### deplist
+    g = create_group('r')
     g.add('a', fn)
-    g.add_group('sub').add('a', fn)
-    g.add_group('sub2', path_prefix='sub-').add('a', fn)
-
-    assert g.a.path() == 'pfx-a'
-    assert g.sub.a.path() == 'pfx-sub/a'
-    assert g.sub2.a.path() == 'pfx-sub-a'
-
-    # nested path
-    g = create_group('p')
-    g.add('a', ['a', {'b': 'b'}], fn)
-
-    assert g.a.path() == ('p/a', {'b': 'p/b'})
+    g.add('b', fn)
+    g.add('c', fn, {'b': g.a, 'a': g.b})
+    assert g.c._rule.deplist == [g.b._rule, g.a._rule]
 
 
-def test_decorator_style_add():
-    fn = lambda: None
-    g = create_group(Path('p'))
-    g.add('a', 'a.txt', None)(fn)
-    g.add('b', None)(fn)
-    g.add_memo('c', 'c.txt', 'c.m', None)(fn)
-    g.add_memo('d', 'd.txt', None)(fn)
-    g.add_memo('e', None)(fn)
+    ######## invalid calls ######## 
+    # argument type errors
+    with pytest.raises(Exception):
+        create_group('r').add(1, fn)
 
-    assert g.a.path() == 'p/a.txt'
-    assert g.b.path() == 'p/b'
-    assert g.c.path() == 'p/c.txt'
-    assert g.d.path() == 'p/d.txt'
-    assert g.e.path() == 'p/e'
-    assert g.a._rule.method == fn
-    assert g.b._rule.method == fn
-    assert g.c._rule.method == fn
-    assert g.d._rule.method == fn
-    assert g.e._rule.method == fn
+    with pytest.raises(Exception):
+        create_group('r').add('a', 1, fn)
 
+    with pytest.raises(Exception):
+        create_group('r').add('a', 'a', 1)
 
-def test_method_args():
-    fn = lambda: None
-    g = create_group('p')
-    g.add('a', 'a.txt', fn)
-    g.add('b', 'b', fn, 1, x=2)
-    g.add('c', ['c1', {'c2': 'c2'}], fn)
-    g.add('d', fn, g.c[0], g.c[1])
-    g.add('e', fn, 1, SELF, x=SELF)
-    g.add('f', ['f1', 'f2'], fn, {'a': SELF[1]}, SELF)
-
-    assert g.a._rule.args == ('p/a.txt',)
-    assert g.a._rule.kwargs == {}
-    assert g.b._rule.args == ('p/b', 1)
-    assert g.b._rule.kwargs == {'x': 2}
-    assert g.c._rule.args == (['p/c1', {'c2': 'p/c2'}],)
-    assert g.d._rule.args == ('p/d', 'p/c1', {'c2': 'p/c2'})
-    assert g.e._rule.args == (1, 'p/e')
-    assert g.e._rule.kwargs == {'x': 'p/e'}
-    assert g.f._rule.args == ({'a': 'p/f2'}, ['p/f1', 'p/f2'],)
-
-
-def test_illegal_operation():
-    fn = lambda: None
-
-    g = create_group('p')
+    # overwriting
+    g = create_group('r')
     g.add('a', fn)
+    with pytest.raises(Exception):
+        g.add('a', fn)
 
+    # path collision
+    g = create_group('r')
+    g.add('a', 'a1', fn)
+    with pytest.raises(Exception):
+        g.add('b', os.path.abspath('r/a1'), fn)
+
+    # zero paths
+    with pytest.raises(Exception):
+        create_group('r').add('a', (), fn)
+
+    # inconsistent IFile type
+    with pytest.raises(Exception):
+        create_group('r').add('a', ['a1', VFile('a1')], fn)
+
+    with pytest.raises(Exception):
+        create_group('r').addvf('a', 'a1', fn, File('r/a1'))
+
+    g = create_group('r')
+    g.add('a', fn, File('x'))
+    with pytest.raises(Exception):
+        g.add('b', fn, VFile('x'))
+
+    # output paths not passed to method
+    with pytest.raises(Exception):
+        create_group('r').add('a', ['a1', 'a2'], fn, SELF[0])
+    
+    # unsortable dict keys
+    with pytest.raises(Exception):
+        create_group('r').add('a', fn, {'a': 1, 1: 1})
+
+    # deepkeys for IVFiles not JSON convertible
+    with pytest.raises(Exception):
+        create_group('r').add('a', fn, {object(): VFile('b')})
+
+
+def test_rule_touch(tmp_path):
+    r = create_group(tmp_path).add('a', ['a1', 'a2'], fn)
+
+    # both
+    r.touch()
+    assert os.path.getmtime(r[0].path) == os.path.getmtime(r[1].path)
+
+    # a1 only
+    r.clean()
+    r[0].touch()
+    assert os.path.exists(r[0].path)
+    assert not os.path.exists(r[1].path)
+
+
+def test_rule_clean(tmp_path):
+    r = create_group(tmp_path).add('a', ['a1', 'a2'], fn)
+
+    # don't raise if file does not exist
+    r.clean()
+
+    r.touch()
+    r[1].clean()
+    assert os.path.exists(r[0].path)
+    assert not os.path.exists(r[1].path)
 
 

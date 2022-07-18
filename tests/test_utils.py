@@ -1,7 +1,6 @@
-import sys, os, time
 import pytest
 
-from omochamake.utils import map_nested, flatten_nested, get_deep, should_update
+from jtcmake.utils.nest import map_structure, flatten, deep_get
 
 def add1(x):
     return x + 1
@@ -18,21 +17,25 @@ def add1(x):
         (len, {'a': {1,2}}, {'a': 2}),
         (len, {'a': ((), ())}, {'a': ((), ())}),
     ])
-def test_map_nested(fn, x, y):
-    assert map_nested(x, fn) == y
+def test_map_structure(fn, x, y):
+    assert map_structure(fn, x) == y
 
 
 @pytest.mark.parametrize(
     "x,y", [
         (1, [1]),
         ([1,1], [1,1]),
-        ({'a': 1, 0: (2,3)}, [1,2,3]),
+        ({'a': 1, 0: (2,3)}, None),
+        ({'b': 1, 'a': (2,3)}, [2, 3, 1]),
     ]
 )
-def test_flatten_nested(x, y):
-    y_ = flatten_nested(x)
-    y_.sort()
-    assert y_ == y
+def test_flatten(x, y):
+    """dict keys must be sortable"""
+    if y is None:
+        with pytest.raises(Exception):
+            flatten(x)
+    else:
+        assert flatten(x) == y
 
 
 @pytest.mark.parametrize(
@@ -43,45 +46,5 @@ def test_flatten_nested(x, y):
         ({'a': {'b': [1]}}, ('a', 'b', 0), 1),
     ]
 )
-def test_get_deep(x, keys, y):
-    assert get_deep(x, keys) == y
-    
-
-def test_should_update(tmp_path):
-    a = tmp_path / 'a'
-    b = tmp_path / 'b'
-    c = tmp_path / 'c'
-    d = tmp_path / 'd'
-    x = tmp_path / 'x'
-    y = tmp_path / 'y'
-
-    for p in (a,b,c,d):
-        p.touch()
-
-    t = time.time()
-    for p,d in [(a,1), (b,2), (c,3), (d,4)]:
-        os.utime(p, (t - 1000, t - 1000 * d))
-
-    # simple cases
-    assert not should_update([a,b], [c,d])
-    assert not should_update([a], [b])
-    assert should_update([c,d], [a,b])
-    assert should_update([a,c], [b,d])
-
-    # should not update when dsts is empty
-    assert not should_update([], [a])
-    assert not should_update([], [])
-
-    # otherwise, should update when a dst does not exist
-    assert should_update([y], [a])
-    assert should_update([y], [])
-    assert should_update([a,y], [b])
-
-    # otherwise, should not update when srcs is empty
-    assert not should_update([a], [])
-
-    with pytest.raises(Exception):
-        should_update([], [x])
-
-    with pytest.raises(Exception):
-        should_update([b], [a, x])
+def test_deep_get(x, keys, y):
+    assert deep_get(x, keys) == y
