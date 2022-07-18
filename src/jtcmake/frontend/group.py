@@ -107,8 +107,8 @@ class RuleCellBase:
     def __init__(self, rule: IRule):
         self._rule = rule
 
-    def make(self, dry_run=False, keep_going=False):
-        make(self, dry_run=dry_run, keep_going=keep_going)
+    def make(self, dry_run=False, keep_going=False, *, nthreads=1):
+        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=1)
 
 
 class RuleCellAtom(RuleCellBase, FileCellAtom):
@@ -217,11 +217,12 @@ class Group:
         self,
         dry_run=False,
         keep_going=False,
+        *,
         logfile=None,
         nthreads=1
     ):
         # TODO: logging, threads
-        make(self, dry_run=dry_run, keep_going=keep_going)
+        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=1)
 
 
     # APIs
@@ -508,6 +509,7 @@ def make(
     *rcell_or_groups,
     dry_run=False,
     keep_going=False,
+    nthreads=1
 ):
     # create list of unique rules by DFS
     # TODO: raise when multiple group trees are involved
@@ -525,7 +527,11 @@ def make(
             stack.extend(node._children.values())
 
     # TODO: callback
-    _make(rules, dry_run, keep_going, lambda x: ...)
+    if nthreads <= 1:
+        _make(rules, dry_run, keep_going, lambda x: ...)
+    else:
+        make_multi_thread(rules, dry_run, keep_going, nthreads, lambda x: ...)
+
 
 
 def create_group(dirname=None, prefix=None):
