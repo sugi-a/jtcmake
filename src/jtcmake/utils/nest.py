@@ -62,6 +62,7 @@ def flatten(struct):
             for k in keys: rec(node[k])
         else:
             res.append(node)
+
     rec(struct)
     return res
 

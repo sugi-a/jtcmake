@@ -126,6 +126,10 @@ def test_group_add():
     assert g.b._rule.args == (g.a[0].path, g.b[0].path, g.b[1].path)
     assert g.b._rule.kwargs == {'a': list(g.b.path)}
 
+    g = create_group('r')
+    g.add('a', fn, VFile('x'))
+    assert g.a._rule.args == (g.a.path, APath('x'))
+
     #### deplist
     g = create_group('r')
     g.add('a', fn)

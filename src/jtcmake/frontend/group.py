@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import Union, Optional, Sequence, Any
 from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time
+import sys, os, pathlib, re, abc, contextlib, collections, time, json
+import itertools
 from collections import namedtuple
 from collections.abc import Mapping
 from pathlib import Path
@@ -344,8 +345,23 @@ class Group:
             args = (files, *args)
 
         # flatten yfiles and args (for convenience)
-        files_ = flatten(files)
-        args_ = flatten((args, kwargs))
+        try:
+            files_ = flatten(files)
+        except Exception as e:
+            raise Exception(
+                f'Failed to flatten the input file structure. '
+                f'This error occurs when the structure contains a dict '
+                f'whose keys are not sortable.'
+            ) from e
+
+        try:
+            args_ = flatten((args, kwargs))
+        except Exception as e:
+            raise Exception(
+                f'Failed to flatten the structure of the args/kwargs. '
+                f'This error occurs when it contain a dict '
+                f'whose keys are not sortable.'
+            ) from e
         
         if len(files_) == 0:
             raise ValueError('at least 1 output file must be specified')
@@ -400,7 +416,15 @@ class Group:
 
         # create xfiles
         ypaths = set(f.path for f in files_)
-        arg_keys = flatten_to_deepkeys(args_)
+        try:
+            arg_keys = flatten_to_deepkeys(args)
+        except Exception as e:
+            raise Exception(
+                f'Failed to flatten keyword arguments. '
+                f'This error occurs when args/kwargs contain a dict '
+                f'whose keys are not sortable.'
+            ) from e
+
         xfiles = [
             (k,f) for k,f in zip(arg_keys, args_)
             if isinstance(f, IFile) and f.path not in ypaths
@@ -458,9 +482,12 @@ class Group:
         for f in files_:
             path_to_rule[f.path] = r
 
-        for k_,f in xfiles:
+        for _k,f in xfiles:
             if f.path not in path_to_rule:
                 path_to_rule[f.path] = None
+
+        for f in itertools.chain(files_, (x[1] for x in xfiles)):
+            path_to_file[f.path] = f
 
         return rc
 
