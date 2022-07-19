@@ -14,7 +14,7 @@ class DeepKey(tuple):
         return DeepKey((*self, key))
 
     def __getattr__(self, key: str) -> DeepKey:
-        return self[key] 
+        return self[key]
 
     def __repr__(self) -> str:
         return f'DeepKey({super().__repr__()})'
@@ -33,6 +33,7 @@ def map_structure(
     map_factory={(dict, Mapping): dict}
 ):
     assert callable(map_fn)
+
     def rec(struct):
         if isinstance(struct, DeepKey):
             return map_fn(struct)
@@ -52,14 +53,17 @@ def map_structure(
 
 def flatten(struct):
     res = []
+
     def rec(node):
         if isinstance(node, DeepKey):
             res.append(node)
         elif isinstance(node, (tuple, list)):
-            for v in node: rec(v)
+            for v in node:
+                rec(v)
         elif isinstance(node, (dict, Mapping)):
             keys = sorted(node.keys())
-            for k in keys: rec(node[k])
+            for k in keys:
+                rec(node[k])
         else:
             res.append(node)
 
@@ -69,14 +73,17 @@ def flatten(struct):
 
 def flatten_to_deepkeys(struct):
     res = []
+
     def rec(node, deepkey):
         if isinstance(node, DeepKey):
             res.append(deepkey)
         elif isinstance(node, (tuple, list)):
-            for i,v in enumerate(node): rec(v, (*deepkey, i))
+            for i,v in enumerate(node):
+                rec(v, (*deepkey, i))
         elif isinstance(node, (dict, Mapping)):
             keys = sorted(node.keys())
-            for k in keys: rec(node[k], (*deepkey, k))
+            for k in keys:
+                rec(node[k], (*deepkey, k))
         else:
             res.append(deepkey)
 
@@ -91,6 +98,7 @@ class NotEnoughElementError(Exception):
 
 def pack_sequence_as(ref_struct, flatten_seq):
     i = 0
+
     def map_fn(x):
         nonlocal i
         i += 1
@@ -112,5 +120,3 @@ def pack_sequence_as(ref_struct, flatten_seq):
         raise TypeError('too many elements in flatten_seq')
 
     return res
-
-
