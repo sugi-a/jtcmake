@@ -206,7 +206,7 @@ def make_multi_thread(
 
     args = (get_rule_fn, set_result_fn, updated_rules, dry_run, callback)
     threads = [
-        Thread(target=worker, args=(*args, i), name=f'lightmake{i}')
+        Thread(target=worker, args=(*args,), name=f'lightmake{i}')
         for i in range(nthreads)
     ]
 
@@ -233,7 +233,7 @@ def worker(
         res = None
 
         try:
-            res = process_rule(rule, dry_run_info, callback)
+            res = process_rule(rule, dry_run, updated_rules, callback)
         except Exception as e:
             traceback.print_exc()
             callback(events.FatalError(rule, e))

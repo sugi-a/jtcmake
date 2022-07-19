@@ -109,7 +109,7 @@ class RuleCellBase:
         self._rule = rule
 
     def make(self, dry_run=False, keep_going=False, *, nthreads=1):
-        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=1)
+        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=nthreads)
 
 
 class RuleCellAtom(RuleCellBase, FileCellAtom):
@@ -223,7 +223,7 @@ class Group:
         nthreads=1
     ):
         # TODO: logging, threads
-        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=1)
+        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=nthreads)
 
 
     # APIs
