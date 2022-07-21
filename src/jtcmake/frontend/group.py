@@ -613,7 +613,8 @@ def make(
         else:
             if _info is not node._info:
                 raise ValueError(
-                    f'All Groups/Rules must belong to the same Group tree.'
+                    f'All Groups/Rules must belong to the same Group tree. '
+                    f'This rule is to prevent potentially erroneous operations'
                 )
 
         if isinstance(node, RuleCellBase):
