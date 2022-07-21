@@ -3,25 +3,25 @@ from typing import Union, Sequence
 from collections.abc import Mapping
 
 
-class DeepKey(tuple):
-    def __new__(cls, deepkey: Sequence[Union[int, str]]):
-        return super().__new__(cls, deepkey)
+class StructKey(tuple):
+    def __new__(cls, struct_key: Sequence[Union[int, str]]):
+        return super().__new__(cls, struct_key)
 
-    def __getitem__(self, key: Union[int, str]) -> DeepKey:
+    def __getitem__(self, key: Union[int, str]) -> StructKey:
         if not isinstance(key, (int, str)):
             raise ValueError(f'Key must be int or str. Given {key}')
 
-        return DeepKey((*self, key))
+        return StructKey((*self, key))
 
-    def __getattr__(self, key: str) -> DeepKey:
+    def __getattr__(self, key: str) -> StructKey:
         return self[key]
 
     def __repr__(self) -> str:
-        return f'DeepKey({super().__repr__()})'
+        return f'StructKey({super().__repr__()})'
 
 
-def deep_get(struct, deepkey):
-    for k in deepkey:
+def struct_get(struct, struct_key):
+    for k in struct_key:
         struct = struct[k]
 
     return struct
@@ -35,7 +35,7 @@ def map_structure(
     assert callable(map_fn)
 
     def rec(struct):
-        if isinstance(struct, DeepKey):
+        if isinstance(struct, StructKey):
             return map_fn(struct)
 
         for src, dst in seq_factory.items():
@@ -55,7 +55,7 @@ def flatten(struct):
     res = []
 
     def rec(node):
-        if isinstance(node, DeepKey):
+        if isinstance(node, StructKey):
             res.append(node)
         elif isinstance(node, (tuple, list)):
             for v in node:
@@ -71,21 +71,21 @@ def flatten(struct):
     return res
 
 
-def flatten_to_deepkeys(struct):
+def flatten_to_struct_keys(struct):
     res = []
 
-    def rec(node, deepkey):
-        if isinstance(node, DeepKey):
-            res.append(deepkey)
+    def rec(node, struct_key):
+        if isinstance(node, StructKey):
+            res.append(struct_key)
         elif isinstance(node, (tuple, list)):
             for i,v in enumerate(node):
-                rec(v, (*deepkey, i))
+                rec(v, (*struct_key, i))
         elif isinstance(node, (dict, Mapping)):
             keys = sorted(node.keys())
             for k in keys:
-                rec(node[k], (*deepkey, k))
+                rec(node[k], (*struct_key, k))
         else:
-            res.append(deepkey)
+            res.append(struct_key)
 
     rec(struct, ())
     return res

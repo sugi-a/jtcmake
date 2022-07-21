@@ -1,6 +1,6 @@
 import pytest
 
-from jtcmake.utils.nest import map_structure, flatten, deep_get
+from jtcmake.utils.nest import map_structure, flatten, struct_get
 
 def add1(x):
     return x + 1
@@ -46,5 +46,5 @@ def test_flatten(x, y):
         ({'a': {'b': [1]}}, ('a', 'b', 0), 1),
     ]
 )
-def test_deep_get(x, keys, y):
-    assert deep_get(x, keys) == y
+def test_struct_get(x, keys, y):
+    assert struct_get(x, keys) == y

@@ -18,8 +18,8 @@ from ..logwriter.writer import \
 #from ..writer.writer import get_default_writer, HTMLWriter, Writer
 #from . import logger
 from ..utils.nest import \
-    DeepKey, map_structure, flatten, deep_get, \
-    flatten_to_deepkeys, pack_sequence_as
+    StructKey, map_structure, flatten, struct_get, \
+    flatten_to_struct_keys, pack_sequence_as
 
 #_default_writer = get_default_writer()
 
@@ -364,10 +364,10 @@ class Group:
         _expanded = False
         def expand_self(arg: Any):
             nonlocal _expanded
-            if isinstance(arg, DeepKey):
+            if isinstance(arg, StructKey):
                 _expanded = True
                 try:
-                    return deep_get(files, arg)
+                    return struct_get(files, arg)
                 except:
                     raise ValueError(f'Invalid keys for SELF')
             else:
@@ -457,7 +457,7 @@ class Group:
         # create xfiles
         ypaths = set(f.path for f in files_)
         try:
-            arg_keys = flatten_to_deepkeys(args)
+            arg_keys = flatten_to_struct_keys(args)
         except Exception as e:
             raise Exception(
                 f'Failed to flatten keyword arguments. '
@@ -480,9 +480,9 @@ class Group:
                     f'contains an element not convertible to JSON: {key}'
                 ) from e
             
-        for deepkey, f in xfiles:
+        for struct_key, f in xfiles:
             if isinstance(f, IVFile):
-                for k in deepkey:
+                for k in struct_key:
                     _assert_key_json_convertible(k, f)
 
         # create method args
@@ -641,4 +641,4 @@ def create_group(dirname=None, prefix=None):
     return Group(GroupTreeInfo(), str(prefix), ())
 
 
-SELF = DeepKey(())
+SELF = StructKey(())

@@ -193,7 +193,7 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group('r').add('a', fn, {'a': 1, 1: 1})
 
-    # deepkeys for IVFiles not JSON convertible
+    # struct_keys for IVFiles not JSON convertible
     with pytest.raises(Exception):
         create_group('r').add('a', fn, {object(): VFile('b')})
 

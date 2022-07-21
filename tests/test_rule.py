@@ -48,7 +48,7 @@ def test_create_vfile_hashes(mocker):
     """create_vfile_hashes(vfile_list)
     creates a list where each element corresponds to
     a VFile and is a triple (key, hash code, mtime).
-    `key` is the DeepKey for the VFile, hash code is the hash of the VFile,
+    `key` is the StructKey for the VFile, hash code is the hash of the VFile,
     and mtime is the time at which the hash was computed.
     """
     f1, f2 = (mocker.MagicMock(VFile) for _ in range(2))

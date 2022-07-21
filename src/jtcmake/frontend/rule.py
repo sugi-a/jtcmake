@@ -137,7 +137,7 @@ class Rule(IRule):
 
 def create_vfile_hashes(vfiles) -> list[tuple[tuple, str, float]]:
     """
-    list of (DeepKey, file name, mtime)
+    list of (StructKey, file name, mtime)
     """
     res = [(k, f.get_hash(), os.path.getmtime(f.path)) for k,f in vfiles]
     res = json.loads(json.dumps(res)) # round trip JSON conversion
