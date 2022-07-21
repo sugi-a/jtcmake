@@ -61,6 +61,10 @@ def test_group_add_group():
     with pytest.raises(Exception):
         create_group('root').add_group('a', 11)
 
+    # name being empty str
+    with pytest.raises(Exception):
+        create_group('root').add_group('', 'a')
+
     # overwriting registration
     g = create_group('root')
     g.add_group('a')
@@ -148,6 +152,10 @@ def test_group_add():
 
     with pytest.raises(Exception):
         create_group('r').add('a', 'a', 1)
+
+    # name being empty str
+    with pytest.raises(Exception):
+        create_group('root').add('', 'a', fn)
 
     # overwriting
     g = create_group('r')

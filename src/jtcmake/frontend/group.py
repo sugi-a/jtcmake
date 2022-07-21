@@ -206,6 +206,9 @@ class Group:
         if name in self._children:
             raise KeyError(f'name {repr(name)} already exists in this Group')
 
+        if name == '':
+            raise ValueError(f'name must not be ""')
+
         if dirname is not None and prefix is not None:
             raise TypeError('Either dirname or prefix can be specified')
 
@@ -333,6 +336,9 @@ class Group:
 
         if name in self._children:
             raise KeyError(f'name `{name}` already exists')
+
+        if name == '':
+            raise ValueError(f'name must not be ""')
 
         # wrap str/os.PathLike in yfiles by File
         def wrap_by_File(p: Union[str, os.PathLike, IFile]) -> IFile:
