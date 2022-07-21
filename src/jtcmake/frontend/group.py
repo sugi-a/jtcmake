@@ -110,8 +110,9 @@ class FileCellDict(Mapping, IFileCell):
 
 
 class RuleCellBase:
-    def __init__(self, rule: IRule):
+    def __init__(self, rule: IRule, group_tree_info):
         self._rule = rule
+        self._info = group_tree_info
 
     def make(
         self,
@@ -133,34 +134,36 @@ class RuleCellBase:
 
 
 class RuleCellAtom(RuleCellBase, FileCellAtom):
-    def __init__(self, rule: IRule, file: IFile):
-        RuleCellBase.__init__(self, rule)
+    def __init__(self, rule: IRule, group_tree_info, file: IFile):
+        RuleCellBase.__init__(self, rule, group_tree_info)
         FileCellAtom.__init__(self, file)
 
 
 class RuleCellTuple(RuleCellBase, FileCellTuple):
-    def __new__(cls, rule, lst):
+    def __new__(cls, _rule, _group_tree_info, lst):
         return FileCellTuple.__new__(cls, lst)
 
     def __init__(
         self,
         rule: IRule,
+        group_tree_info,
         lst: Sequence[Union[FileCellAtom, FileCellTuple, FileCellDict]]
     ):
-        RuleCellBase.__init__(self, rule)
+        RuleCellBase.__init__(self, rule, group_tree_info)
         FileCellTuple.__init__(self, lst)
 
 
 class RuleCellDict(RuleCellBase, FileCellDict):
-    def __new__(cls, rule, dic):
+    def __new__(cls, _rule, _group_tree_info, dic):
         return FileCellDict.__new__(cls, dic)
 
     def __init__(
         self,
         rule: IRule,
+        group_tree_info,
         dic: dict[Any, Union[FileCellAtom, FileCellTuple, FileCellDict]]
     ):
-        RuleCellBase.__init__(self, rule)
+        RuleCellBase.__init__(self, rule, group_tree_info)
         FileCellDict.__init__(self, dic)
         
 
@@ -168,6 +171,7 @@ class GroupTreeInfo:
     def __init__(self):
         self.path_to_rule: dict[str, IRule] = {}
         self.path_to_file: dict[str, IFile] = {}
+        self.rule_to_name: dict[IRule, str] = {}
 
 
 class Group:
@@ -246,7 +250,6 @@ class Group:
         loglevel=None,
         nthreads=1
     ):
-        # TODO: logging
         make(
             self,
             dry_run=dry_run,
@@ -502,7 +505,6 @@ class Group:
 
         # create Rule
         r = Rule(
-            '/'.join((*self._name, name)),
             files_, xfiles, deplist,
             method, method_args, method_kwargs
         )
@@ -521,11 +523,11 @@ class Group:
         )
 
         if isinstance(file_cell_root, FileCellAtom):
-            rc = RuleCellAtom(r, file_cell_root._file)
+            rc = RuleCellAtom(r, self._info, file_cell_root._file)
         elif isinstance(file_cell_root, FileCellTuple):
-            rc = RuleCellTuple(r, file_cell_root)
+            rc = RuleCellTuple(r, self._info, file_cell_root)
         elif isinstance(file_cell_root, FileCellDict):
-            rc = RuleCellDict(r, file_cell_root)
+            rc = RuleCellDict(r, self._info, file_cell_root)
 
         # update group tree
         self._children[name] = rc
@@ -542,6 +544,8 @@ class Group:
 
         for f in itertools.chain(files_, (x[1] for x in xfiles)):
             path_to_file[f.path] = f
+
+        self._info.rule_to_name[r] = '/'.join((*self._name, name))
 
         return rc
 
@@ -599,9 +603,19 @@ def make(
     _added = set()
     rules = []
     stack = list(reversed(rcell_or_groups))
+    _info = None
 
     while stack:
         node = stack.pop()
+        
+        if _info is None:
+            _info = node._info
+        else:
+            if _info is not node._info:
+                raise ValueError(
+                    f'All Groups/Rules must belong to the same Group tree.'
+                )
+
         if isinstance(node, RuleCellBase):
             if node._rule not in _added:
                 rules.append(node._rule)
@@ -629,7 +643,12 @@ def make(
         else:
             writer = TextWriter(sys.stderr, loglevel)
 
-        callback = create_event_callback(writer, set(rules), base=base)
+        callback = create_event_callback(
+            writer,
+            set(rules),
+            base=base,
+            rule_to_name=_info.rule_to_name,
+        )
 
         if nthreads <= 1:
             _make(rules, dry_run, keep_going, callback)

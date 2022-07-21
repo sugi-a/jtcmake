@@ -40,7 +40,7 @@ def test_metadata_fname():
         metadata_fname := p.parent / '.jtcmake' / p.name
     """
     y1, y2 = File(Path('a/b.c')), File(Path('d/e.f'))
-    r = Rule((), [y1, y2], [], [], _method, _args, _kwargs)
+    r = Rule([y1, y2], [], [], _method, _args, _kwargs)
     assert str(r.metadata_fname) == 'a/.jtcmake/b.c'
 
 
@@ -71,7 +71,7 @@ def test_update_xvfile_hashes(tmp_path, mocker):
     ys = [y1, y2]
     xs = [(k1,y1), (k2,y2)]
 
-    r = Rule((), ys, xs, [], _method, _args, _kwargs)
+    r = Rule(ys, xs, [], _method, _args, _kwargs)
 
     m = mocker.patch('jtcmake.frontend.rule.save_vfile_hashes')
     r.update_xvfile_hashes()
@@ -110,7 +110,7 @@ def test_rule_should_update(tmp_path, mocker):
     ys = [y1, y2]
     xs = [(k1,x1), (k2,x2)]
 
-    r = Rule((), ys, xs, [q1, q2], _method, _args, _kwargs)
+    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs)
 
     # case 1
     touch(x1, x2, y1, y2)
@@ -176,7 +176,7 @@ def test_rule_should_update(tmp_path, mocker):
     #### no x case ####
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
-    r = Rule((), ys, [], [q1, q2], _method, _args, _kwargs)
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs)
 
     # case 3: y1 is missing
     rm(y1); touch(y2)
@@ -195,7 +195,7 @@ def test_preprocess(tmp_path):
     """Rule.preprocess(callaback) should make dirs for all its output files.
     """
     y = File(tmp_path / 'a')
-    r = Rule((), [y], [], [], _method, _args, _kwargs)
+    r = Rule([y], [], [], _method, _args, _kwargs)
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.path.parent)
     assert os.path.isdir(y.path.parent)
@@ -213,7 +213,7 @@ def test_postprocess(tmp_path):
     x1 = File(tmp_path / 'x1')
     x2 = VFile(tmp_path / 'x2')
 
-    r = Rule((), [y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs)
+    r = Rule([y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs)
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)

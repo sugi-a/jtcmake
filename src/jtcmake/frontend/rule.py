@@ -8,7 +8,6 @@ from .file import IFile, IVFile
 class Rule(IRule):
     def __init__(
         self,
-        name: str,
         yfiles: list[IFile],
         xfiles: list[tuple[tuple, IFile]],
         deplist: list[IRule],
@@ -16,7 +15,6 @@ class Rule(IRule):
         args,
         kwargs,
     ):
-        self.name = name
         self.yfiles = yfiles
         self.xfiles = xfiles
         self._deplist = deplist
