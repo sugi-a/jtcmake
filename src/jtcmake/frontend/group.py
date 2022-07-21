@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Union, Optional, Sequence, Any
 from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time, json
+import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -9,7 +9,12 @@ from pathlib import Path
 
 from .rule import Rule
 from .file import File, VFile, IFile, IVFile
+from .event_logger import create_event_callback
 from ..core.make import make as _make, make_multi_thread, Event
+from ..logwriter.writer import \
+    TextWriter, ColorTextWriter, HTMLWriter, HTMLJupyterWriter, \
+    term_is_jupyter
+
 #from ..writer.writer import get_default_writer, HTMLWriter, Writer
 #from . import logger
 from ..utils.nest import \
@@ -108,8 +113,23 @@ class RuleCellBase:
     def __init__(self, rule: IRule):
         self._rule = rule
 
-    def make(self, dry_run=False, keep_going=False, *, nthreads=1):
-        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=nthreads)
+    def make(
+        self,
+        dry_run=False,
+        keep_going=False,
+        *,
+        logfile=None,
+        loglevel=None,
+        nthreads=1
+    ):
+        make(
+            self,
+            dry_run=dry_run,
+            keep_going=keep_going,
+            logfile=logfile,
+            loglevel=loglevel,
+            nthreads=nthreads
+        )
 
 
 class RuleCellAtom(RuleCellBase, FileCellAtom):
@@ -220,10 +240,18 @@ class Group:
         keep_going=False,
         *,
         logfile=None,
+        loglevel=None,
         nthreads=1
     ):
-        # TODO: logging, threads
-        make(self, dry_run=dry_run, keep_going=keep_going, nthreads=nthreads)
+        # TODO: logging
+        make(
+            self,
+            dry_run=dry_run,
+            keep_going=keep_going,
+            logfile=logfile,
+            loglevel=loglevel,
+            nthreads=nthreads
+        )
 
 
     # APIs
@@ -344,6 +372,12 @@ class Group:
         if not _expanded:
             args = (files, *args)
 
+        # validate method signature
+        try:
+            inspect.signature(method).bind(*args, **kwargs)
+        except Exception as e:
+            raise Exception(f'Method signature and args/kwargs do not match') from e
+
         # flatten yfiles and args (for convenience)
         try:
             files_ = flatten(files)
@@ -451,7 +485,11 @@ class Group:
             pack_sequence_as((args, kwargs), method_args_)
 
         # create Rule
-        r = Rule(files_, xfiles, deplist, method, method_args, method_kwargs)
+        r = Rule(
+            (*self._name, name),
+            files_, xfiles, deplist,
+            method, method_args, method_kwargs
+        )
 
         # create RuleCell
         files = pack_sequence_as(files, files_)
@@ -536,6 +574,8 @@ def make(
     *rcell_or_groups,
     dry_run=False,
     keep_going=False,
+    logfile=None,
+    loglevel=None,
     nthreads=1
 ):
     # create list of unique rules by DFS
@@ -554,10 +594,31 @@ def make(
             stack.extend(node._children.values())
 
     # TODO: callback
+    loglevel = loglevel or 'info'
+    base = os.getcwd()
+
+    with contextlib.ExitStack() as s:
+        if logfile is not None:
+            logf = s.enter_context(open(logfile, 'w'))
+            base = os.path.dirname(logfile)
+
+            if logfile[-5:] == '.html':
+                writer = s.enter_context(HTMLWriter(logf, loglevel))
+            else:
+                writer = TextWriter(logf, loglevel)
+        elif term_is_jupyter():
+            writer = HTMLJupyterWriter(loglevel)
+        elif sys.stderr.isatty():
+            writer = ColorTextWriter(loglevel)
+        else:
+            writer = s.enter_context(HTMLWriter(sys.stderr, loglevel))
+
+    callback = create_event_callback(writer, set(rules), base=base)
+
     if nthreads <= 1:
-        _make(rules, dry_run, keep_going, lambda x: ...)
+        _make(rules, dry_run, keep_going, callback)
     else:
-        make_multi_thread(rules, dry_run, keep_going, nthreads, lambda x: ...)
+        make_multi_thread(rules, dry_run, keep_going, nthreads, callback)
 
 
 
