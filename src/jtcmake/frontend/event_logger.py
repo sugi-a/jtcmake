@@ -56,13 +56,13 @@ def create_event_callback(w: IWriter, rules, base):
                 msg.insert(0, f'Make {r.name}\n')
                 w.info(*msg)
             elif isinstance(e, events.Done):
-                w.info('Done {r.name}')
+                w.info(f'Done {r.name}')
             elif isinstance(e, events.DryRun):
                 msg = []
                 tostrs_func_call(msg, r.method, r.args, r.kwargs)
                 msg = replace_base(msg, base)
                 msg = add_indent(msg, '  ')
-                msg.insert(0, f'Make (dry-run) {r.name}\n')
+                msg.insert(0, f'Make (dry) {r.name}\n')
                 w.info(*msg)
             else:
                 w.warning(f'Unhandled event for {r}')
@@ -97,8 +97,8 @@ def get_func_name(f):
     try:
         name, mod = f.__qualname__, f.__module__
 
-        if mod == 'builtins':
-            name
+        if mod == 'builtins' or mod == '__main__':
+            return name
         else:
             return f'{mod}.{name}'
     except:

@@ -486,7 +486,17 @@ class Group:
                     _assert_key_json_convertible(k, f)
 
         # create method args
-        method_args_ = [f.path if isinstance(f, IFile) else f for f in args_]
+        def _shorter_path(absp):
+            cwd = os.getcwd()
+            try:
+                rel = Path(os.path.relpath(absp, cwd))
+                return rel if len(str(rel)) < len(str(absp)) else absp
+            except:
+                return absp
+
+        method_args_ = [
+            _shorter_path(f.path) if isinstance(f, IFile) else f for f in args_
+        ]
         method_args, method_kwargs = \
             pack_sequence_as((args, kwargs), method_args_)
 

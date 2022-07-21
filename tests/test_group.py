@@ -5,6 +5,7 @@ import pytest
 
 from jtcmake.frontend.group import create_group, SELF
 from jtcmake.frontend.file import File, VFile
+from jtcmake.utils.nest import map_structure
 
 class _PathLike:
     def __init__(self, p):
@@ -116,23 +117,30 @@ def test_group_add():
 
     ######## arguments ########
     #### args and kwargs
+    """
+    Paths in arguments can be either relative or absolute.
+    """
+    def _to_abs(o):
+        return map_structure(
+            lambda x: x.absolute() if isinstance(x, Path) else x, o
+        )
     g = create_group('r')
     g.add('a', fn, 1, a=1)
     g.add('b', fn, 1, {'a': [g.a]}, a=1, b=g.a)
-    assert g.a._rule.args == (g.a.path, 1) 
-    assert g.a._rule.kwargs == {'a': 1} 
-    assert g.b._rule.args == (g.b.path, 1, {'a': [g.a.path]} )
-    assert g.b._rule.kwargs == {'a': 1, 'b': g.a.path}
+    assert _to_abs(g.a._rule.args) == (g.a.path, 1)
+    assert _to_abs(g.a._rule.kwargs) == {'a': 1} 
+    assert _to_abs(g.b._rule.args) == (g.b.path, 1, {'a': [g.a.path]} )
+    assert _to_abs(g.b._rule.kwargs) == {'a': 1, 'b': g.a.path}
 
     g = create_group('r')
     g.add('a', ['a1', 'a2'], fn)
     g.add('b', ['b1', 'b2'], fn, g.a[0], SELF[0], SELF[1], a=SELF)
-    assert g.b._rule.args == (g.a[0].path, g.b[0].path, g.b[1].path)
-    assert g.b._rule.kwargs == {'a': list(g.b.path)}
+    assert _to_abs(g.b._rule.args) == (g.a[0].path, g.b[0].path, g.b[1].path)
+    assert _to_abs(g.b._rule.kwargs) == {'a': list(g.b.path)}
 
     g = create_group('r')
     g.add('a', fn, VFile('x'))
-    assert g.a._rule.args == (g.a.path, APath('x'))
+    assert _to_abs(g.a._rule.args) == (g.a.path, APath('x'))
 
     #### deplist
     g = create_group('r')

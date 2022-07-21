@@ -104,7 +104,7 @@ HTML_BG_COLOR_MAP = {
 }
 HTML_COLOR_MAP = {
     'debug': '#4F8A10',
-    'info': 'grey',
+    'info': 'black',
     'warning': '#9F6000',
     'error': '#D8000C',
 }
