@@ -6,10 +6,12 @@ class RichStr(str):
 
 
     def __init__(self, s, c=None, bg=None, link=None):
-        attr = {'c': c, 'bg': bg, 'link': link}
-
         if isinstance(s, RichStr):
-            attr = {**s._attr, **attr}
+            attr = s._attr.copy()
+            a = {'c': c, 'bg': bg, 'link': link}
+            attr.update({k:v for k,v in a.items() if v is not None})
+        else:
+            attr = {'c': c, 'bg': bg, 'link': link}
 
         # TODO: use frozen dict
         self._attr = attr
@@ -17,6 +19,22 @@ class RichStr(str):
     
     def __getattr__(self, k):
         return self._attr[k]
+
+
+    def __add__(self, rhs):
+        if isinstance(rhs, type(self)):
+            return NotImplemented # pass to __radd__
+        elif isinstance(rhs, str):
+            return RichStr(str(self) + str(rhs), self._attr)
+        else:
+            return NotImplemented
+
+
+    def __radd__(self, lhs):
+        if isinstance(lhs, str):
+            return RichStr(str(lhs) + str(self), self._attr)
+        else:
+            return NotImplemented
 
 
     @property
@@ -43,7 +61,6 @@ class IWriter:
     def _write(self, *args, level): ...
 
     def write(self, *args, level):
-        print(QUANT_LOG_LEVEL[self.loglevel], QUANT_LOG_LEVEL[level])
         if QUANT_LOG_LEVEL[self.loglevel] >= QUANT_LOG_LEVEL[level]:
             self._write(*args, level=level)
 
@@ -66,7 +83,7 @@ class TextWriter(IWriter):
 
 
     def _write(self, *args, **kwargs):
-        writable.write(''.join(map(str, args)))
+        self.writable.write(''.join(map(str, args)))
 
 
 class ColorTextWriter(IWriter):
@@ -154,7 +171,7 @@ class HTMLJupyterWriter(IWriter):
 
 
 def create_html(sl):
-    assert all(isinstance(s, RichStr) for s in sl)
+    sl = [x if isinstance(x, RichStr) else RichStr(x) for x in sl]
     groups = []
     for s in sl:
         if len(groups) >= 1 and s.attr == groups[-1][0].attr:

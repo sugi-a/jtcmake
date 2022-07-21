@@ -492,7 +492,7 @@ class Group:
 
         # create Rule
         r = Rule(
-            (*self._name, name),
+            '/'.join((*self._name, name)),
             files_, xfiles, deplist,
             method, method_args, method_kwargs
         )
@@ -615,16 +615,16 @@ def make(
         elif term_is_jupyter():
             writer = HTMLJupyterWriter(loglevel)
         elif sys.stderr.isatty():
-            writer = ColorTextWriter(loglevel)
+            writer = ColorTextWriter(sys.stderr, loglevel)
         else:
-            writer = s.enter_context(HTMLWriter(sys.stderr, loglevel))
+            writer = TextWriter(sys.stderr, loglevel)
 
-    callback = create_event_callback(writer, set(rules), base=base)
+        callback = create_event_callback(writer, set(rules), base=base)
 
-    if nthreads <= 1:
-        _make(rules, dry_run, keep_going, callback)
-    else:
-        make_multi_thread(rules, dry_run, keep_going, nthreads, callback)
+        if nthreads <= 1:
+            _make(rules, dry_run, keep_going, callback)
+        else:
+            make_multi_thread(rules, dry_run, keep_going, nthreads, callback)
 
 
 
