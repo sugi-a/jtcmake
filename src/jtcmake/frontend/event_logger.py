@@ -7,91 +7,80 @@ from ..logwriter.writer import IWriter, RichStr
 from ..core import events
 
 
-def create_event_callback(w: IWriter, rules, base, rule_to_name):
-    def callback(e):
-        if isinstance(e, events.ErrorRuleEvent):
-            r = e.rule
-            err = e.err
-            name = rule_to_name.get(r)
-
-            if name is None:
-                w.warning(f'An event of unknown Rule has been emitted.\n')
-                name = '<unknown>'
-
-            if isinstance(e, events.UpdateCheckError):
-                w.error(
-                    f'Failed to make {name}: '
-                    f'An error occured while checking if update is necessary: '
-                    f'{err}\n'
-                )
-            elif isinstance(e, events.PreProcError):
-                w.error(
-                    f'Failed to make {name}: '
-                    f'An error occured during preprocessing: {err}\n'
-                )
-            elif isinstance(e, events.ExecError):
-                w.error(
-                    f'Failed to make {name}: Method failed: {err}\n'
-                )
-            elif isinstance(e, events.PostProcError):
-                w.error(
-                    f'Failed to make {name}: '
-                    f'An error occured during post-processing: {err}. '
-                    f'Make sure to remove the output files (if any) '
-                    f'by yourself\n'
-                )
-            elif isinstance(e, events.FatalError):
-                w.error('Fatal error\n')
-            else:
-                w.warning(f'Unhandled error event for {r}: {err}\n')
-            return
-        elif isinstance(e, events.RuleEvent):
-            r = e.rule
-            name = rule_to_name.get(r)
-
-            if name is None:
-                w.warning(f'An event of unknown Rule has been emitted.\n')
-                name = '<unknown>'
-
-            if isinstance(e, events.Skip):
-                msg = f'Skip {name}\n'
-                if e.rule in rules:
-                    w.info(msg)
-                else:
-                    w.debug(msg)
-            elif isinstance(e, events.Start):
-                msg = []
-                tostrs_func_call(msg, r.method, r.args, r.kwargs)
-                msg = replace_base(msg, base)
-                msg = add_indent(msg, '  ')
-                msg.insert(0, f'Make {name}\n')
-                w.info(*msg)
-            elif isinstance(e, events.Done):
-                w.info(f'Done {name}\n')
-            elif isinstance(e, events.DryRun):
-                msg = []
-                tostrs_func_call(msg, r.method, r.args, r.kwargs)
-                msg = replace_base(msg, base)
-                msg = add_indent(msg, '  ')
-                msg.insert(0, f'Make (dry) {name}\n')
-                w.info(*msg)
-            else:
-                w.warning(f'Unhandled event for {r}\n')
-            return
-        elif isinstance(e, events.StopOnFail):
-            w.warning(f'Execution aborted due to an error\n')
-
-    return callback
+def create_event_callback(w: IWriter, rule_to_name):
+    return lambda e: event_callback(w, rule_to_name, e)
 
 
-def replace_base(sl, base):
-    res = []
-    for s in sl:
-        if isinstance(s, RichStr) and s.link is not None:
-            res.append(RichStr(s, link=os.path.relpath(s.link, base)))
+def event_callback(w: IWriter, rule_to_name, e):
+    if isinstance(e, events.ErrorRuleEvent):
+        r = e.rule
+        err = e.err
+        name = rule_to_name.get(r)
+
+        if name is None:
+            w.warning(f'An event of unknown Rule has been emitted.\n')
+            name = '<unknown>'
+
+        if isinstance(e, events.UpdateCheckError):
+            w.error(
+                f'Failed to make {name}: '
+                f'An error occured while checking if update is necessary: '
+                f'{err}\n'
+            )
+        elif isinstance(e, events.PreProcError):
+            w.error(
+                f'Failed to make {name}: '
+                f'An error occured during preprocessing: {err}\n'
+            )
+        elif isinstance(e, events.ExecError):
+            w.error(
+                f'Failed to make {name}: Method failed: {err}\n'
+            )
+        elif isinstance(e, events.PostProcError):
+            w.error(
+                f'Failed to make {name}: '
+                f'An error occured during post-processing: {err}. '
+                f'Make sure to remove the output files (if any) '
+                f'by yourself\n'
+            )
+        elif isinstance(e, events.FatalError):
+            w.error('Fatal error\n')
         else:
-            res.append(s)
-    return res
+            w.warning(f'Unhandled error event for {r}: {err}\n')
+        return
+    elif isinstance(e, events.RuleEvent):
+        r = e.rule
+        name = rule_to_name.get(r)
+
+        if name is None:
+            w.warning(f'An event of unknown Rule has been emitted.\n')
+            name = '<unknown>'
+
+        if isinstance(e, events.Skip):
+            msg = f'Skip {name}\n'
+            if e.is_direct_target:
+                w.info(msg)
+            else:
+                w.debug(msg)
+        elif isinstance(e, events.Start):
+            msg = []
+            tostrs_func_call(msg, r.method, r.args, r.kwargs)
+            msg = add_indent(msg, '  ')
+            msg.insert(0, f'Make {name}\n')
+            w.info(*msg)
+        elif isinstance(e, events.Done):
+            w.info(f'Done {name}\n')
+        elif isinstance(e, events.DryRun):
+            msg = []
+            tostrs_func_call(msg, r.method, r.args, r.kwargs)
+            msg = add_indent(msg, '  ')
+            msg.insert(0, f'Make (dry) {name}\n')
+            w.info(*msg)
+        else:
+            w.warning(f'Unhandled event for {r}\n')
+        return
+    elif isinstance(e, events.StopOnFail):
+        w.warning(f'Execution aborted due to an error\n')
 
 
 def add_indent(sl, indent):

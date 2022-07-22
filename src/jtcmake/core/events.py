@@ -29,7 +29,10 @@ class ErrorRuleEvent(RuleEvent):
         return f'{type(self).__name__}(rule={self.rule}, err={self.err})'
 
 
-class Skip(RuleEvent): ...
+class Skip(RuleEvent):
+    def __init__(self, rule, is_direct_target):
+        super().__init__(rule)
+        self.is_direct_target = is_direct_target
 
 class Start(RuleEvent): ...
 

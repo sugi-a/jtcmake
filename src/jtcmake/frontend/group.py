@@ -626,7 +626,6 @@ def make(
 
     # TODO: callback
     loglevel = loglevel or 'info'
-    base = os.getcwd()
 
     with contextlib.ExitStack() as s:
         if logfile is not None:
@@ -634,11 +633,11 @@ def make(
             base = os.path.dirname(logfile)
 
             if logfile[-5:] == '.html':
-                writer = s.enter_context(HTMLWriter(logf, loglevel))
+                writer = s.enter_context(HTMLWriter(logf, loglevel, base))
             else:
                 writer = TextWriter(logf, loglevel)
         elif term_is_jupyter():
-            writer = HTMLJupyterWriter(loglevel)
+            writer = HTMLJupyterWriter(loglevel, os.getcwd())
         elif sys.stderr.isatty():
             writer = ColorTextWriter(sys.stderr, loglevel)
         else:
@@ -646,8 +645,6 @@ def make(
 
         callback = create_event_callback(
             writer,
-            set(rules),
-            base=base,
             rule_to_name=_info.rule_to_name,
         )
 

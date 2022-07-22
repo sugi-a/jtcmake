@@ -21,7 +21,7 @@ def make(
     if len(rules) == 0:
         return
 
-    rules = set(rules)
+    direct_targets = set(rules)
 
     added: set[IRule] = set()
     taskq: list[IRule] = []
@@ -50,7 +50,9 @@ def make(
             continue
 
         try:
-            result = process_rule(t, dry_run, updated_rules, callback)
+            result = process_rule(
+                t, dry_run, updated_rules, direct_targets, callback
+            )
         except Exception as e:
             traceback.print_exc()
             callback(events.FatalError(t, e))
@@ -71,6 +73,7 @@ def process_rule(
     rule: IRule,
     dry_run: bool,
     updated_rules: set[IRule],
+    direct_targets: set[IRule],
     callback: Callable[[Event], None]
     ):
     if dry_run:
@@ -96,7 +99,7 @@ def process_rule(
         return Result.Fail
 
     if not should_update:
-        callback(events.Skip(rule))
+        callback(events.Skip(rule, rule in direct_targets))
         return Result.Skip
 
     callback(events.Start(rule))
@@ -141,7 +144,7 @@ def make_multi_thread(
     if len(rules) == 0:
         return
 
-    rules = set(rules)
+    direct_targets = set(rules)
 
     b2a: dict[IRule, set[IRule]] = defaultdict(set) # before to after
     dep_cnt: dict[IRule, int] = {}
@@ -204,7 +207,9 @@ def make_multi_thread(
             cv.notify_all()
             
 
-    args = (get_rule_fn, set_result_fn, updated_rules, dry_run, callback)
+    args = (
+        get_rule_fn, set_result_fn,
+        updated_rules, direct_targets, dry_run, callback)
     threads = [
         Thread(target=worker, args=(*args,), name=f'lightmake{i}')
         for i in range(nthreads)
@@ -221,6 +226,7 @@ def worker(
     get_rule_fn: Callable[[], IRule],
     set_result_fn: Callable[[IRule, Optional[Result]], None],
     updated_rules: set[IRule],
+    direct_targets,
     dry_run: bool,
     callback: Callable[[Event], None],
     ):
@@ -233,7 +239,9 @@ def worker(
         res = None
 
         try:
-            res = process_rule(rule, dry_run, updated_rules, callback)
+            res = process_rule(
+                rule, dry_run, updated_rules, direct_targets, callback
+            )
         except Exception as e:
             traceback.print_exc()
             callback(events.FatalError(rule, e))

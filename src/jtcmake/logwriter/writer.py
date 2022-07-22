@@ -110,11 +110,12 @@ HTML_COLOR_MAP = {
 }
 
 class HTMLWriter(IWriter):
-    def __init__(self, writable, loglevel):
+    def __init__(self, writable, loglevel, basedir=None):
         super().__init__(loglevel)
         self.writable = writable
         self._header = False
         self._footer = False
+        self.basedir = basedir
 
 
     def _write(self, *args, level):
@@ -122,7 +123,7 @@ class HTMLWriter(IWriter):
         bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
 
         args = [RichStr(x, c=color, bg=bgcolor) for x in args]
-        self.writable.write(create_html(args))
+        self.writable.write(create_html(args, self.basedir))
 
 
     def write_header(self):
@@ -152,9 +153,10 @@ class HTMLWriter(IWriter):
         
 
 class HTMLJupyterWriter(IWriter):
-    def __init__(self, loglevel):
+    def __init__(self, loglevel, basedir=None):
         super().__init__(loglevel)
         from IPython.display import display, HTML # check if importable
+        self.basedir = basedir
 
 
     def _write(self, *args, level):
@@ -164,10 +166,10 @@ class HTMLJupyterWriter(IWriter):
 
         args = [RichStr(x, c=color, bg=bgcolor) for x in args]
 
-        display(HTML(f'<pre>{create_html(args)}</pre>'))
+        display(HTML(f'<pre>{create_html(args, self.basedir)}</pre>'))
 
 
-def create_html(sl):
+def create_html(sl, basedir=None):
     sl = [x if isinstance(x, RichStr) else RichStr(x) for x in sl]
     groups = []
     for s in sl:
@@ -179,17 +181,21 @@ def create_html(sl):
     outs = []
     for group in groups:
         s = RichStr(''.join(group), **group[0].attr)
-        outs.append(_richstr_to_html(s))
+        outs.append(_richstr_to_html(s, basedir))
 
     return ''.join(outs)
 
 
-def _richstr_to_html(s):
+def _richstr_to_html(s, basedir):
     starts = []
     ends = []
 
     if s.link is not None:
-        starts.append(f'<a href="{s.link}">')
+        if basedir is not None:
+            rel = os.path.relpath(s.link, basedir)
+            starts.append(f'<a href="{rel}">')
+        else:
+            starts.append(f'<a href="{s.link}">')
         ends.append(f'</a>')
 
     styles = []

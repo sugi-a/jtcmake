@@ -160,9 +160,9 @@ def test_skip():
     make([r2], False, False, callback)
     assert_same_log(log, [
         ('should_update', r1, set(), False),
-        events.Skip(r1),
+        events.Skip(r1, False),
         ('should_update', r2, set(), False),
-        events.Skip(r2),
+        events.Skip(r2, True),
     ])
 
     # skip r1
@@ -173,7 +173,7 @@ def test_skip():
     make([r2], False, False, callback)
     assert_same_log(log, [
         ('should_update', r1, set(), False),
-        events.Skip(r1),
+        events.Skip(r1, False),
 
         ('should_update', r2, set(), False),
         events.Start(r2),
