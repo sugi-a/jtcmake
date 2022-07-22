@@ -122,7 +122,7 @@ class HTMLWriter(IWriter):
         bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
 
         args = [RichStr(x, c=color, bg=bgcolor) for x in args]
-        self.writable.write(f'<pre>{create_html(args)}</pre>')
+        self.writable.write(create_html(args))
 
 
     def write_header(self):
@@ -130,11 +130,8 @@ class HTMLWriter(IWriter):
             return
         self._header = True
         self.writable.write(
-            '''
-            <html>
-                <head><meta charset="utf-8"><title>log</title></head>
-                <body>
-            '''
+            '<html><head><meta charset="utf-8"><title>log</title></head>'
+            '\n<body><pre>'
         )
 
     def write_footer(self):
@@ -142,7 +139,7 @@ class HTMLWriter(IWriter):
             return
 
         self._footer = True
-        self.writable.write('</body></html>')
+        self.writable.write('</pre></body></html>')
 
 
     def __enter__(self):

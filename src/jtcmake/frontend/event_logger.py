@@ -15,46 +15,46 @@ def create_event_callback(w: IWriter, rules, base, rule_to_name):
             name = rule_to_name.get(r)
 
             if name is None:
-                w.warning(f'An event of unknown Rule has been emitted.')
+                w.warning(f'An event of unknown Rule has been emitted.\n')
                 name = '<unknown>'
 
             if isinstance(e, events.UpdateCheckError):
                 w.error(
                     f'Failed to make {name}: '
                     f'An error occured while checking if update is necessary: '
-                    f'{err}'
+                    f'{err}\n'
                 )
             elif isinstance(e, events.PreProcError):
                 w.error(
                     f'Failed to make {name}: '
-                    f'An error occured during preprocessing: {err}'
+                    f'An error occured during preprocessing: {err}\n'
                 )
             elif isinstance(e, events.ExecError):
                 w.error(
-                    f'Failed to make {name}: Method failed: {err}'
+                    f'Failed to make {name}: Method failed: {err}\n'
                 )
             elif isinstance(e, events.PostProcError):
                 w.error(
                     f'Failed to make {name}: '
                     f'An error occured during post-processing: {err}. '
                     f'Make sure to remove the output files (if any) '
-                    f'by yourself'
+                    f'by yourself\n'
                 )
             elif isinstance(e, events.FatalError):
-                w.error('Fatal error')
+                w.error('Fatal error\n')
             else:
-                w.warning(f'Unhandled error event for {r}: {err}')
+                w.warning(f'Unhandled error event for {r}: {err}\n')
             return
         elif isinstance(e, events.RuleEvent):
             r = e.rule
             name = rule_to_name.get(r)
 
             if name is None:
-                w.warning(f'An event of unknown Rule has been emitted.')
+                w.warning(f'An event of unknown Rule has been emitted.\n')
                 name = '<unknown>'
 
             if isinstance(e, events.Skip):
-                msg = f'Skip {name}'
+                msg = f'Skip {name}\n'
                 if e.rule in rules:
                     w.info(msg)
                 else:
@@ -67,7 +67,7 @@ def create_event_callback(w: IWriter, rules, base, rule_to_name):
                 msg.insert(0, f'Make {name}\n')
                 w.info(*msg)
             elif isinstance(e, events.Done):
-                w.info(f'Done {name}')
+                w.info(f'Done {name}\n')
             elif isinstance(e, events.DryRun):
                 msg = []
                 tostrs_func_call(msg, r.method, r.args, r.kwargs)
@@ -76,10 +76,10 @@ def create_event_callback(w: IWriter, rules, base, rule_to_name):
                 msg.insert(0, f'Make (dry) {name}\n')
                 w.info(*msg)
             else:
-                w.warning(f'Unhandled event for {r}')
+                w.warning(f'Unhandled event for {r}\n')
             return
         elif isinstance(e, events.StopOnFail):
-            w.warning(f'Execution aborted due to an error')
+            w.warning(f'Execution aborted due to an error\n')
 
     return callback
 
