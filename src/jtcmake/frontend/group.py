@@ -8,20 +8,20 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from .rule import Rule
+from .igroup import IGroup
 from .file import File, VFile, IFile, IVFile
 from . import events as group_events
 from .event_logger import create_event_callback
+from . import graphviz
 from ..core.make import make as _make, make_multi_thread, Event
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
     term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
 
-#from . import logger
 from ..utils.nest import \
     StructKey, map_structure, flatten, struct_get, \
     flatten_to_struct_keys, pack_sequence_as
 
-#_default_writer = get_default_writer()
 
 
 class IFileNode:
@@ -219,7 +219,7 @@ class GroupTreeInfo:
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
     
-class Group:
+class Group(IGroup):
     def __init__(
         self,
         info: GroupTreeInfo,
@@ -657,7 +657,6 @@ class Group:
                     p = re.sub( r'\*|[^*]+', _repl, p)
                     regex.append(f'{SEP}{p}')
 
-        #print('aaa', '^' + ''.join(regex) + '$')
         regex = re.compile('^' + ''.join(regex) + '$')
         chnames = [self._name] if is_group else []
         self._get_children_names(chnames, is_group, not is_group)
@@ -669,6 +668,24 @@ class Group:
                 res.append(struct_get(self, name))
         
         return res
+
+
+    def print_graphviz(self, output_file=None):
+        if output_file is None:
+            if term_is_jupyter():
+                from IPython.display import display, SVG
+                dot_code = graphviz.gen_dot_code(self)
+                svg = graphviz.convert(dot_code, 'svg').decode()
+                display(SVG(svg))
+                return
+            else:
+                print(graphviz.gen_dot_code(self))
+                return
+        else:
+            dot_code = \
+                graphviz.gen_dot_code(self, os.path.dirname(output_file))
+            with open(output_file, 'wb') as f:
+                f.write(graphviz.convert(dot_code, 'svg'))
 
 
     def __repr__(self):
