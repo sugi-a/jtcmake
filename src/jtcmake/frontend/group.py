@@ -24,7 +24,7 @@ from ..utils.nest import \
 #_default_writer = get_default_writer()
 
 
-class IFileCell:
+class IFileNode:
     @property
     @abstractmethod
     def path(self) -> Any: ...
@@ -36,7 +36,7 @@ class IFileCell:
     def clean(self): ...
 
 
-class FileCellAtom(IFileCell):
+class FileNodeAtom(IFileNode):
     def __init__(self, tree_info, file):
         assert isinstance(file, IFile)
         self._info = tree_info
@@ -61,10 +61,10 @@ class FileCellAtom(IFileCell):
             pass
 
 
-class FileCellTuple(tuple, IFileCell):
+class FileNodeTuple(tuple, IFileNode):
     def __new__(
         cls,
-        lst: Sequence[Union[FileCellAtom, FileCellTuple, FileCellDict]]
+        lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
         return super().__new__(cls, lst)
 
@@ -83,10 +83,10 @@ class FileCellTuple(tuple, IFileCell):
         for x in self: x.clean()
 
 
-class FileCellDict(Mapping, IFileCell):
+class FileNodeDict(Mapping, IFileNode):
     def __init__(
         self,
-        dic: dict[Any, Union[FileCellAtom, FileCellTuple, FileCellDict]]
+        dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
         self._dic = dic
 
@@ -131,38 +131,38 @@ class RuleCellBase:
         )
 
 
-class RuleCellAtom(RuleCellBase, FileCellAtom):
+class RuleCellAtom(RuleCellBase, FileNodeAtom):
     def __init__(self, rule: IRule, group_tree_info, file: IFile):
         RuleCellBase.__init__(self, rule, group_tree_info)
-        FileCellAtom.__init__(self, group_tree_info, file)
+        FileNodeAtom.__init__(self, group_tree_info, file)
 
 
-class RuleCellTuple(RuleCellBase, FileCellTuple):
+class RuleCellTuple(RuleCellBase, FileNodeTuple):
     def __new__(cls, _rule, _group_tree_info, lst):
-        return FileCellTuple.__new__(cls, lst)
+        return FileNodeTuple.__new__(cls, lst)
 
     def __init__(
         self,
         rule: IRule,
         group_tree_info,
-        lst: Sequence[Union[FileCellAtom, FileCellTuple, FileCellDict]]
+        lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
         RuleCellBase.__init__(self, rule, group_tree_info)
-        FileCellTuple.__init__(self, lst)
+        FileNodeTuple.__init__(self, lst)
 
 
-class RuleCellDict(RuleCellBase, FileCellDict):
+class RuleCellDict(RuleCellBase, FileNodeDict):
     def __new__(cls, _rule, _group_tree_info, dic):
-        return FileCellDict.__new__(cls, dic)
+        return FileNodeDict.__new__(cls, dic)
 
     def __init__(
         self,
         rule: IRule,
         group_tree_info,
-        dic: dict[Any, Union[FileCellAtom, FileCellTuple, FileCellDict]]
+        dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
         RuleCellBase.__init__(self, rule, group_tree_info)
-        FileCellDict.__init__(self, dic)
+        FileNodeDict.__init__(self, dic)
         
 
 class GroupTreeInfo:
@@ -405,8 +405,8 @@ class Group:
         if len(files_) == 0:
             raise ValueError('at least 1 output file must be specified')
                 
-        # Unwrap FileCellAtom
-        args_ = [x._file if isinstance(x, FileCellAtom) else x for x in args_]
+        # Unwrap FileNodeAtom
+        args_ = [x._file if isinstance(x, FileNodeAtom) else x for x in args_]
 
         # normalize paths
         _norm = lambda f: \
@@ -510,20 +510,20 @@ class Group:
 
         def conv_to_atom(x):
             assert isinstance(x, IFile)
-            return FileCellAtom(self._info, x)
+            return FileNodeAtom(self._info, x)
             
-        file_cell_root = map_structure(
+        file_node_root = map_structure(
             conv_to_atom, files,
-            seq_factory={list: FileCellTuple, tuple: FileCellTuple},
-            map_factory={dict: FileCellDict, Mapping: FileCellDict}
+            seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
+            map_factory={dict: FileNodeDict, Mapping: FileNodeDict}
         )
 
-        if isinstance(file_cell_root, FileCellAtom):
-            rc = RuleCellAtom(r, self._info, file_cell_root._file)
-        elif isinstance(file_cell_root, FileCellTuple):
-            rc = RuleCellTuple(r, self._info, file_cell_root)
-        elif isinstance(file_cell_root, FileCellDict):
-            rc = RuleCellDict(r, self._info, file_cell_root)
+        if isinstance(file_node_root, FileNodeAtom):
+            rc = RuleCellAtom(r, self._info, file_node_root._file)
+        elif isinstance(file_node_root, FileNodeTuple):
+            rc = RuleCellTuple(r, self._info, file_node_root)
+        elif isinstance(file_node_root, FileNodeDict):
+            rc = RuleCellDict(r, self._info, file_node_root)
 
         # update group tree
         self._children[name] = rc
