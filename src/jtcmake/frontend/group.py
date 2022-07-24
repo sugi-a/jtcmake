@@ -46,6 +46,10 @@ class FileNodeAtom(IFileNode):
     def path(self) -> Path:
         return self._file.path
 
+    @property
+    def abspath(self) -> Path:
+        return self._file.abspath
+
     def touch(self, _t=None):
         if _t is None:
             _t = time.time()
@@ -59,6 +63,9 @@ class FileNodeAtom(IFileNode):
             self._info.callback(group_events.Clean(self.path))
         except:
             pass
+
+    def __repr__(self):
+        return f'FileNodeAtom("{self.path}")'
 
 
 class FileNodeTuple(tuple, IFileNode):
@@ -74,6 +81,10 @@ class FileNodeTuple(tuple, IFileNode):
     def path(self) -> Sequence[Any]:
         return tuple(x.path for x in self)
 
+    @property
+    def abspath(self):
+        return tuple(x.abspath for x in self)
+
     def touch(self, _t=None):
         if _t is None:
             _t = time.time()
@@ -81,6 +92,9 @@ class FileNodeTuple(tuple, IFileNode):
 
     def clean(self):
         for x in self: x.clean()
+
+    def __repr__(self):
+        return f'FileNodeTuple{super().__repr__()}'
 
 
 class FileNodeDict(Mapping, IFileNode):
@@ -93,6 +107,10 @@ class FileNodeDict(Mapping, IFileNode):
     @property
     def path(self) -> dict[Any, Any]:
         return {k: v.path for k,v in self._dic.items()}
+
+    @property
+    def abspath(self):
+        return {k: v.abspath for k,v in self._dic.items()}
 
     def touch(self, _t):
         if _t is None: _t = time.time()
@@ -115,6 +133,9 @@ class FileNodeDict(Mapping, IFileNode):
 
     def __hash__(self):
         return hash(id(self))
+
+    def __repr__(self):
+        return f'FileNodeDict{dict(self)}'
 
 
 class RuleNodeBase:
@@ -148,6 +169,10 @@ class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
         FileNodeAtom.__init__(self, group_tree_info, file)
 
 
+    def __repr__(self):
+        return f'RuleNodeAtom(path="{self.path}")'
+
+
 class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
     def __new__(cls, _name, _rule, _group_tree_info, lst):
         return FileNodeTuple.__new__(cls, lst)
@@ -161,6 +186,10 @@ class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
     ):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeTuple.__init__(self, lst)
+
+
+    def __repr__(self):
+        return f'RuleNodeTuple{tuple(self)}'
 
 
 class RuleNodeDict(RuleNodeBase, FileNodeDict):
@@ -177,6 +206,9 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeDict.__init__(self, dic)
         
+    def __repr__(self):
+        return f'RuleNodeDict{dict(self)}'
+
 
 class GroupTreeInfo:
     def __init__(self, logwriters):
@@ -186,7 +218,7 @@ class GroupTreeInfo:
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
-
+    
 class Group:
     def __init__(
         self,
@@ -428,9 +460,17 @@ class Group:
         # Unwrap FileNodeAtom
         args_ = [x._file if isinstance(x, FileNodeAtom) else x for x in args_]
 
-        # normalize paths
+        # normalize paths (take the shorter one of absolute or relative path)
+        def _shorter_path(p):
+            cwd = os.getcwd()
+            try:
+                rel = Path(os.path.relpath(p, cwd))
+                return rel if len(str(rel)) < len(str(p)) else p
+            except:
+                return p
+
         _norm = lambda f: \
-            f.__class__(os.path.abspath(f.path)) if isinstance(f, IFile) else f
+            f.__class__(_shorter_path(f.path)) if isinstance(f, IFile) else f
         files_ = list(map(_norm, files_))
         args_ = list(map(_norm, args_))
 
@@ -440,7 +480,10 @@ class Group:
             if isinstance(x, IFile):
                 if \
                     (x.path in p2f and p2f[x.path] != x) or \
-                    (x.path in path_to_file and path_to_file[x.path] != x):
+                    (
+                        x.abspath in path_to_file and
+                        path_to_file[x.abspath] != x
+                    ):
                     raise TypeError(
                         f'Inconsistency in IFiles of path {x.path}: '
                         f'One is {x} and the other is {p2f[x.path]}'
@@ -450,10 +493,10 @@ class Group:
 
         # check duplicate registration of output files
         for f in files_:
-            if f.path in path_to_rule:
+            if f.abspath in path_to_rule:
                 raise ValueError(
                     f'path {f.path} is already used by another rule: '
-                    f'{path_to_rule[f.path]}'
+                    f'{path_to_rule[f.abspath]}'
                 )
 
         # check if all the y files are included in the arguments
@@ -468,10 +511,10 @@ class Group:
         deplist = []
         _added = set()
         for f in args_:
-            if isinstance(f, IFile) and path_to_rule.get(f.path) is not None:
-                if path_to_rule[f.path] not in _added:
-                    deplist.append(path_to_rule[f.path])
-                    _added.add(path_to_rule[f.path])
+            if isinstance(f, IFile) and path_to_rule.get(f.abspath) is not None:
+                if path_to_rule[f.abspath] not in _added:
+                    deplist.append(path_to_rule[f.abspath])
+                    _added.add(path_to_rule[f.abspath])
 
         # create xfiles
         ypaths = set(f.path for f in files_)
@@ -505,16 +548,8 @@ class Group:
                     _assert_key_json_convertible(k, f)
 
         # create method args
-        def _shorter_path(absp):
-            cwd = os.getcwd()
-            try:
-                rel = Path(os.path.relpath(absp, cwd))
-                return rel if len(str(rel)) < len(str(absp)) else absp
-            except:
-                return absp
-
         method_args_ = [
-            _shorter_path(f.path) if isinstance(f, IFile) else f for f in args_
+            f.path if isinstance(f, IFile) else f for f in args_
         ]
         method_args, method_kwargs = \
             pack_sequence_as((args, kwargs), method_args_)
@@ -553,14 +588,14 @@ class Group:
             self.__dict__[name] = rc
 
         for f in files_:
-            path_to_rule[f.path] = r
+            path_to_rule[f.abspath] = r
 
         for _k,f in xfiles:
-            if f.path not in path_to_rule:
-                path_to_rule[f.path] = None
+            if f.abspath not in path_to_rule:
+                path_to_rule[f.abspath] = None
 
         for f in itertools.chain(files_, (x[1] for x in xfiles)):
-            path_to_file[f.path] = f
+            path_to_file[f.abspath] = f
 
         self._info.rule_to_name[r] = '/'.join((*self._name, name))
 

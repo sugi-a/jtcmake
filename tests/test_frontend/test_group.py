@@ -79,8 +79,8 @@ def test_group_add():
     ######## Output file path ########
     #### atom path ####
     def _test(expect, *x):
-        assert create_group('r').add(*x).path == APath('r') / expect
-        assert create_group('r').addvf(*x).path == APath('r') / expect
+        assert create_group('r').add(*x).abspath == APath('r') / expect
+        assert create_group('r').addvf(*x).abspath == APath('r') / expect
 
     # str/PathLike/IFile
     _test('a1', 'a', 'a1', fn)
@@ -96,13 +96,13 @@ def test_group_add():
 
     #### structured path ####
     a = create_group('r').add('a', ['a1', {'x': File('a2')}, ('a3',)], fn)
-    assert a.path == (APath('r/a1'), {'x': APath('r/a2')}, (APath('r/a3'),))
+    assert a.abspath == (APath('r/a1'), {'x': APath('r/a2')}, (APath('r/a3'),))
     a = create_group('r').add('a', ['a1', 'a1'],  fn)
-    assert a.path == (APath('r/a1'), APath('r/a1'))
+    assert a.abspath == (APath('r/a1'), APath('r/a1'))
 
     #### decorator ####
-    assert create_group('r').add('a', 'a1', None)(fn).path == APath('r/a1')
-    assert create_group('r').add('a1', None)(fn).path == APath('r/a1')
+    assert create_group('r').add('a', 'a1', None)(fn).abspath == APath('r/a1')
+    assert create_group('r').add('a1', None)(fn).abspath == APath('r/a1')
 
     #### kind of IFile ####
     # add: default is File
@@ -127,20 +127,21 @@ def test_group_add():
     g = create_group('r')
     g.add('a', fn, 1, a=1)
     g.add('b', fn, 1, {'a': [g.a]}, a=1, b=g.a)
-    assert _to_abs(g.a._rule.args) == (g.a.path, 1)
+    assert _to_abs(g.a._rule.args) == (g.a.abspath, 1)
     assert _to_abs(g.a._rule.kwargs) == {'a': 1} 
-    assert _to_abs(g.b._rule.args) == (g.b.path, 1, {'a': [g.a.path]} )
-    assert _to_abs(g.b._rule.kwargs) == {'a': 1, 'b': g.a.path}
+    assert _to_abs(g.b._rule.args) == (g.b.abspath, 1, {'a': [g.a.abspath]} )
+    assert _to_abs(g.b._rule.kwargs) == {'a': 1, 'b': g.a.abspath}
 
     g = create_group('r')
     g.add('a', ['a1', 'a2'], fn)
     g.add('b', ['b1', 'b2'], fn, g.a[0], SELF[0], SELF[1], a=SELF)
-    assert _to_abs(g.b._rule.args) == (g.a[0].path, g.b[0].path, g.b[1].path)
-    assert _to_abs(g.b._rule.kwargs) == {'a': list(g.b.path)}
+    assert _to_abs(g.b._rule.args) == \
+        (g.a[0].abspath, g.b[0].abspath, g.b[1].abspath)
+    assert _to_abs(g.b._rule.kwargs) == {'a': list(g.b.abspath)}
 
     g = create_group('r')
     g.add('a', fn, VFile('x'))
-    assert _to_abs(g.a._rule.args) == (g.a.path, APath('x'))
+    assert _to_abs(g.a._rule.args) == (g.a.abspath, APath('x'))
 
     #### deplist
     g = create_group('r')

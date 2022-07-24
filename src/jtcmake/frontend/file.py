@@ -10,6 +10,10 @@ class IFile(ABC):
     @abstractmethod
     def path(self) -> Path: ...
 
+    @property
+    @abstractmethod
+    def abspath(self) -> Path: ...
+
 
 class IVFile(IFile):
     @abstractmethod
@@ -24,6 +28,10 @@ class File(IFile):
     @property
     def path(self) -> Path:
         return self._path
+
+    @property
+    def abspath(self) -> Path:
+        return self._path.absolute()
 
     def __hash__(self):
         return hash(self._path)
