@@ -232,3 +232,90 @@ def test_rule_clean(tmp_path):
     assert not os.path.exists(r[1].path)
 
 
+
+def test_select():
+    """
+    Group.select(group_tree_pattern: str)
+    """
+
+    """
+    a/
+    |-- a
+    |-- b/
+    |   |-- a
+    |   |-- a_a
+    |   |-- b_a
+    |   `-- c/
+    |-- c/
+    |   |-- a/
+    |   |   `-- b/
+    |   |       `-- c/
+    |   |           `-- d
+    |   |-- b/
+    |   |   `-- a/
+    |   `-- c
+    `-- d/
+        `-- a
+    """
+    fn = lambda x: None
+
+    g = create_group('a')
+    g.add('a', fn)
+
+    g.add_group('b')
+    g.b.add('a', {0:'a'}, fn)
+    g.b.add('a_a', fn)
+    g.b.add('b_a', fn)
+    g.b.add_group('c')
+
+    g.add_group('c')
+    g.c.add_group('a').add_group('b').add_group('c').add('d', fn)
+    g.c.add_group('b').add_group('a')
+    g.c.add('c', fn)
+
+    g.add_group('d').add('a', fn)
+
+    # no *
+    assert g.select('a') == [g.a]
+    assert g.select('b/') == [g.b]
+    assert g.select('b/c/') == [g.b.c]
+    assert g.b.select('a') == g.select('b/a')
+
+    # single *
+    assert g.select('*') == [g.a]
+    assert g.select('*/') == [g.b, g.c, g.d]
+    assert g.select('b/*') == [g.b.a, g.b.a_a, g.b.b_a]
+    assert g.select('*/a') == [g.b.a, g.d.a]
+    assert set(g.select('*/*')) == set([g.b.a, g.c.c, g.d.a, g.b.a_a, g.b.b_a])
+    assert g.select('b/*_a') == [g.b.a_a, g.b.b_a]
+    assert g.select('b/a*') == [g.b.a, g.b.a_a]
+    assert g.select('b/*_*') == [g.b.a_a, g.b.b_a]
+    assert g.select('*/a/*/') == [g.c.a.b]
+    assert g.select('c/*/*/') == [g.c.a.b, g.c.b.a]
+    assert g.c.select('*/*/') == g.select('c/*/*/')
+
+    # double *
+    assert set(g.select('**')) == \
+        set([g.a, g.b.a, g.c.a.b.c.d, g.c.c, g.d.a, g.b.a_a, g.b.b_a])
+    assert g.select('**/') == [
+        g, g.b, g.b.c, g.c, g.c.a, g.c.a.b, g.c.a.b.c, g.c.b, g.c.b.a, g.d
+    ]
+    assert g.select('**/a') == [g.a, g.b.a, g.d.a]
+    assert g.select('c/**/**') == g.select('c/**')
+    assert g.select('c/**/**/') == g.select('c/**/')
+    assert g.c.select('**/') == g.select('c/**/')
+    
+    # misc
+    assert g.select('**/*') == g.select('**')
+    assert g.select('**/*_a') == [g.b.a_a, g.b.b_a]
+
+    # error
+    with pytest.raises(ValueError):
+        g.select('')
+
+    with pytest.raises(ValueError):
+        g.select('***')
+
+    with pytest.raises(ValueError):
+        g.select('**a')
+

@@ -110,11 +110,18 @@ class FileNodeDict(Mapping, IFileNode):
     def __len__(self):
         return len(self._dic)
 
+    def __eq__(self, other):
+        return self is other
+
+    def __hash__(self):
+        return hash(id(self))
+
 
 class RuleNodeBase:
-    def __init__(self, rule: IRule, group_tree_info):
+    def __init__(self, name, rule: IRule, group_tree_info):
         self._rule = rule
         self._info = group_tree_info
+        self._name = name
 
     def make(
         self,
@@ -130,38 +137,44 @@ class RuleNodeBase:
             nthreads=nthreads
         )
 
+    @property
+    def name(self):
+        return self._name
+
 
 class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
-    def __init__(self, rule: IRule, group_tree_info, file: IFile):
-        RuleNodeBase.__init__(self, rule, group_tree_info)
+    def __init__(self, name, rule: IRule, group_tree_info, file: IFile):
+        RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeAtom.__init__(self, group_tree_info, file)
 
 
 class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
-    def __new__(cls, _rule, _group_tree_info, lst):
+    def __new__(cls, _name, _rule, _group_tree_info, lst):
         return FileNodeTuple.__new__(cls, lst)
 
     def __init__(
         self,
+        name,
         rule: IRule,
         group_tree_info,
         lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
-        RuleNodeBase.__init__(self, rule, group_tree_info)
+        RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeTuple.__init__(self, lst)
 
 
 class RuleNodeDict(RuleNodeBase, FileNodeDict):
-    def __new__(cls, _rule, _group_tree_info, dic):
-        return FileNodeDict.__new__(cls, dic)
+    def __new__(cls, _name, _rule, _group_tree_info, dic):
+        return FileNodeDict.__new__(cls)
 
     def __init__(
         self,
+        name,
         rule: IRule,
         group_tree_info,
         dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
-        RuleNodeBase.__init__(self, rule, group_tree_info)
+        RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeDict.__init__(self, dic)
         
 
@@ -204,11 +217,16 @@ class Group:
             add_group(name, [dirname])
             add_group(name, prefix=prefix)
         """
-        if not isinstance(name, (str, os.PathLike)):
+        if isinstance(name, os.PathLike):
+            name = name.__fspath__()
+        elif not isinstance(name, str):
             raise TypeError('name must be str or os.PathLike')
 
         if name in self._children:
             raise KeyError(f'name {repr(name)} already exists in this Group')
+
+        if not _is_valid_node_name(name):
+            raise ValueError(f'name "{name}" contains some illegal characters')
 
         if name == '':
             raise ValueError(f'name must not be ""')
@@ -333,6 +351,8 @@ class Group:
         path_to_rule = self._info.path_to_rule
         path_to_file = self._info.path_to_file
 
+        if not _is_valid_node_name(name):
+            raise ValueError(f'name "{name}" contains some illegal characters')
         if name in self._children:
             raise KeyError(f'name `{name}` already exists')
 
@@ -518,12 +538,13 @@ class Group:
             map_factory={dict: FileNodeDict, Mapping: FileNodeDict}
         )
 
+        fullname = (*self._name, name)
         if isinstance(file_node_root, FileNodeAtom):
-            rc = RuleNodeAtom(r, self._info, file_node_root._file)
+            rc = RuleNodeAtom(fullname, r, self._info, file_node_root._file)
         elif isinstance(file_node_root, FileNodeTuple):
-            rc = RuleNodeTuple(r, self._info, file_node_root)
+            rc = RuleNodeTuple(fullname, r, self._info, file_node_root)
         elif isinstance(file_node_root, FileNodeDict):
-            rc = RuleNodeDict(r, self._info, file_node_root)
+            rc = RuleNodeDict(fullname, r, self._info, file_node_root)
 
         # update group tree
         self._children[name] = rc
@@ -556,6 +577,65 @@ class Group:
         for c in self._children.values():
             c.touch(_t)
 
+
+    def _get_children_names(self, dst, group, rule):
+        for k,c in self._children.items():
+            if isinstance(c, Group):
+                if group:
+                    dst.append(c._name)
+
+                c._get_children_names(dst, group, rule)
+            else:
+                if rule:
+                    dst.append((*self._name, k))
+
+
+
+    def select(self, pattern: str):
+        if len(pattern) == 0:
+            raise ValueError(f'Invalid pattern "{pattern}"')
+
+        is_group = pattern[-1] == '/'
+
+        pattern = pattern.strip('/')
+        parts = re.split('/+', pattern)
+
+        SEP = ':'
+        regex = []
+        for p in parts:
+            assert len(p) > 0
+
+            if p.find('**') != -1 and p != '**':
+                raise ValueError(
+                    'Invalid pattern: "**" can only be an entire component'
+                )
+            if p == '**':
+                regex.append(f'({SEP}[^{SEP}]+)*')
+            else:
+                if p == '*':
+                    # single * does not match an empty str
+                    regex.append(f'{SEP}[^{SEP}]+')
+                else:
+                    def _repl(x):
+                        x = x.group()
+                        return f'[^{SEP}]*' if x == '*' else re.escape(x)
+                    p = re.sub( r'\*|[^*]+', _repl, p)
+                    regex.append(f'{SEP}{p}')
+
+        #print('aaa', '^' + ''.join(regex) + '$')
+        regex = re.compile('^' + ''.join(regex) + '$')
+        chnames = [self._name] if is_group else []
+        self._get_children_names(chnames, is_group, not is_group)
+
+        res = []
+        for name in chnames:
+            name = name[len(self._name):]
+            if regex.match(''.join(SEP + n for n in name)):
+                res.append(struct_get(self, name))
+        
+        return res
+
+
     def __repr__(self):
         name = repr_group_name(self._name)
         return f'<Group name={repr(name)} prefix={repr(self._prefix)}>'
@@ -584,6 +664,11 @@ def _ismembername(name: str):
         isinstance(name, str) and \
         name.isidentifier() and \
         name[0] != '_'
+
+
+def _is_valid_node_name(name: str):
+    # Group.select() depends on ':' being invalid
+    return not re.search('[:*?"<>|]', name)
 
 
 def make(
