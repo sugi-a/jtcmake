@@ -26,7 +26,7 @@ def gen_dot_code(group, basedir=None):
         elif g._prefix[:len(par_prefix)] == par_prefix:
             prefix = '... ' + g._prefix[len(par_prefix):]
         else:
-            prefix = '... ' + g._prefix
+            prefix = g._prefix
 
         res.append(idt + f'subgraph cluster{gid[g]} {{')
         res.append(
