@@ -111,7 +111,7 @@ class FileNodeDict(Mapping, IFileNode):
         return len(self._dic)
 
 
-class RuleCellBase:
+class RuleNodeBase:
     def __init__(self, rule: IRule, group_tree_info):
         self._rule = rule
         self._info = group_tree_info
@@ -131,13 +131,13 @@ class RuleCellBase:
         )
 
 
-class RuleCellAtom(RuleCellBase, FileNodeAtom):
+class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
     def __init__(self, rule: IRule, group_tree_info, file: IFile):
-        RuleCellBase.__init__(self, rule, group_tree_info)
+        RuleNodeBase.__init__(self, rule, group_tree_info)
         FileNodeAtom.__init__(self, group_tree_info, file)
 
 
-class RuleCellTuple(RuleCellBase, FileNodeTuple):
+class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
     def __new__(cls, _rule, _group_tree_info, lst):
         return FileNodeTuple.__new__(cls, lst)
 
@@ -147,11 +147,11 @@ class RuleCellTuple(RuleCellBase, FileNodeTuple):
         group_tree_info,
         lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
-        RuleCellBase.__init__(self, rule, group_tree_info)
+        RuleNodeBase.__init__(self, rule, group_tree_info)
         FileNodeTuple.__init__(self, lst)
 
 
-class RuleCellDict(RuleCellBase, FileNodeDict):
+class RuleNodeDict(RuleNodeBase, FileNodeDict):
     def __new__(cls, _rule, _group_tree_info, dic):
         return FileNodeDict.__new__(cls, dic)
 
@@ -161,7 +161,7 @@ class RuleCellDict(RuleCellBase, FileNodeDict):
         group_tree_info,
         dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
     ):
-        RuleCellBase.__init__(self, rule, group_tree_info)
+        RuleNodeBase.__init__(self, rule, group_tree_info)
         FileNodeDict.__init__(self, dic)
         
 
@@ -188,7 +188,7 @@ class Group:
         self._prefix = prefix
         self._name = name
         self._children: \
-            dict[str, Union[Group, RuleCellAtom, RuleCellTuple, RuleCellDict]]\
+            dict[str, Union[Group, RuleNodeAtom, RuleNodeTuple, RuleNodeDict]]\
             = {}
 
 
@@ -505,7 +505,7 @@ class Group:
             method, method_args, method_kwargs
         )
 
-        # create RuleCell
+        # create RuleNode
         files = pack_sequence_as(files, files_)
 
         def conv_to_atom(x):
@@ -519,11 +519,11 @@ class Group:
         )
 
         if isinstance(file_node_root, FileNodeAtom):
-            rc = RuleCellAtom(r, self._info, file_node_root._file)
+            rc = RuleNodeAtom(r, self._info, file_node_root._file)
         elif isinstance(file_node_root, FileNodeTuple):
-            rc = RuleCellTuple(r, self._info, file_node_root)
+            rc = RuleNodeTuple(r, self._info, file_node_root)
         elif isinstance(file_node_root, FileNodeDict):
-            rc = RuleCellDict(r, self._info, file_node_root)
+            rc = RuleNodeDict(r, self._info, file_node_root)
 
         # update group tree
         self._children[name] = rc
@@ -587,7 +587,7 @@ def _ismembername(name: str):
 
 
 def make(
-    *rcell_or_groups,
+    *rule_or_groups,
     dry_run=False,
     keep_going=False,
     nthreads=1
@@ -595,7 +595,7 @@ def make(
     # create list of unique rules by DFS
     _added = set()
     rules = []
-    stack = list(reversed(rcell_or_groups))
+    stack = list(reversed(rule_or_groups))
     _info = None
 
     while stack:
@@ -610,7 +610,7 @@ def make(
                     f'This rule is to prevent potentially erroneous operations'
                 )
 
-        if isinstance(node, RuleCellBase):
+        if isinstance(node, RuleNodeBase):
             if node._rule not in _added:
                 rules.append(node._rule)
         else:
