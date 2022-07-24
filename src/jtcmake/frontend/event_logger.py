@@ -5,10 +5,15 @@ from pathlib import Path
 
 from ..logwriter.writer import IWriter, RichStr
 from ..core import events
+from . import events as group_events
 
 
-def create_event_callback(w: IWriter, rule_to_name):
-    return lambda e: event_callback(w, rule_to_name, e)
+def create_event_callback(writers: Sequence[IWriter], rule_to_name):
+    def callback(e):
+        for w in writers:
+            event_callback(w, rule_to_name, e)
+
+    return callback
 
 
 def event_callback(w: IWriter, rule_to_name, e):
@@ -81,6 +86,13 @@ def event_callback(w: IWriter, rule_to_name, e):
         return
     elif isinstance(e, events.StopOnFail):
         w.warning(f'Execution aborted due to an error\n')
+    elif isinstance(e, group_events.Clean):
+        w.info('clean ', RichStr(str(e.path), '\n', link=str(e.path)))
+    elif isinstance(e, group_events.Touch):
+        w.info('touch ', RichStr(str(e.path), '\n', link=str(e.path)))
+    else:
+        w.warning(f'Unhandled event for {r}\n')
+        
 
 
 def add_indent(sl, indent):

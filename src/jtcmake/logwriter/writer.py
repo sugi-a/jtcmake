@@ -1,4 +1,4 @@
-import sys, html, abc
+import sys, html, abc, os
 
 class RichStr(str):
     def __new__(cls, s, *_args, **_kwargs):
@@ -96,6 +96,21 @@ class ColorTextWriter(IWriter):
         msg = ''.join(map(str, args))
         self.writable.write(create_color_log_str(msg, level))
 
+
+class TextFileWriterOpenOnDemand(IWriter):
+    def __init__(self, loglevel, fname):
+        super().__init__(loglevel)
+
+        if not os.path.exists(os.path.dirname(fname)):
+            raise FileNotFoundError(f'parent dir for {fname} not found')
+
+        self.fname = fname
+
+    def _write(self, *args, **kwargs):
+        with open(self.fname, 'a') as f:
+            f.write(''.join(map(str, args)))
+
+
 HTML_BG_COLOR_MAP = {
     'debug': '#DFF2BF',
     'info': 'white',
@@ -150,6 +165,31 @@ class HTMLWriter(IWriter):
 
     def __exit__(self, *args, **kwargs):
         self.write_footer()
+
+
+class HTMLFileWriterOpenOnDemand(IWriter):
+    def __init__(self, loglevel, fname, basedir=None):
+        super().__init__(loglevel)
+
+        if not os.path.exists(os.path.dirname(fname)):
+            raise FileNotFoundError(f'parent dir for {fname} not found')
+
+        self.basedir = basedir
+        self.fname = fname
+
+    def _write(self, *args, level):
+        color = HTML_COLOR_MAP.get(level, 'black')
+        bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
+
+        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+
+        with open(self.fname, 'a') as f:
+            f.write(
+                '<html><head><meta charset="utf-8"><title>log</title></head>'
+                '<body><pre>'
+            )
+            f.write(create_html(args, self.basedir))
+            f.write('</pre></body></html>')
         
 
 class HTMLJupyterWriter(IWriter):

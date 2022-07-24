@@ -9,13 +9,13 @@ from pathlib import Path
 
 from .rule import Rule
 from .file import File, VFile, IFile, IVFile
+from . import events as group_events
 from .event_logger import create_event_callback
 from ..core.make import make as _make, make_multi_thread, Event
 from ..logwriter.writer import \
-    TextWriter, ColorTextWriter, HTMLWriter, HTMLJupyterWriter, \
-    term_is_jupyter
+    TextWriter, ColorTextWriter, HTMLJupyterWriter, \
+    term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
 
-#from ..writer.writer import get_default_writer, HTMLWriter, Writer
 #from . import logger
 from ..utils.nest import \
     StructKey, map_structure, flatten, struct_get, \
@@ -37,8 +37,9 @@ class IFileCell:
 
 
 class FileCellAtom(IFileCell):
-    def __init__(self, file):
+    def __init__(self, tree_info, file):
         assert isinstance(file, IFile)
+        self._info = tree_info
         self._file = file
 
     @property
@@ -50,11 +51,12 @@ class FileCellAtom(IFileCell):
             _t = time.time()
         open(self._file.path, 'w').close()
         os.utime(self._file.path, (_t, _t))
+        self._info.callback(group_events.Touch(self.path))
 
     def clean(self):
         try:
             os.remove(self._file.path)
-            # TODO: logging
+            self._info.callback(group_events.Clean(self.path))
         except:
             pass
 
@@ -119,16 +121,12 @@ class RuleCellBase:
         dry_run=False,
         keep_going=False,
         *,
-        logfile=None,
-        loglevel=None,
         nthreads=1
     ):
         make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            logfile=logfile,
-            loglevel=loglevel,
             nthreads=nthreads
         )
 
@@ -136,7 +134,7 @@ class RuleCellBase:
 class RuleCellAtom(RuleCellBase, FileCellAtom):
     def __init__(self, rule: IRule, group_tree_info, file: IFile):
         RuleCellBase.__init__(self, rule, group_tree_info)
-        FileCellAtom.__init__(self, file)
+        FileCellAtom.__init__(self, group_tree_info, file)
 
 
 class RuleCellTuple(RuleCellBase, FileCellTuple):
@@ -168,10 +166,12 @@ class RuleCellDict(RuleCellBase, FileCellDict):
         
 
 class GroupTreeInfo:
-    def __init__(self):
+    def __init__(self, logwriters):
         self.path_to_rule: dict[str, IRule] = {}
         self.path_to_file: dict[str, IFile] = {}
         self.rule_to_name: dict[IRule, str] = {}
+
+        self.callback = create_event_callback(logwriters, self.rule_to_name)
 
 
 class Group:
@@ -246,16 +246,12 @@ class Group:
         dry_run=False,
         keep_going=False,
         *,
-        logfile=None,
-        loglevel=None,
         nthreads=1
     ):
         make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            logfile=logfile,
-            loglevel=loglevel,
             nthreads=nthreads
         )
 
@@ -514,7 +510,7 @@ class Group:
 
         def conv_to_atom(x):
             assert isinstance(x, IFile)
-            return FileCellAtom(x)
+            return FileCellAtom(self._info, x)
             
         file_cell_root = map_structure(
             conv_to_atom, files,
@@ -594,12 +590,9 @@ def make(
     *rcell_or_groups,
     dry_run=False,
     keep_going=False,
-    logfile=None,
-    loglevel=None,
     nthreads=1
 ):
     # create list of unique rules by DFS
-    # TODO: raise when multiple group trees are involved
     _added = set()
     rules = []
     stack = list(reversed(rcell_or_groups))
@@ -624,38 +617,16 @@ def make(
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
-    # TODO: callback
-    loglevel = loglevel or 'info'
-
-    with contextlib.ExitStack() as s:
-        if logfile is not None:
-            logf = s.enter_context(open(logfile, 'w'))
-            base = os.path.dirname(logfile)
-
-            if logfile[-5:] == '.html':
-                writer = s.enter_context(HTMLWriter(logf, loglevel, base))
-            else:
-                writer = TextWriter(logf, loglevel)
-        elif term_is_jupyter():
-            writer = HTMLJupyterWriter(loglevel, os.getcwd())
-        elif sys.stderr.isatty():
-            writer = ColorTextWriter(sys.stderr, loglevel)
-        else:
-            writer = TextWriter(sys.stderr, loglevel)
-
-        callback = create_event_callback(
-            writer,
-            rule_to_name=_info.rule_to_name,
-        )
-
-        if nthreads <= 1:
-            _make(rules, dry_run, keep_going, callback)
-        else:
-            make_multi_thread(rules, dry_run, keep_going, nthreads, callback)
+    if nthreads <= 1:
+        _make(rules, dry_run, keep_going, _info.callback)
+    else:
+        make_multi_thread(
+            rules, dry_run, keep_going, nthreads, _info.callback)
 
 
 
-def create_group(dirname=None, prefix=None):
+def create_group(
+    dirname=None, prefix=None, *, loglevel=None, logfiles=('auto',)):
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
 
@@ -665,7 +636,38 @@ def create_group(dirname=None, prefix=None):
 
     assert isinstance(prefix, (str, os.PathLike))
 
-    return Group(GroupTreeInfo(), str(prefix), ())
+    loglevel = loglevel or 'info'
+    logwriters = [_create_logwriter(f, loglevel) for f in logfiles]
+    tree_info = GroupTreeInfo(logwriters=logwriters)
+
+    return Group(tree_info, str(prefix), ())
+
+
+def _create_logwriter(f, loglevel):
+    if f == 'auto':
+        if term_is_jupyter():
+            return HTMLJupyterWriter(loglevel, os.getcwd())
+        elif sys.stderr.isatty():
+            return ColorTextWriter(sys.stderr, loglevel)
+        else:
+            return TextWriter(sys.stderr, loglevel)
+    elif isinstance(f, (str, os.PathLike)):
+        fname = str(Path(f))
+        if fname[-5:] == '.html':
+            return HTMLFileWriterOpenOnDemand(loglevel, fname)
+        else:
+            return TextFileWriterOpenOnDemand(loglevel, fname)
+    else:
+        if not (hasattr(f, 'write') and callable(f.write)):
+            raise TypeError(f'{f} is not a writable stream')
+
+        try:
+            if f.isatty():
+                return ColorTextWriter(f, loglevel)
+        except:
+            pass
+
+        return TextWriter(f, loglevel)
 
 
 SELF = StructKey(())
