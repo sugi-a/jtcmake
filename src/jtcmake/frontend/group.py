@@ -757,21 +757,29 @@ def create_group(
     assert isinstance(prefix, (str, os.PathLike))
 
     loglevel = loglevel or 'info'
-    logwriters = [_create_logwriter(f, loglevel) for f in logfiles]
+
+    logwriters = \
+        [_create_logwriter(f, loglevel) for f in logfiles if f != 'auto']
+
+    if 'auto' in logfiles:
+        logwriters.append(_create_default_logwriter(loglevel))
+
     tree_info = GroupTreeInfo(logwriters=logwriters)
 
     return Group(tree_info, str(prefix), ())
 
 
+def _create_default_logwriter(loglevel):
+    if term_is_jupyter():
+        return HTMLJupyterWriter(loglevel, os.getcwd())
+    elif sys.stderr.isatty():
+        return ColorTextWriter(sys.stderr, loglevel)
+    else:
+        return TextWriter(sys.stderr, loglevel)
+
+
 def _create_logwriter(f, loglevel):
-    if f == 'auto':
-        if term_is_jupyter():
-            return HTMLJupyterWriter(loglevel, os.getcwd())
-        elif sys.stderr.isatty():
-            return ColorTextWriter(sys.stderr, loglevel)
-        else:
-            return TextWriter(sys.stderr, loglevel)
-    elif isinstance(f, (str, os.PathLike)):
+    if isinstance(f, (str, os.PathLike)):
         fname = str(Path(f))
         if fname[-5:] == '.html':
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
