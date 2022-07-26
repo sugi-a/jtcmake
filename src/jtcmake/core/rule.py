@@ -1,9 +1,7 @@
-from __future__ import annotations
 import abc
-from typing import Callable, Any, Sequence
 
 class Event:
-    def __init__(self, msg:Any=None):
+    def __init__(self, msg=None):
         self.msg = msg
 
 

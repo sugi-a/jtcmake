@@ -1,5 +1,3 @@
-from __future__ import annotations
-from typing import Union, Sequence
 from collections.abc import Mapping
 
 

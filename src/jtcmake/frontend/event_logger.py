@@ -1,4 +1,3 @@
-from typing import Union
 from collections.abc import Mapping, Sequence
 import os, inspect
 from pathlib import Path

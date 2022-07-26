@@ -1,4 +1,3 @@
-from typing import Any
 from .rule import Event, IRule
 
 class RuleEvent(Event):

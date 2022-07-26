@@ -1,5 +1,3 @@
-from __future__ import annotations
-from typing import Union, Optional, Sequence, Any
 from abc import abstractmethod
 import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect
 import itertools
@@ -210,9 +208,7 @@ class Group(IGroup):
         self._info = info
         self._prefix = prefix
         self._name = name
-        self._children: \
-            dict[str, Union[Group, RuleNodeAtom, RuleNodeTuple, RuleNodeDict]]\
-            = {}
+        self._children = {}
 
 
     def add_group(self, name, dirname = None, *, prefix = None):

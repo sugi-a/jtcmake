@@ -1,7 +1,6 @@
 import os, sys, re, traceback, inspect, abc, time, enum
 from threading import Condition, Thread
 from collections import defaultdict, deque
-from typing import Callable, Optional
 
 from . import events
 from .rule import Event, IRule
