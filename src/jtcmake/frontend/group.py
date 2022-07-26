@@ -719,7 +719,8 @@ def make(
 
 
 def create_group(
-    dirname=None, prefix=None, *, loglevel=None, logfiles=('auto',)):
+    dirname=None, prefix=None, *,
+    loglevel=None, use_default_logger=True, logfile=None):
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
 
@@ -731,10 +732,17 @@ def create_group(
 
     loglevel = loglevel or 'info'
 
-    logwriters = \
-        [_create_logwriter(f, loglevel) for f in logfiles if f != 'auto']
+    if logfile is None:
+        logfiles = []
+    elif isinstance(logfile, (list, tuple)):
+        logfiles = logfile
+    else:
+        assert isinstance(logfile, (str, os.PathLike))
+        logfiles = [logfile]
 
-    if 'auto' in logfiles:
+    logwriters = [_create_logwriter(f, loglevel) for f in logfiles]
+
+    if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
     tree_info = GroupTreeInfo(logwriters=logwriters)
