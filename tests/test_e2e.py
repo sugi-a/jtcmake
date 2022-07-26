@@ -165,6 +165,7 @@ def test_addvf(tmp_path):
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
 
+    time.sleep(0.01)
     y = 'y2'
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
