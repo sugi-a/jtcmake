@@ -25,9 +25,6 @@ class IGroup(ABC):
     def select(self, pattern: str): ...
 
     @abstractmethod
-    def print_graphviz(self, output_file=None): ...
-
-    @abstractmethod
     def __getitem__(self, k): ...
 
     @abstractmethod

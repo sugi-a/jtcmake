@@ -1,7 +1,32 @@
 import os, sys, re, json, subprocess
 from html import escape
 
+from ..logwriter.writer import term_is_jupyter
 from .igroup import IGroup
+
+
+def print_graphviz(group, output_file=None):
+    if output_file is None:
+        if term_is_jupyter():
+            from IPython.display import display, SVG
+            dot_code = gen_dot_code(group)
+            svg = convert(dot_code, 'svg').decode()
+            display(SVG(svg))
+            return
+        else:
+            print(gen_dot_code(group))
+            return
+    else:
+        dot_code = \
+            gen_dot_code(group, os.path.dirname(output_file))
+
+        if output_file[-4:] == '.svg':
+            data = convert(dot_code, 'svg')
+        else:
+            raise ValueError(f'Output file\'s extension must be .svg')
+
+        with open(output_file, 'wb') as f:
+            f.write(data)
 
 
 def gen_dot_code(group, basedir=None):
@@ -120,7 +145,7 @@ def convert(dot_code, t='svg') -> bytes:
 def save_to_file(dot_code, fname, t='svg'):
     with open(fname, 'wb') as f:
         f.write(convert(dot_code, t))
-        
+
 
 def _mk_link(p, basedir):
     basedir = basedir or os.getcwd()

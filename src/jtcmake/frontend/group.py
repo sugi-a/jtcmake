@@ -670,24 +670,6 @@ class Group(IGroup):
         return res
 
 
-    def print_graphviz(self, output_file=None):
-        if output_file is None:
-            if term_is_jupyter():
-                from IPython.display import display, SVG
-                dot_code = graphviz.gen_dot_code(self)
-                svg = graphviz.convert(dot_code, 'svg').decode()
-                display(SVG(svg))
-                return
-            else:
-                print(graphviz.gen_dot_code(self))
-                return
-        else:
-            dot_code = \
-                graphviz.gen_dot_code(self, os.path.dirname(output_file))
-            with open(output_file, 'wb') as f:
-                f.write(graphviz.convert(dot_code, 'svg'))
-
-
     def __repr__(self):
         name = repr_group_name(self._name)
         return f'<Group name={repr(name)} prefix={repr(self._prefix)}>'
