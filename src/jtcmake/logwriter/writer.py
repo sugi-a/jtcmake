@@ -5,7 +5,7 @@ class RichStr(str):
         return super().__new__(cls, s)
 
 
-    def __init__(self, s, c=None, bg=None, link=None):
+    def __init__(self, s, *, c=None, bg=None, link=None):
         if isinstance(s, RichStr):
             attr = s._attr.copy()
             a = {'c': c, 'bg': bg, 'link': link}
@@ -294,7 +294,8 @@ def _comp_8bit_term_color(r, g, b):
 
 def term_is_jupyter():
     try:
-        return globals()['get_ipython']().__class__.__name__ \
-            == 'ZMQInteractiveShell'
-    except:
+        from IPython.core.getipython import get_ipython
+        return get_ipython().__class__.__name__ == 'ZMQInteractiveShell'
+    except Exception as e:
+        print(e)
         return False

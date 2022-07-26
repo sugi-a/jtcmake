@@ -86,9 +86,9 @@ def event_callback(w, rule_to_name, e):
     elif isinstance(e, events.StopOnFail):
         w.warning(f'Execution aborted due to an error\n')
     elif isinstance(e, group_events.Clean):
-        w.info('clean ', RichStr(str(e.path), '\n', link=str(e.path)))
+        w.info('clean ', RichStr(str(e.path) + '\n', link=str(e.path)))
     elif isinstance(e, group_events.Touch):
-        w.info('touch ', RichStr(str(e.path), '\n', link=str(e.path)))
+        w.info('touch ', RichStr(str(e.path) + '\n', link=str(e.path)))
     else:
         w.warning(f'Unhandled event for {r}\n')
         
