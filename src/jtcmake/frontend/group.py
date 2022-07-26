@@ -7,6 +7,7 @@ from collections import namedtuple
 from collections.abc import Mapping
 from pathlib import Path
 
+from ..core.rule import IRule
 from .rule import Rule
 from .igroup import IGroup
 from .file import File, VFile, IFile, IVFile
@@ -509,7 +510,7 @@ class Group(IGroup):
         if len(unused) != 0:
             raise ValueError(
                 f'Some files are not passed to the method: '
-                f'{list(unused_ofiles)}'
+                f'{list(unused)}'
             )
         
         # create deplist
