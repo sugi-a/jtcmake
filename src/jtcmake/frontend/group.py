@@ -307,11 +307,11 @@ class Group(IGroup):
 
 
     # APIs
-    def add(self, name: str, *args, **kwargs):
+    def add(self, name: str, *args, force_update=False, **kwargs):
         """
         Call signatures:
-            add(name, [path], method, *args, **kwargs)
-            add(name, [path], None, *args, **kwargs)
+            add(name, [path], method, *args, force_update=False, **kwargs)
+            add(name, [path], None, *args, force_update=False, **kwargs)
         """
         if not isinstance(name, str):
             raise ValueError(f'name must be str')
@@ -334,14 +334,15 @@ class Group(IGroup):
             
             return adder
 
-        return self._add(name, path, method, *args, **kwargs)
+        return self._add(
+            name, path, method, *args, force_update=force_update, **kwargs)
 
 
-    def addvf(self, name, *args, **kwargs):
+    def addvf(self, name, *args, force_update=False, **kwargs):
         """Append a VFile (Value File) as a child of this group
         Call signatures:
-            addvf(name, method, *args, **kwargs)
-            addvf(name, path, method, *args, **kwargs)
+            addvf(name, method, *args, force_update=False, **kwargs)
+            addvf(name, path, method, *args, force_update=False, **kwargs)
         """
         if not isinstance(name, str):
             raise ValueError(f'name must be str')
@@ -373,10 +374,14 @@ class Group(IGroup):
 
         path = map_structure(wrap_by_VFile, path)
             
-        return self._add(name, path, method, *args, **kwargs)
+        return self._add(
+            name, path, method, *args, force_update=force_update, **kwargs)
 
 
-    def _add(self, name: str, files, method, *args, **kwargs):
+    def _add(
+        self, name: str, files,
+        method, *args, force_update=False, **kwargs
+    ):
         assert isinstance(name, str)
         assert callable(method)
 
@@ -557,7 +562,8 @@ class Group(IGroup):
         # create Rule
         r = Rule(
             files_, xfiles, deplist,
-            method, method_args, method_kwargs
+            method, method_args, method_kwargs,
+            force_update=force_update
         )
 
         # create RuleNode
