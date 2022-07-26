@@ -51,6 +51,32 @@ def map_structure(
     return rec(struct)
 
 
+def ordered_map_structure(
+    map_fn, struct,
+    seq_factory={list: list, tuple: tuple},
+    map_factory={(dict, Mapping): dict}
+):
+    assert callable(map_fn)
+
+    def rec(struct):
+        if isinstance(struct, StructKey):
+            return map_fn(struct)
+
+        for src, dst in seq_factory.items():
+            if isinstance(struct, src):
+                return dst(map(rec, struct))
+
+        for src, dst in map_factory.items():
+            if isinstance(struct, src):
+                keys = sorted(struct.keys(), key=lambda x: (hash(x), x))
+                return dst({k: rec(struct[k]) for k in keys})
+
+        return map_fn(struct)
+
+    return rec(struct)
+
+
+
 def flatten(struct):
     res = []
 
@@ -61,7 +87,7 @@ def flatten(struct):
             for v in node:
                 rec(v)
         elif isinstance(node, (dict, Mapping)):
-            keys = sorted(node.keys())
+            keys = sorted(node.keys(), key=lambda x: (hash(x), x))
             for k in keys:
                 rec(node[k])
         else:
@@ -81,7 +107,7 @@ def flatten_to_struct_keys(struct):
             for i,v in enumerate(node):
                 rec(v, (*struct_key, i))
         elif isinstance(node, (dict, Mapping)):
-            keys = sorted(node.keys())
+            keys = sorted(node.keys(), key=lambda x: (hash(x), x))
             for k in keys:
                 rec(node[k], (*struct_key, k))
         else:
@@ -109,7 +135,7 @@ def pack_sequence_as(ref_struct, flatten_seq):
     res, err = None, None
 
     try:
-        res = map_structure(map_fn, ref_struct)
+        res = ordered_map_structure(map_fn, ref_struct)
     except NotEnoughElementError as e:
         err = e
 

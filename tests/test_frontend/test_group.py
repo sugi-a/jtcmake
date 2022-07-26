@@ -100,6 +100,11 @@ def test_group_add():
     a = create_group('r').add('a', ['a1', 'a1'],  fn)
     assert a.abspath == (APath('r/a1'), APath('r/a1'))
 
+    # dict key order
+    a = create_group('r').add('a', {'a': 'a1', 'b': 'a2'}, fn)
+    b = create_group('r').add('a', {'b': 'a2', 'a': 'a1'}, fn)
+    assert a.abspath == b.abspath
+
     #### decorator ####
     assert create_group('r').add('a', 'a1', None)(fn).abspath == APath('r/a1')
     assert create_group('r').add('a1', None)(fn).abspath == APath('r/a1')
@@ -148,7 +153,7 @@ def test_group_add():
     g.add('a', fn)
     g.add('b', fn)
     g.add('c', fn, {'b': g.a, 'a': g.b})
-    assert g.c._rule.deplist == [g.b._rule, g.a._rule]
+    assert set(g.c._rule.deplist) == set([g.b._rule, g.a._rule])
 
 
     ######## invalid calls ######## 
@@ -198,10 +203,6 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group('r').add('a', ['a1', 'a2'], fn, SELF[0])
     
-    # unsortable dict keys
-    with pytest.raises(Exception):
-        create_group('r').add('a', fn, {'a': 1, 1: 1})
-
     # struct_keys for IVFiles not JSON convertible
     with pytest.raises(Exception):
         create_group('r').add('a', fn, {object(): VFile('b')})

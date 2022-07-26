@@ -22,23 +22,6 @@ def test_map_structure(fn, x, y):
 
 
 @pytest.mark.parametrize(
-    "x,y", [
-        (1, [1]),
-        ([1,1], [1,1]),
-        ({'a': 1, 0: (2,3)}, None),
-        ({'b': 1, 'a': (2,3)}, [2, 3, 1]),
-    ]
-)
-def test_flatten(x, y):
-    """dict keys must be sortable"""
-    if y is None:
-        with pytest.raises(Exception):
-            flatten(x)
-    else:
-        assert flatten(x) == y
-
-
-@pytest.mark.parametrize(
     "x,keys,y", [
         (1, (), 1),
         ([1], (0,), 1),
