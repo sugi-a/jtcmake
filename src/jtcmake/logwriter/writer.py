@@ -93,8 +93,22 @@ class ColorTextWriter(IWriter):
 
 
     def _write(self, *args, level):
-        msg = ''.join(map(str, args))
-        self.writable.write(create_color_log_str(msg, level))
+        color = ({
+            'debug': (0x4F, 0x8A, 0x10),
+            'info': None,
+            'warning': (0x9F, 0x60, 0x00),
+            'error': (0xD8, 0x00, 0x0C),
+        }).get(level)
+
+        bgcolor = ({
+            'debug': None,
+            'info': None,
+            'warning': None,
+            'error': None,
+        }).get(level)
+
+        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        self.writable.write(create_color_str(args))
 
 
 class TextFileWriterOpenOnDemand(IWriter):
@@ -112,16 +126,16 @@ class TextFileWriterOpenOnDemand(IWriter):
 
 
 HTML_BG_COLOR_MAP = {
-    'debug': '#DFF2BF',
-    'info': 'white',
-    'warning': '#FEEFB3',
-    'error': '#FFD2D2',
+    'debug': (0xDF, 0xF2, 0xBF),
+    'info': (0xFF, 0xFF, 0xFF),
+    'warning': (0xFE, 0xEF, 0xB3),
+    'error': (0xFF, 0xD2, 0xD2),
 }
 HTML_COLOR_MAP = {
-    'debug': '#4F8A10',
-    'info': 'black',
-    'warning': '#9F6000',
-    'error': '#D8000C',
+    'debug': (0x4F, 0x8A, 0x10),
+    'info': (0, 0, 0),
+    'warning': (0x9F, 0x60, 0x00),
+    'error': (0xD8, 0x00, 0x0C),
 }
 
 class HTMLWriter(IWriter):
@@ -240,10 +254,11 @@ def _richstr_to_html(s, basedir):
 
     styles = []
     if s.c is not None:
-        styles.append(f'color: {s.c};')
+        styles.append(f'color: rgb({s.c[0]}, {s.c[1]}, {s.c[2]});')
 
     if s.bg is not None:
-        styles.append(f'background-color: {s.bg};')
+        styles.append(
+            f'background-color: rgb({s.bg[0]}, {s.bg[1]}, {s.bg[2]});')
 
     if len(styles) != 0:
         style = ''.join(styles)
@@ -256,15 +271,30 @@ def _richstr_to_html(s, basedir):
     
 
 def create_color_log_str(msg, level):
-    colormap = {
-        'debug': '36',
-        'info': '0',
-        'warning': '33',
-        'error': '31',
-    }
-    color = colormap.get(level, '0')
 
     return f'\x1b[{color}m{msg}\x1b[0m'
+
+
+def create_color_str(sl):
+    res = []
+    last_c = None
+    last_bg = None
+    for s in sl:
+        if s.bg != last_bg:
+            last_bg = s.bg
+            res.append(f'\x1b[48;5;{_comp_8bit_term_color(*s.bg)}m')
+
+        if s.c != last_c:
+            last_c = s.c
+            res.append(f'\x1b[38;5;{_comp_8bit_term_color(*s.c)}m')
+
+        res.append(str(s))
+
+    return ''.join(res)
+
+
+def _comp_8bit_term_color(r, g, b):
+    return 16 + r * 36 + g * 6 + b
 
 
 def term_is_jupyter():
