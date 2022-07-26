@@ -41,7 +41,8 @@ def test_metadata_fname():
     """
     y1, y2 = File(Path('a/b.c')), File(Path('d/e.f'))
     r = Rule([y1, y2], [], [], _method, _args, _kwargs)
-    assert str(r.metadata_fname) == 'a/.jtcmake/b.c'
+    assert os.path.abspath(r.metadata_fname) == \
+        os.path.abspath('a/.jtcmake/b.c')
 
 
 def test_create_vfile_hashes(mocker):
