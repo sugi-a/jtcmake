@@ -81,7 +81,6 @@ def test_1(nthreads, tmp_path):
     mt = os.path.getmtime(g.a.path)
     g.make(nthreads=nthreads)
     assert os.path.getmtime(g.a.path) == mt
-    assert os.path.getmtime(g.aaa.path) > mt
     assert globfiles(tmp_path) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
 
     # clean some
