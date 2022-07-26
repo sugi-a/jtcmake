@@ -151,3 +151,25 @@ def test_force_update(tmp_path):
     x = '4'
     r = create_group(tmp_path).addvf('a', _writer, force_update=True).make()
     assert (tmp_path / 'a').read_text() == '4'
+
+
+def test_addvf(tmp_path):
+    x, y = 'x0', 'y0'
+    g = create_group(tmp_path)
+    g.addvf('a', lambda p: p.write_text(x), force_update=True)
+    g.add('b', lambda p,_: p.write_text(y), g.a)
+
+    g.make()
+    assert (tmp_path / 'b').read_text() == 'y0'
+
+    x, y = 'x1', 'y1'
+    g.make()
+    assert (tmp_path / 'b').read_text() == 'y1'
+
+    y = 'y2'
+    g.make()
+    assert (tmp_path / 'b').read_text() == 'y1'
+
+    os.utime(g.b.path, (0,0))
+    g.make()
+    assert (tmp_path / 'b').read_text() == 'y2'
