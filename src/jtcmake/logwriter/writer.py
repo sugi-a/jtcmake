@@ -270,11 +270,6 @@ def _richstr_to_html(s, basedir):
     return ''.join(starts)
     
 
-def create_color_log_str(msg, level):
-
-    return f'\x1b[{color}m{msg}\x1b[0m'
-
-
 def create_color_str(sl):
     res = []
     last_c = None
@@ -299,6 +294,7 @@ def _comp_8bit_term_color(r, g, b):
 
 def term_is_jupyter():
     try:
-        return get_ipython().__class__.__name__ == 'ZMQInteractiveShell'
+        return globals()['get_ipython']().__class__.__name__ \
+            == 'ZMQInteractiveShell'
     except:
         return False

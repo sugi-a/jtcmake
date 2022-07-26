@@ -155,8 +155,8 @@ def save_vfile_hashes(metadata_fname, vfiles):
     with open(metadata_fname, 'w') as f:
         try:
             json.dump(hashes, f)
-        except e:
-            raise Exception(
+        except Exception as e:
+            raise ValueError(
                 f'Failed to save IVFile hashes as JSON to {metadata_fname}.'
                 f'This may be because some dictionary keys in the arguments'
                 f' to specify the IVFile objects are not JSON convertible.'
