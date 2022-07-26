@@ -8,9 +8,9 @@ from .file import IFile, IVFile
 class Rule(IRule):
     def __init__(
         self,
-        yfiles: list[IFile],
-        xfiles: list[tuple[tuple, IFile]],
-        deplist: list[IRule],
+        yfiles,
+        xfiles,
+        deplist,
         method,
         args,
         kwargs,
@@ -27,9 +27,9 @@ class Rule(IRule):
 
     def should_update(
         self,
-        updated_rules: set[IRule],
-        dry_run: bool
-    ) -> bool:
+        updated_rules,
+        dry_run
+    ):
         for k,f in self.xfiles:
             if not os.path.exists(f.path):
                 if dry_run:
@@ -89,7 +89,7 @@ class Rule(IRule):
         return False
 
 
-    def preprocess(self, callback: Callable[[Event], None]):
+    def preprocess(self, callback):
         for f in self.yfiles:
             try:
                 os.makedirs(os.path.dirname(f.path), exist_ok=True)
@@ -97,7 +97,7 @@ class Rule(IRule):
                 pass
 
 
-    def postprocess(self, callback: Callable[[Event], None], succ: bool):
+    def postprocess(self, callback, succ):
         if succ:
             self.update_xvfile_hashes()
         else:
@@ -128,19 +128,19 @@ class Rule(IRule):
 
 
     @property
-    def method(self) -> Callable: return self._method
+    def method(self): return self._method
 
     @property
-    def args(self) -> tuple[Any]: return self._args
+    def args(self): return self._args
 
     @property
-    def kwargs(self) -> dict[Any, Any]: return self._kwargs
+    def kwargs(self): return self._kwargs
 
     @property
-    def deplist(self) -> list[IRule]: return self._deplist
+    def deplist(self): return self._deplist
 
 
-def create_vfile_hashes(vfiles) -> list[tuple[tuple, str, float]]:
+def create_vfile_hashes(vfiles):
     """
     list of (StructKey, file name, mtime)
     """

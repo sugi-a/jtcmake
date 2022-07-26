@@ -13,21 +13,21 @@ class Result(enum.Enum):
 
 
 def make(
-    rules: list[IRule],
-    dry_run: bool,
-    keep_going: bool,
-    callback: Callable[[Event], None],
-    ) -> bool:
+    rules,
+    dry_run,
+    keep_going,
+    callback,
+    ):
     if len(rules) == 0:
         return
 
     direct_targets = set(rules)
 
-    added: set[IRule] = set()
-    taskq: list[IRule] = []
+    added = set()
+    taskq = []
 
     # topological sort
-    def rec(t: IRule):
+    def rec(t):
         if t in added:
             return
 
@@ -41,8 +41,8 @@ def make(
     for rule in rules:
         rec(rule)
 
-    failed_rule: set[IRule] = set()
-    updated_rules: set[IRule] = set()
+    failed_rule = set()
+    updated_rules = set()
 
     for t in taskq:
         if any(dept in failed_rule for dept in t.deplist):
@@ -70,11 +70,11 @@ def make(
         
 
 def process_rule(
-    rule: IRule,
-    dry_run: bool,
-    updated_rules: set[IRule],
-    direct_targets: set[IRule],
-    callback: Callable[[Event], None]
+    rule,
+    dry_run,
+    updated_rules,
+    direct_targets,
+    callback
     ):
     if dry_run:
         try:
@@ -132,11 +132,11 @@ def process_rule(
 
 
 def make_multi_thread(
-    rules: list[IRule],
-    dry_run: bool,
-    keep_going: bool,
-    nthreads: int,
-    callback: Callable[[Event], None]
+    rules,
+    dry_run,
+    keep_going,
+    nthreads,
+    callback
     ):
     if nthreads < 1:
         raise ValueError('nthreads must be greater than 0')
@@ -146,10 +146,10 @@ def make_multi_thread(
 
     direct_targets = set(rules)
 
-    b2a: dict[IRule, set[IRule]] = defaultdict(set) # before to after
-    dep_cnt: dict[IRule, int] = {}
+    b2a = defaultdict(set) # before to after
+    dep_cnt = {}
 
-    def rec(t: IRule):
+    def rec(t):
         if t in dep_cnt:
             return
 
@@ -162,14 +162,14 @@ def make_multi_thread(
     for t in rules:
         rec(t)
 
-    updated_rules: set[IRule] = set()
+    updated_rules = set()
 
     cv = Condition()
-    taskq: deque[IRule] = deque(t for t,c in dep_cnt.items() if c == 0)
-    processing: set[IRule] = set()
-    stop: bool = False
+    taskq = deque(t for t,c in dep_cnt.items() if c == 0)
+    processing = set()
+    stop = False
 
-    def get_rule_fn() -> Optional[IRule]:
+    def get_rule_fn():
         with cv:
             while len(taskq) == 0 and len(processing) != 0 and not stop:
                 cv.wait()
@@ -185,7 +185,7 @@ def make_multi_thread(
 
             return r
 
-    def set_result_fn(rule: IRule, res: Optional[Result]):
+    def set_result_fn(rule, res):
         nonlocal stop
         with cv:
             processing.remove(rule)
@@ -223,12 +223,12 @@ def make_multi_thread(
 
 
 def worker(
-    get_rule_fn: Callable[[], IRule],
-    set_result_fn: Callable[[IRule, Optional[Result]], None],
-    updated_rules: set[IRule],
+    get_rule_fn,
+    set_result_fn,
+    updated_rules,
     direct_targets,
-    dry_run: bool,
-    callback: Callable[[Event], None],
+    dry_run,
+    callback,
     ):
     while True:
         rule = get_rule_fn()

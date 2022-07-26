@@ -4,19 +4,19 @@ from collections.abc import Mapping
 
 
 class StructKey(tuple):
-    def __new__(cls, struct_key: Sequence[Union[int, str]]):
+    def __new__(cls, struct_key):
         return super().__new__(cls, struct_key)
 
-    def __getitem__(self, key: Union[int, str]) -> StructKey:
+    def __getitem__(self, key):
         if not isinstance(key, (int, str)):
             raise ValueError(f'Key must be int or str. Given {key}')
 
         return StructKey((*self, key))
 
-    def __getattr__(self, key: str) -> StructKey:
+    def __getattr__(self, key):
         return self[key]
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f'StructKey({super().__repr__()})'
 
 

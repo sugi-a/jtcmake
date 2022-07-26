@@ -2,12 +2,12 @@ from typing import Any
 from .rule import Event, IRule
 
 class RuleEvent(Event):
-    def __init__(self, rule: IRule):
+    def __init__(self, rule):
         super().__init__()
         self._rule = rule
 
     @property
-    def rule(self) -> IRule:
+    def rule(self):
         return self._rule
 
 
@@ -16,12 +16,12 @@ class RuleEvent(Event):
 
 
 class ErrorRuleEvent(RuleEvent):
-    def __init__(self, rule: IRule, err: Exception):
+    def __init__(self, rule, err: Exception):
         super().__init__(rule)
         self._error = err
 
     @property
-    def err(self) -> Exception:
+    def err(self):
         return self._error
 
 

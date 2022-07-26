@@ -127,7 +127,7 @@ def gen_dot_code(group, basedir=None):
     return '\n'.join(res) + '\n'
 
 
-def convert(dot_code, t='svg') -> bytes:
+def convert(dot_code, t='svg'):
     p = subprocess.run(
         ['dot', f'-T{t}'],
         input=dot_code.encode(),

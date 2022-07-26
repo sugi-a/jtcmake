@@ -28,10 +28,10 @@ from ..utils.nest import \
 class IFileNode:
     @property
     @abstractmethod
-    def path(self) -> Any: ...
+    def path(self): ...
 
     @abstractmethod
-    def touch(self, _t: Optional[float]): ...
+    def touch(self, _t): ...
 
     @abstractmethod
     def clean(self): ...
@@ -44,11 +44,11 @@ class FileNodeAtom(IFileNode):
         self._file = file
 
     @property
-    def path(self) -> Path:
+    def path(self):
         return self._file.path
 
     @property
-    def abspath(self) -> Path:
+    def abspath(self):
         return self._file.abspath
 
     def touch(self, _t=None):
@@ -70,16 +70,13 @@ class FileNodeAtom(IFileNode):
 
 
 class FileNodeTuple(tuple, IFileNode):
-    def __new__(
-        cls,
-        lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
-    ):
+    def __new__(cls, lst):
         return super().__new__(cls, lst)
 
     def __init__(self, lst): ...
 
     @property
-    def path(self) -> Sequence[Any]:
+    def path(self):
         return tuple(x.path for x in self)
 
     @property
@@ -99,14 +96,11 @@ class FileNodeTuple(tuple, IFileNode):
 
 
 class FileNodeDict(Mapping, IFileNode):
-    def __init__(
-        self,
-        dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
-    ):
+    def __init__(self, dic):
         self._dic = dic
 
     @property
-    def path(self) -> dict[Any, Any]:
+    def path(self):
         return {k: v.path for k,v in self._dic.items()}
 
     @property
@@ -140,7 +134,7 @@ class FileNodeDict(Mapping, IFileNode):
 
 
 class RuleNodeBase:
-    def __init__(self, name, rule: IRule, group_tree_info):
+    def __init__(self, name, rule, group_tree_info):
         self._rule = rule
         self._info = group_tree_info
         self._name = name
@@ -165,7 +159,7 @@ class RuleNodeBase:
 
 
 class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
-    def __init__(self, name, rule: IRule, group_tree_info, file: IFile):
+    def __init__(self, name, rule, group_tree_info, file):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeAtom.__init__(self, group_tree_info, file)
 
@@ -178,13 +172,7 @@ class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
     def __new__(cls, _name, _rule, _group_tree_info, lst):
         return FileNodeTuple.__new__(cls, lst)
 
-    def __init__(
-        self,
-        name,
-        rule: IRule,
-        group_tree_info,
-        lst: Sequence[Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
-    ):
+    def __init__(self, name, rule, group_tree_info, lst):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeTuple.__init__(self, lst)
 
@@ -197,13 +185,7 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
     def __new__(cls, _name, _rule, _group_tree_info, dic):
         return FileNodeDict.__new__(cls)
 
-    def __init__(
-        self,
-        name,
-        rule: IRule,
-        group_tree_info,
-        dic: dict[Any, Union[FileNodeAtom, FileNodeTuple, FileNodeDict]]
-    ):
+    def __init__(self, name, rule, group_tree_info, dic):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeDict.__init__(self, dic)
         
@@ -213,20 +195,15 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 class GroupTreeInfo:
     def __init__(self, logwriters):
-        self.path_to_rule: dict[str, IRule] = {}
-        self.path_to_file: dict[str, IFile] = {}
-        self.rule_to_name: dict[IRule, str] = {}
+        self.path_to_rule = {}
+        self.path_to_file = {}
+        self.rule_to_name = {}
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
     
 class Group(IGroup):
-    def __init__(
-        self,
-        info: GroupTreeInfo,
-        prefix: str,
-        name: Sequence[str]
-    ):
+    def __init__(self, info, prefix, name):
         if not isinstance(prefix, str):
             raise TypeError('prefix must be str')
 
@@ -238,13 +215,7 @@ class Group(IGroup):
             = {}
 
 
-    def add_group(
-        self,
-        name: str,
-        dirname: Optional[str] = None,
-        *,
-        prefix: Optional[str] = None
-    ):
+    def add_group(self, name, dirname = None, *, prefix = None):
         """
         Call signatures:
             add_group(name, [dirname])
@@ -308,7 +279,7 @@ class Group(IGroup):
 
 
     # APIs
-    def add(self, name: str, *args, force_update=False, **kwargs):
+    def add(self, name, *args, force_update=False, **kwargs):
         """
         Call signatures:
             add(name, [path], method, *args, force_update=False, **kwargs)
@@ -367,7 +338,7 @@ class Group(IGroup):
             
             return adder
 
-        def wrap_by_VFile(p: Union[str, os.PathLike, IFile]) -> IFile:
+        def wrap_by_VFile(p):
             if isinstance(p, (str, os.PathLike)):
                 return VFile(p)
             else:
@@ -380,7 +351,7 @@ class Group(IGroup):
 
 
     def _add(
-        self, name: str, files,
+        self, name, files,
         method, *args, force_update=False, **kwargs
     ):
         assert isinstance(name, str)
@@ -398,7 +369,7 @@ class Group(IGroup):
             raise ValueError(f'name must not be ""')
 
         # wrap str/os.PathLike in yfiles by File
-        def wrap_by_File(p: Union[str, os.PathLike, IFile]) -> IFile:
+        def wrap_by_File(p):
             if isinstance(p, (str, os.PathLike)):
                 return File(p)
             else:
@@ -408,7 +379,7 @@ class Group(IGroup):
         files = map_structure(wrap_by_File, files)
 
         # add prefix to paths of yfiles if necessary 
-        def add_pfx(f: IFile):
+        def add_pfx(f):
             if os.path.isabs(f.path):
                 return f
             else:
@@ -419,7 +390,7 @@ class Group(IGroup):
 
         # expand SELFs in args
         _expanded = False
-        def expand_self(arg: Any):
+        def expand_self(arg):
             nonlocal _expanded
             if isinstance(arg, StructKey):
                 _expanded = True
@@ -613,7 +584,7 @@ class Group(IGroup):
         for c in self._children.values():
             c.clean()
 
-    def touch(self, _t: Optional[float]=None):
+    def touch(self, _t=None):
         if _t is None:
             _t = time.time()
         for c in self._children.values():
@@ -633,7 +604,7 @@ class Group(IGroup):
 
 
 
-    def select(self, pattern: str):
+    def select(self, pattern):
         if len(pattern) == 0:
             raise ValueError(f'Invalid pattern "{pattern}"')
 
@@ -700,14 +671,14 @@ def repr_group_name(group_name):
 def repr_rule_name(trg_name):
     return repr_group_name(trg_name[:-1]) + ':' + str(trg_name[-1])
 
-def _ismembername(name: str):
+def _ismembername(name):
     return \
         isinstance(name, str) and \
         name.isidentifier() and \
         name[0] != '_'
 
 
-def _is_valid_node_name(name: str):
+def _is_valid_node_name(name):
     # Group.select() depends on ':' being invalid
     return not re.search('[:*?"<>|]', name)
 

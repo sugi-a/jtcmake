@@ -8,29 +8,29 @@ from ..core.rule import IRule
 class IFile(ABC):
     @property
     @abstractmethod
-    def path(self) -> Path: ...
+    def path(self): ...
 
     @property
     @abstractmethod
-    def abspath(self) -> Path: ...
+    def abspath(self): ...
 
 
 class IVFile(IFile):
     @abstractmethod
-    def get_hash(self) -> str: ...
+    def get_hash(self): ...
 
 
 class File(IFile):
-    def __init__(self, path: Union[str, os.PathLike]):
+    def __init__(self, path):
         assert isinstance(path, (str, os.PathLike))
         self._path = Path(path)
 
     @property
-    def path(self) -> Path:
+    def path(self):
         return self._path
 
     @property
-    def abspath(self) -> Path:
+    def abspath(self):
         return self._path.absolute()
 
     def __hash__(self):
@@ -44,20 +44,20 @@ class File(IFile):
 
 
 class VFile(IVFile, File):
-    def _clean(self) -> None:
+    def _clean(self):
         try:
             os.remove(self._path)
             os.remove(self.metadata_fname)
         except:
             pass
 
-    def get_hash(self) -> str:
+    def get_hash(self):
         return get_hash(self.path)
         
 
-_hash_cache: dict[str, tuple[float, str]] = {}
+_hash_cache = {}
 
-def get_hash(fname: Union[str, PurePath]) -> str:
+def get_hash(fname):
     fname = os.path.realpath(fname)
 
     if fname in _hash_cache:

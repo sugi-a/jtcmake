@@ -8,7 +8,7 @@ from ..core import events
 from . import events as group_events
 
 
-def create_event_callback(writers: Sequence[IWriter], rule_to_name):
+def create_event_callback(writers, rule_to_name):
     def callback(e):
         for w in writers:
             event_callback(w, rule_to_name, e)
@@ -16,7 +16,7 @@ def create_event_callback(writers: Sequence[IWriter], rule_to_name):
     return callback
 
 
-def event_callback(w: IWriter, rule_to_name, e):
+def event_callback(w, rule_to_name, e):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
         err = e.err
@@ -117,7 +117,7 @@ def get_func_name(f):
         return '<unkonw function>'
 
 
-def tostrs_func_call(dst: Sequence[Union[str, RichStr]], f, args, kwargs):
+def tostrs_func_call(dst, f, args, kwargs):
     bn = inspect.signature(f).bind(*args, **kwargs)
     bn.apply_defaults()
     
@@ -130,11 +130,11 @@ def tostrs_func_call(dst: Sequence[Union[str, RichStr]], f, args, kwargs):
     dst.append(')\n')
 
 
-def tostrs_obj(dst: Sequence[Union[str, RichStr]], o, capacity=None):
+def tostrs_obj(dst, o, capacity=None):
     _tostrs_obj(dst, o, capacity or 10 ** 10)
 
 
-def _tostrs_obj(dst: Sequence[Union[str, RichStr]], o, capacity):
+def _tostrs_obj(dst, o, capacity):
     if isinstance(o, (tuple, list)):
         dst.append('[')
         for i,v in enumerate(o):
