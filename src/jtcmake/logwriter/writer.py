@@ -61,7 +61,7 @@ class IWriter:
     def _write(self, *args, level): ...
 
     def write(self, *args, level):
-        if QUANT_LOG_LEVEL[self.loglevel] >= QUANT_LOG_LEVEL[level]:
+        if QUANT_LOG_LEVEL[self.loglevel] <= QUANT_LOG_LEVEL[level]:
             self._write(*args, level=level)
 
     def debug(self, *args):
@@ -258,7 +258,7 @@ def _richstr_to_html(s, basedir):
 def create_color_log_str(msg, level):
     colormap = {
         'debug': '36',
-        'info': '37',
+        'info': '0',
         'warning': '33',
         'error': '31',
     }

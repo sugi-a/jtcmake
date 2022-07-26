@@ -99,7 +99,10 @@ class Rule(IRule):
         else:
             # set mtime to 0
             for f in self.yfiles:
-                os.utime(f.path, (0, 0))
+                try:
+                    os.utime(f.path, (0, 0))
+                except:
+                    pass
 
             # delete vfile cache
             try:
