@@ -296,6 +296,5 @@ def term_is_jupyter():
     try:
         from IPython.core.getipython import get_ipython
         return get_ipython().__class__.__name__ == 'ZMQInteractiveShell'
-    except Exception as e:
-        print(e)
+    except:
         return False
