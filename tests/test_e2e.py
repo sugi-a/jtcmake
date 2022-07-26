@@ -66,7 +66,9 @@ def test_1(nthreads, tmp_path):
 
     # run all
     g.make(nthreads=nthreads)
-    assert globfiles(tmp_path) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
+    # make sure to deal with windows path \\
+    assert globfiles(tmp_path) == sorted(
+        str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
     assert Path(g.aaa.path).read_text() == 'aaa'
 
     # clean all
@@ -75,13 +77,15 @@ def test_1(nthreads, tmp_path):
 
     # run some
     g.g1.ab.make(nthreads=nthreads)
-    assert globfiles(tmp_path) == sorted(['a.txt', 'g1/ab.txt'])
+    assert globfiles(tmp_path) == \
+        sorted(str(Path(x)) for x in ['a.txt', 'g1/ab.txt'])
 
     # run rest
     mt = os.path.getmtime(g.a.path)
     g.make(nthreads=nthreads)
     assert os.path.getmtime(g.a.path) == mt
-    assert globfiles(tmp_path) == sorted(['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
+    assert globfiles(tmp_path) == sorted(
+        str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
 
     # clean some
     g.a.clean()

@@ -609,7 +609,7 @@ class Group(IGroup):
         pattern = pattern.strip('/')
         parts = re.split('/+', pattern)
 
-        SEP = ':'
+        SEP = ';'
         regex = []
         for p in parts:
             assert len(p) > 0
@@ -676,7 +676,7 @@ def _ismembername(name):
 
 def _is_valid_node_name(name):
     # Group.select() depends on ':' being invalid
-    return not re.search('[:*?"<>|]', name)
+    return not re.search('[;*?"<>|]', name)
 
 
 def make(
