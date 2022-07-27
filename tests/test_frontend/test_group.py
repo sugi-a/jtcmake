@@ -100,6 +100,17 @@ def test_group_add():
     a = create_group('r').add('a', ['a1', 'a1'],  fn)
     assert a.abspath == (APath('r/a1'), APath('r/a1'))
 
+    a = create_group('r').add(
+        'd',
+        [{'x': 'd1.txt', 'y': ['d2.txt']}, ('d3.txt', 'd4.txt')],
+        lambda _: None
+    )
+    assert a.abspath == \
+        (
+            {'x': APath('r/d1.txt'), 'y': (APath('r/d2.txt'),)},
+            (APath('r/d3.txt'), APath('r/d4.txt'))
+        )
+
     # dict key order
     a = create_group('r').add('a', {'a': 'a1', 'b': 'a2'}, fn)
     b = create_group('r').add('a', {'b': 'a2', 'a': 'a1'}, fn)
@@ -146,7 +157,9 @@ def test_group_add():
 
     g = create_group('r')
     g.add('a', fn, VFile('x'))
+
     assert _to_abs(g.a._rule.args) == (g.a.abspath, APath('x'))
+
 
     #### deplist
     g = create_group('r')
