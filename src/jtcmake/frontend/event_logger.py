@@ -139,22 +139,28 @@ def _tostrs_obj(dst, o, capacity):
         for i,v in enumerate(o):
             if capacity <= 0:
                 dst.append(', ...')
+                capacity -= 5
                 break
             capacity = _tostrs_obj(dst, v, capacity)
             if i < len(o) - 1:
                 dst.append(', ')
+                capacity -= 2
         dst.append(']')
+        return capacity
     elif isinstance(o, Mapping):
         dst.append('{')
         for i,(k,v) in enumerate(o.items()):
             if capacity <= 0:
                 dst.append(', ... ')
+                capacity -= 5
                 break
             dst.append(repr(k) + ': ')
             capacity = _tostrs_obj(dst, v, capacity)
             if i < len(o) - 1:
                 dst.append(', ')
+                capacity -= 2
         dst.append('}')
+        return capacity
     elif isinstance(o, Path):
         res = RichStr(repr(o), link=str(o))
         dst.append(res)
