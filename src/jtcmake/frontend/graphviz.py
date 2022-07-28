@@ -14,16 +14,19 @@ def print_graphviz(group, output_file=None):
             display(SVG(svg))
             return
         else:
-            print(gen_dot_code(group))
-            return
+            raise Exception('Printing to console is available on Jupyter only')
     else:
         dot_code = \
             gen_dot_code(group, os.path.dirname(output_file))
 
         if output_file[-4:] == '.svg':
             data = convert(dot_code, 'svg')
+        elif output_file[-4:] == '.dot':
+            data = dot_code.encode()
         else:
-            raise ValueError(f'Output file\'s extension must be .svg')
+            raise ValueError(
+                f'Output file\'s extension must be .svg or .dot'
+            )
 
         with open(output_file, 'wb') as f:
             f.write(data)
@@ -128,12 +131,15 @@ def gen_dot_code(group, basedir=None):
 
 
 def convert(dot_code, t='svg'):
-    p = subprocess.run(
-        ['dot', f'-T{t}'],
-        input=dot_code.encode(),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        p = subprocess.run(
+            ['dot', f'-T{t}'],
+            input=dot_code.encode(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError as e:
+        raise Exception('Graphviz is required for this feature') from e
 
     if p.returncode != 0:
         sys.stderr.write(p.stderr.decode())
