@@ -25,6 +25,8 @@ def event_callback(w, rule_to_name, e):
             w.warning(f'An event of unknown Rule has been emitted.\n')
             name = '<unknown>'
 
+        name = RichStr(name, c=(0, 0xCC, 0))
+
         if isinstance(e, events.UpdateCheckError):
             w.error(
                 f'Failed to make {name}: '
@@ -38,7 +40,7 @@ def event_callback(w, rule_to_name, e):
             )
         elif isinstance(e, events.ExecError):
             w.error(
-                f'Failed to make {name}: Method failed: {err}\n'
+                f'Failed to make ',  name, ': Method failed: {err}\n'
             )
         elif isinstance(e, events.PostProcError):
             w.error(
@@ -60,6 +62,8 @@ def event_callback(w, rule_to_name, e):
             w.warning(f'An event of unknown Rule has been emitted.\n')
             name = '<unknown>'
 
+        name = RichStr(name, c=(0, 0xCC, 0))
+
         if isinstance(e, events.Skip):
             msg = f'Skip {name}\n'
             if e.is_direct_target:
@@ -70,10 +74,11 @@ def event_callback(w, rule_to_name, e):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, '  ')
-            msg.insert(0, f'Make {name}\n')
-            w.info(*msg)
+            #msg.insert(0, f'Make {name}\n')
+            #w.info(*msg)
+            w.info('Make ', name, '\n', *msg)
         elif isinstance(e, events.Done):
-            w.info(f'Done {name}\n')
+            w.info(f'Done ', name, '\n')
         elif isinstance(e, events.DryRun):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
@@ -120,10 +125,12 @@ def tostrs_func_call(dst, f, args, kwargs):
     bn = inspect.signature(f).bind(*args, **kwargs)
     bn.apply_defaults()
     
-    dst.append(get_func_name(f) + '(\n')
+    dst.append(RichStr(get_func_name(f), c=(0, 0x80, 0xFF)))
+    dst.append('(\n')
 
     for k,v in bn.arguments.items():
-        dst.append(f'  {k}=')
+        dst.append(RichStr(f'  {k}', c=(0xFF, 0x80, 0)))
+        dst.append(f' = ')
         tostrs_obj(dst, v, capacity=500)
         dst.append(',\n')
     dst.append(')\n')
