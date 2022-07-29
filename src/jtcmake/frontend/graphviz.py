@@ -23,9 +23,15 @@ def print_graphviz(group, output_file=None):
             data = convert(dot_code, 'svg')
         elif output_file[-4:] == '.dot':
             data = dot_code.encode()
+        elif output_file[-4:] == '.htm' or output_file[-5:] == '.html':
+            data = convert(dot_code, 'svg').decode()
+            data = \
+               '<!DOCTYPE html><html><head><meta charset="utf-8">' \
+               f'<title>graph</title></head><body>{data}</body></html>'
+            data = data.encode('utf8')
         else:
             raise ValueError(
-                f'Output file\'s extension must be .svg or .dot'
+                'Output file\'s extension must be .svg, .dot, .htm, or .html'
             )
 
         with open(output_file, 'wb') as f:
