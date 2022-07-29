@@ -1,4 +1,4 @@
-import os, sys, re, json, subprocess
+import os, sys, re, json, subprocess, shutil
 from html import escape
 
 from ..logwriter.writer import term_is_jupyter
@@ -131,19 +131,23 @@ def gen_dot_code(group, basedir=None):
 
 
 def convert(dot_code, t='svg'):
-    try:
-        p = subprocess.run(
-            ['dot', f'-T{t}'],
-            input=dot_code.encode(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+    if shutil.which('dot') is None:
+        raise Exception(
+            'Graphviz is required. dot executable was not found in PATH.'
         )
-    except FileNotFoundError as e:
-        raise Exception('Graphviz is required for this feature') from e
+
+    p = subprocess.run(
+        ['dot', f'-T{t}'],
+        input=dot_code.encode(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
     if p.returncode != 0:
         sys.stderr.write(p.stderr.decode())
-        raise Exception(f'Error: dot exit with code {p.returncode}')
+        raise Exception(
+            f'Failed to create graph. dot exit with code {p.returncode}'
+        )
 
     return p.stdout
 
