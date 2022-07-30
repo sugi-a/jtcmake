@@ -105,9 +105,11 @@ class FileNodeDict(Mapping, IFileNode):
     def abspath(self):
         return {k: v.abspath for k,v in self._dic.items()}
 
-    def touch(self, _t):
-        if _t is None: _t = time.time()
-        for k,v in self._dic.items(): v.touch(_t)
+    def touch(self, _t=None):
+        if _t is None:
+            _t = time.time()
+        for k,v in self._dic.items():
+            v.touch(_t)
 
     def clean(self):
         for k,v in self._dic.items(): v.clean()
