@@ -1,4 +1,5 @@
 import sys, html, abc, os
+from pathlib import Path
 
 def update_with_non_none(target, **kvs):
     for k,v in kvs.items():
@@ -121,7 +122,7 @@ class TextFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname):
         super().__init__(loglevel)
 
-        if not os.path.exists(os.path.dirname(fname)):
+        if not os.path.exists(Path(fname).parent):
             raise FileNotFoundError(f'parent dir for {fname} not found')
 
         self.fname = fname
@@ -191,7 +192,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname, basedir=None):
         super().__init__(loglevel)
 
-        if not os.path.exists(os.path.dirname(fname)):
+        if not os.path.exists(Path(fname).parent):
             raise FileNotFoundError(f'parent dir for {fname} not found')
 
         self.basedir = basedir
