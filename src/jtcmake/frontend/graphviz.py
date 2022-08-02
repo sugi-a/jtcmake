@@ -1,4 +1,4 @@
-import os, sys, re, json, subprocess
+import os, sys, re, json, subprocess, shutil
 from html import escape
 
 from ..logwriter.writer import term_is_jupyter
@@ -23,9 +23,15 @@ def print_graphviz(group, output_file=None):
             data = convert(dot_code, 'svg')
         elif output_file[-4:] == '.dot':
             data = dot_code.encode()
+        elif output_file[-4:] == '.htm' or output_file[-5:] == '.html':
+            data = convert(dot_code, 'svg').decode()
+            data = \
+               '<!DOCTYPE html><html><head><meta charset="utf-8">' \
+               f'<title>graph</title></head><body>{data}</body></html>'
+            data = data.encode('utf8')
         else:
             raise ValueError(
-                f'Output file\'s extension must be .svg or .dot'
+                'Output file\'s extension must be .svg, .dot, .htm, or .html'
             )
 
         with open(output_file, 'wb') as f:
@@ -131,19 +137,23 @@ def gen_dot_code(group, basedir=None):
 
 
 def convert(dot_code, t='svg'):
-    try:
-        p = subprocess.run(
-            ['dot', f'-T{t}'],
-            input=dot_code.encode(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+    if shutil.which('dot') is None:
+        raise Exception(
+            'Graphviz is required. dot executable was not found in PATH.'
         )
-    except FileNotFoundError as e:
-        raise Exception('Graphviz is required for this feature') from e
+
+    p = subprocess.run(
+        ['dot', f'-T{t}'],
+        input=dot_code.encode(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
     if p.returncode != 0:
         sys.stderr.write(p.stderr.decode())
-        raise Exception(f'Error: dot exit with code {p.returncode}')
+        raise Exception(
+            f'Failed to create graph. dot exit with code {p.returncode}'
+        )
 
     return p.stdout
 

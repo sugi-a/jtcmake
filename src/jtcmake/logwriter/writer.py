@@ -1,17 +1,24 @@
 import sys, html, abc, os
+from pathlib import Path
+
+def update_with_non_none(target, **kvs):
+    for k,v in kvs.items():
+        if v is not None:
+            target[k] = v
+    
 
 class RichStr(str):
     def __new__(cls, s, *_args, **_kwargs):
         return super().__new__(cls, s)
 
 
-    def __init__(self, s, *, c=None, bg=None, link=None):
+    def __init__(self, s, *, c=None, bg=None, link=None, defaults=None):
+        attr = {'c': None, 'bg': None, 'link': None}
+        if defaults:
+            update_with_non_none(attr, **defaults)
         if isinstance(s, RichStr):
-            attr = s._attr.copy()
-            a = {'c': c, 'bg': bg, 'link': link}
-            attr.update({k:v for k,v in a.items() if v is not None})
-        else:
-            attr = {'c': c, 'bg': bg, 'link': link}
+            update_with_non_none(attr, **s.attr)
+        update_with_non_none(attr, c=c, bg=bg, link=link)
 
         # TODO: use frozen dict
         self._attr = attr
@@ -25,14 +32,14 @@ class RichStr(str):
         if isinstance(rhs, type(self)):
             return NotImplemented # pass to __radd__
         elif isinstance(rhs, str):
-            return RichStr(str(self) + str(rhs), self._attr)
+            return RichStr(str(self) + str(rhs), **self._attr)
         else:
             return NotImplemented
 
 
     def __radd__(self, lhs):
         if isinstance(lhs, str):
-            return RichStr(str(lhs) + str(self), self._attr)
+            return RichStr(str(lhs) + str(self), **self._attr)
         else:
             return NotImplemented
 
@@ -107,7 +114,7 @@ class ColorTextWriter(IWriter):
             'error': None,
         }).get(level)
 
-        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
         self.writable.write(create_color_str(args))
 
 
@@ -115,7 +122,7 @@ class TextFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname):
         super().__init__(loglevel)
 
-        if not os.path.exists(os.path.dirname(fname)):
+        if not os.path.exists(Path(fname).parent):
             raise FileNotFoundError(f'parent dir for {fname} not found')
 
         self.fname = fname
@@ -151,7 +158,7 @@ class HTMLWriter(IWriter):
         color = HTML_COLOR_MAP.get(level, 'black')
         bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
 
-        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
         self.writable.write(create_html(args, self.basedir))
 
 
@@ -185,7 +192,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname, basedir=None):
         super().__init__(loglevel)
 
-        if not os.path.exists(os.path.dirname(fname)):
+        if not os.path.exists(Path(fname).parent):
             raise FileNotFoundError(f'parent dir for {fname} not found')
 
         self.basedir = basedir
@@ -195,7 +202,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
         color = HTML_COLOR_MAP.get(level, 'black')
         bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
 
-        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
 
         with open(self.fname, 'a') as f:
             f.write(
@@ -218,7 +225,7 @@ class HTMLJupyterWriter(IWriter):
         color = HTML_COLOR_MAP.get(level, 'black')
         bgcolor = HTML_BG_COLOR_MAP.get(level, 'white')
 
-        args = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
 
         display(HTML(f'<pre>{create_html(args, self.basedir)}</pre>'))
 
@@ -275,13 +282,26 @@ def create_color_str(sl):
     last_c = None
     last_bg = None
     for s in sl:
+        if not isinstance(s, RichStr):
+            last_bg = None
+            last_c = None
+            res.append('\x1b[49m\x1b[39m' + s)
+            continue
+
         if s.bg != last_bg:
             last_bg = s.bg
-            res.append(f'\x1b[48;5;{_comp_8bit_term_color(*s.bg)}m')
+            if s.bg is None:
+                res.append(f'\x1b[49m')
+            else:
+                res.append(f'\x1b[48;5;{_comp_8bit_term_color(*s.bg)}m')
+
 
         if s.c != last_c:
             last_c = s.c
-            res.append(f'\x1b[38;5;{_comp_8bit_term_color(*s.c)}m')
+            if s.c is None:
+                res.append(f'\x1b[39m')
+            else:
+                res.append(f'\x1b[38;5;{_comp_8bit_term_color(*s.c)}m')
 
         res.append(str(s))
 
@@ -289,6 +309,7 @@ def create_color_str(sl):
 
 
 def _comp_8bit_term_color(r, g, b):
+    r, g, b = (x * 6 // 256 for x in (r, g, b))
     return 16 + r * 36 + g * 6 + b
 
 

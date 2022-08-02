@@ -107,28 +107,3 @@ def replace_link(obj, link_map):
         return Element(obj.tag, c, **obj.kwargs)
 
 
-class TermWriter:
-    def __init__(self, out):
-        self.out = out
-
-    def __call__(self, msg, link_map=None, logkind='info'):
-        colormap = {
-            'success': '36',
-            'log': '37',
-            'warning': '33',
-            'error': '31',
-        }
-        color = colormap.get(logkind, '0')
-
-        self.out.write(f'\x1b[{color}m{msg}\x1b[0m')
-        
-
-def get_default_writer():
-    if isipynb():
-        return HTMLIpynbWriter()
-    else:
-        if sys.stderr.isatty():
-            return TermWriter(sys.stderr)
-        else:
-            return Writer(sys.stderr)
-

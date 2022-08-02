@@ -91,7 +91,7 @@ class Rule(IRule):
     def preprocess(self, callback):
         for f in self.yfiles:
             try:
-                os.makedirs(os.path.dirname(f.path), exist_ok=True)
+                os.makedirs(f.path.parent, exist_ok=True)
             except:
                 pass
 
@@ -150,7 +150,7 @@ def create_vfile_hashes(vfiles):
 
 def save_vfile_hashes(metadata_fname, vfiles):
     hashes = create_vfile_hashes(vfiles)
-    os.makedirs(os.path.dirname(metadata_fname), exist_ok=True)
+    os.makedirs(Path(metadata_fname).parent, exist_ok=True)
     with open(metadata_fname, 'w') as f:
         try:
             json.dump(hashes, f)

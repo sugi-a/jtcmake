@@ -105,9 +105,11 @@ class FileNodeDict(Mapping, IFileNode):
     def abspath(self):
         return {k: v.abspath for k,v in self._dic.items()}
 
-    def touch(self, _t):
-        if _t is None: _t = time.time()
-        for k,v in self._dic.items(): v.touch(_t)
+    def touch(self, _t=None):
+        if _t is None:
+            _t = time.time()
+        for k,v in self._dic.items():
+            v.touch(_t)
 
     def clean(self):
         for k,v in self._dic.items(): v.clean()
@@ -212,10 +214,20 @@ class Group(IGroup):
 
 
     def add_group(self, name, dirname = None, *, prefix = None):
-        """
-        Call signatures:
-            add_group(name, [dirname])
-            add_group(name, prefix=prefix)
+        """Add a child Group node
+        Args:
+            name: name of the node. (str|os.PathLike)
+            dirname: directory for the node (str|os.PathLike)
+            prefix: path prefix for the node (str|os.PathLike)
+                - At most one of dirname and prefix can be specified
+                - If both dirname and prefix are None, then name will be used
+                  as dirname
+                - The following two are equivalent:
+                    - `Group.add_group('name', dirname='dir')`
+                    - `Group.add_group('name', prefix='dir/')`
+
+        Returns:
+            Group node
         """
         if isinstance(name, os.PathLike):
             name = name.__fspath__()
@@ -276,10 +288,37 @@ class Group(IGroup):
 
     # APIs
     def add(self, name, *args, force_update=False, **kwargs):
-        """
+        """Add a Rule node into this Group node.
         Call signatures:
-            add(name, [path], method, *args, force_update=False, **kwargs)
-            add(name, [path], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
+            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+
+
+        Args:
+            name: str. Name for the Rule
+            output_files:
+                Nested structure representing the output files of the Rule.
+                A leaf node of the structure may be either str, os.PathLike,
+                or IFile (including File and VFile).
+            method: Callable. Will be called as method(*args, **kwargs) on update
+            force_update: bool. If True, method will always be executed on make
+
+        Returns (1):
+            Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
+
+        Returns (2):
+            A function (method: Callable) -> RuleNode.
+        
+        Call signature (2) is for decorator-style adding.
+            The following two are equivalent:
+            `Group.add(name, output_files, None, *args, **kwargs)(method)`
+            `Group.add(name, output_files, method, *args, **kwargs)`
+
+        How Group.add differs from Group.addvf:
+            Default IFile type used to wrap the nodes in output_files whose
+            type is str or os.PathLike is different.
+            - Group.add wraps them by File.
+            - Group.addvf wraps them by VFile.
         """
         if not isinstance(name, str):
             raise ValueError(f'name must be str')
@@ -298,7 +337,8 @@ class Group(IGroup):
 
         if method is None:
             def adder(method):
-                return self._add(name, path, method, *args, **kwargs)
+                self._add(name, path, method, *args, **kwargs)
+                return method
             
             return adder
 
@@ -307,10 +347,37 @@ class Group(IGroup):
 
 
     def addvf(self, name, *args, force_update=False, **kwargs):
-        """Append a VFile (Value File) as a child of this group
+        """Add a Rule node into this Group node.
         Call signatures:
-            addvf(name, method, *args, force_update=False, **kwargs)
-            addvf(name, path, method, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
+            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+
+
+        Args:
+            name: str. Name for the Rule
+            output_files:
+                Nested structure representing the output files of the Rule.
+                A leaf node of the structure may be either str, os.PathLike,
+                or IFile (including File and VFile).
+            method: Callable. Will be called as method(*args, **kwargs)
+            force_update: bool. If True, method will always be executed on make
+
+        Returns (1):
+            Rule node
+
+        Returns (2):
+            A function (method: Callable) -> RuleNode.
+        
+        Call signature (2) is for decorator-style adding.
+            The following two are equivalent:
+            `Group.add(name, output_files, None, *args, **kwargs)(method)`
+            `Group.add(name, output_files, method, *args, **kwargs)`
+
+        How Group.add differs from Group.addvf:
+            Default IFile type used to wrap the nodes in output_files whose
+            type is str or os.PathLike is different.
+            - Group.add wraps them by File.
+            - Group.addvf wraps them by VFile.
         """
         if not isinstance(name, str):
             raise ValueError(f'name must be str')
@@ -330,7 +397,8 @@ class Group(IGroup):
         if method is None:
             def adder(method):
                 assert callable(method)
-                return self.add_vf(name, path, method, *args, **kwargs)
+                self.add_vf(name, path, method, *args, **kwargs)
+                return method
             
             return adder
 
@@ -721,6 +789,18 @@ def make(
 def create_group(
     dirname=None, prefix=None, *,
     loglevel=None, use_default_logger=True, logfile=None):
+    """Create a root Group node.
+    Args:
+        dirname: directory name for this Group node. (str|os.PathLike)
+        prefix: path prefix for this Group node. (str|os.PathLike).
+            - Either (but not both) dirname or prefix must be specified.
+            - The following two are equivalent:
+                1. `create_group(dirname='dir')`
+                2. `create_group(prefix='dir/')`
+
+    Returns:
+        Group node
+    """
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
 
