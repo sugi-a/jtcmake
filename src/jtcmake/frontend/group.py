@@ -337,7 +337,8 @@ class Group(IGroup):
 
         if method is None:
             def adder(method):
-                return self._add(name, path, method, *args, **kwargs)
+                self._add(name, path, method, *args, **kwargs)
+                return method
             
             return adder
 
@@ -396,7 +397,8 @@ class Group(IGroup):
         if method is None:
             def adder(method):
                 assert callable(method)
-                return self.add_vf(name, path, method, *args, **kwargs)
+                self.add_vf(name, path, method, *args, **kwargs)
+                return method
             
             return adder
 

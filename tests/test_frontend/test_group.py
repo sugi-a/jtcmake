@@ -117,8 +117,15 @@ def test_group_add():
     assert a.abspath == b.abspath
 
     #### decorator ####
-    assert create_group('r').add('a', 'a1', None)(fn).abspath == APath('r/a1')
-    assert create_group('r').add('a1', None)(fn).abspath == APath('r/a1')
+    g = create_group('r')
+
+    _fn = g.add('a', 'a1', None)(fn)
+    assert g.a.abspath == APath('r/a1')
+    assert _fn == fn  # decorator should return the func as-is
+
+    _fn = g.add('b', None)(fn)
+    assert g.b.abspath == APath('r/b')
+    assert _fn == fn
 
     #### kind of IFile ####
     # add: default is File
