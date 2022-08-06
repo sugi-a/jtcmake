@@ -17,7 +17,7 @@ def print_graphviz(group, output_file=None):
             raise Exception('Printing to console is available on Jupyter only')
     else:
         dot_code = \
-            gen_dot_code(group, os.path.dirname(output_file))
+            gen_dot_code(group, Path(output_file).parent)
 
         if output_file[-4:] == '.svg':
             data = convert(dot_code, 'svg')
