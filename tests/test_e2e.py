@@ -1,5 +1,5 @@
 import sys, os, shutil, glob, time
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import pytest
 
@@ -178,3 +178,75 @@ def test_addvf(tmp_path):
     os.utime(g.b.path, (0,0))
     g.make()
     assert (tmp_path / 'b').read_text() == 'y2'
+
+
+def test_memoization(tmp_path):
+    from jtcmake.gen_pickle_key import gen_key
+    import jtcmake
+
+    def _write(p, t):
+        p.write_text(repr(t))
+
+    pickle_key = gen_key()
+
+    #### str case ('abc' -> 'def') ####
+    before, after = 'abc', 'def'
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(after)
+
+    #### set case ({1, 2} -> {2, 3}) ####
+    before, after = {1,2}, {2,3}
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(after)
+
+    #### PurePath/Path case (PurePath -> Path) ####
+    before, after = PurePath('a'), Path('a')
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    #### ignore change ({1, 2} -> {2, 3}) ####
+    before, after = {1,2}, {2,3}
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, jtcmake.Atom(before, lambda _: None))
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, jtcmake.Atom(before, lambda _: None))
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)  # not after
+
+    

@@ -22,6 +22,18 @@ from ..utils.nest import \
     flatten_to_struct_keys, pack_sequence_as
 
 
+class Atom:
+    def __init__(self, value, memo_value=lambda x: x):
+        self.value = value
+        if callable(memo_value):
+            self.memo_value = memo_value(value)
+        else:
+            self.memo_value = memo_value
+    
+    def __repr__(self):
+        v, m = repr(self.value), repr(self.memo_value)
+        return f'Atom(value={v}, memo_value={m})'
+
 
 class IFileNode:
     @property
@@ -194,10 +206,11 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters):
+    def __init__(self, logwriters, pickle_key):
         self.path_to_rule = {}
         self.path_to_file = {}
         self.rule_to_name = {}
+        self.pickle_key = pickle_key
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
@@ -573,32 +586,47 @@ class Group(IGroup):
             if isinstance(f, IFile) and f.path not in ypaths
         ]
 
-        # check if keys for IVFiles are JSON convertible
-        def _assert_key_json_convertible(key, f):
-            try:
-                json.dumps(key)
-            except Exception as e:
-                raise Exception(
-                    f'keys to identify the location of VFile {f.path} '
-                    f'contains an element not convertible to JSON: {key}'
-                ) from e
-            
+        # check if keys for IVFiles are str/int/float
         for struct_key, f in xfiles:
             if isinstance(f, IVFile):
                 for k in struct_key:
-                    _assert_key_json_convertible(k, f)
+                    if not isinstance(k, (str, int, float)):
+                        raise TypeError(
+                            'keys of dicts in args/kwargs must be either'
+                            f'str, int, or float. Given {k}'
+                        )
 
         # create method args
-        method_args_ = [
-            f.path if isinstance(f, IFile) else f for f in args_
-        ]
-        method_args, method_kwargs = \
-            pack_sequence_as((args, kwargs), method_args_)
+        def _unwrap_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return x.path
+            elif isinstance(x, Atom):
+                return x.value
+            else:
+                return x
+
+        method_args = pack_sequence_as((args, kwargs), args_)
+        method_args = map_structure(_unwrap_IFile_Atom, method_args)
+        method_args, method_kwargs = method_args
+
+        # create memoization args
+        def _repl_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return None
+            elif isinstance(x, Atom):
+                return x.memo_value
+            else:
+                return x
+
+        memo_args = pack_sequence_as((args, kwargs), args_)
+        memo_args = map_structure(_repl_IFile_Atom, memo_args)
 
         # create Rule
         r = Rule(
             files_, xfiles, deplist,
             method, method_args, method_kwargs,
+            kwargs_to_be_memoized=memo_args,
+            pickle_key=self._info.pickle_key,
             force_update=force_update
         )
 
@@ -788,7 +816,9 @@ def make(
 
 def create_group(
     dirname=None, prefix=None, *,
-    loglevel=None, use_default_logger=True, logfile=None):
+    loglevel=None, use_default_logger=True, logfile=None,
+    pickle_key='00FF',
+):
     """Create a root Group node.
     Args:
         dirname: directory name for this Group node. (str|os.PathLike)
@@ -825,7 +855,12 @@ def create_group(
     if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
-    tree_info = GroupTreeInfo(logwriters=logwriters)
+    if type(pickle_key) != str:
+        raise TypeError('pickle_key must be str')
+
+    pickle_key = bytes.fromhex(pickle_key)
+
+    tree_info = GroupTreeInfo(logwriters=logwriters, pickle_key=pickle_key)
 
     return Group(tree_info, str(prefix), ())
 

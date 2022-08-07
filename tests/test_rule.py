@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from jtcmake.frontend.rule import \
-    Rule, save_vfile_hashes, load_vfile_hashes, create_vfile_hashes
+    Rule, create_vfile_hashes, create_auth_digest
 
 from jtcmake.frontend.file import File, VFile, IFile
 
@@ -40,7 +40,7 @@ def test_metadata_fname():
         metadata_fname := p.parent / '.jtcmake' / p.name
     """
     y1, y2 = File(Path('a/b.c')), File(Path('d/e.f'))
-    r = Rule([y1, y2], [], [], _method, _args, _kwargs)
+    r = Rule([y1, y2], [], [], _method, _args, _kwargs, {}, b'key')
     assert os.path.abspath(r.metadata_fname) == \
         os.path.abspath('a/.jtcmake/b.c')
 
@@ -65,19 +65,30 @@ def test_create_vfile_hashes(mocker):
     assert res == [['k1', 'a', 1], ['k2', 'b', 2]]
 
 
-def test_update_xvfile_hashes(tmp_path, mocker):
+def test_update_memo(tmp_path, mocker):
+    import pickle
+
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     x1, x2 = (File(tmp_path / f'x{i}') for i in (1,2))
     k1, k2 = ('k1',), ('k2',)
     ys = [y1, y2]
     xs = [(k1,y1), (k2,y2)]
 
-    r = Rule(ys, xs, [], _method, _args, _kwargs)
+    r = Rule(ys, xs, [], _method, _args, _kwargs, ['xyz'], b'key')
 
-    m = mocker.patch('jtcmake.frontend.rule.save_vfile_hashes')
-    r.update_xvfile_hashes()
+    m = mocker.patch('jtcmake.frontend.rule.save_memo')
+    r.update_memo()
 
-    m.assert_called_once_with(r.metadata_fname, [(k2,y2)])
+    pickle_code = pickle.dumps(['xyz'])
+    m.assert_called_once_with(
+        r.metadata_fname,
+        [(k2,y2)],
+        {
+            "type": "pickle",
+            "value": pickle_code.hex(),
+            "digest": create_auth_digest(pickle_code, b'key')
+        }
+    )
     
 
 def test_rule_should_update(tmp_path, mocker):
@@ -92,19 +103,19 @@ def test_rule_should_update(tmp_path, mocker):
     3. Force update: True
     4. Any y is missing: True
     5. Any y has a mtime of 0: True
-    6. No x: False
-    7. Let Y := the oldest y,
+    6. Let Y := the oldest y,
         1. Any x with non-IVFile type is newer than Y: True
         2. Any x with IVFile type, whose location in the argument structure
            is specified with keys K=(k_1, ..., k_n), is newer than Y and
            the cached VFile hash for K is not equal to hash(x): True
+    7. Memoized values are updated: True
     8. Otherwise: False
     """
 
     q1 = mocker.MagicMock('Rule')
     q2 = mocker.MagicMock('Rule')
 
-    #### multi-y, multi-x cases ####
+    #### multi-y, multi-x, fixed args cases ####
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     x1, x2 = File(tmp_path / 'x1'), VFile(tmp_path / 'x2')
     k1, k2 = ('k1',), ('k2',)
@@ -112,7 +123,7 @@ def test_rule_should_update(tmp_path, mocker):
     ys = [y1, y2]
     xs = [(k1,x1), (k2,x2)]
 
-    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs)
+    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, {}, b'key')
 
     # case 1
     touch(x1, x2, y1, y2)
@@ -140,18 +151,18 @@ def test_rule_should_update(tmp_path, mocker):
     rm(y1); touch(x1, x2, y2)
     assert r.should_update(set(), False)
 
-    # case 7.1
+    # case 6.1
     touch(y2, x1, x2); touch(y1, t=time.time() - 1)
     assert r.should_update(set(), False)
 
-    # case 7.2
+    # case 6.2
     touch(y1, y2, x1, t=time.time() - 1) 
     touch(x2)
 
     rm(r.metadata_fname) # no cache
     assert r.should_update(set(), False)
 
-    r.update_xvfile_hashes()
+    r.update_memo()
     x2.path.write_text('a') # hash differs
     assert r.should_update(set(), False)
 
@@ -166,7 +177,7 @@ def test_rule_should_update(tmp_path, mocker):
 
     # check VFile hash
     touch(y1, y2, x1, x2, t=time.time() - 1)
-    r.update_xvfile_hashes()
+    r.update_memo()
     touch(x2); 
     assert not r.should_update(set(), False)
 
@@ -175,10 +186,10 @@ def test_rule_should_update(tmp_path, mocker):
     assert not r.should_update({q1}, False)
 
 
-    #### no x case ####
+    #### no x, fixed args case ####
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs)
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, {}, b'key')
 
     # case 4: y1 is missing
     rm(y1); touch(y2)
@@ -188,25 +199,51 @@ def test_rule_should_update(tmp_path, mocker):
     touch(y2); touch(y1, t=0)
     assert r.should_update(set(), False)
 
-    # case 6
+    # case 8.
     touch(y1, y2)
     assert not r.should_update(set(), False)
 
 
-    #### Force Update ####
+    #### case 3. Force Update ####
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, True)
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, {}, b'key', True)
 
     touch(y1, y2, x1, x2)
     assert r.should_update(set(), False)
+
+
+    #### case 7. args updated ####
+    y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
+    ys = [y1, y2]
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, ['a'], b'key')
+
+    r.update_memo()
+    touch(y1, y2, x1, x2)
+
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, ['b'], b'key')
+
+    assert r.should_update(set(), False)
+
+
+    ##### Authentication Error ####
+    y = File(tmp_path / 'out')
+    r = Rule([y], [], [q1, q2], _method, _args, _kwargs, [], b'key1')
+
+    r.update_memo()
+    touch(y)
+
+    r = Rule([y], [], [q1, q2], _method, _args, _kwargs, [], b'key2')
+
+    with pytest.raises(Exception):
+        r.should_update(set(), False)
 
 
 def test_preprocess(tmp_path):
     """Rule.preprocess(callaback) should make dirs for all its output files.
     """
     y = File(tmp_path / 'a')
-    r = Rule([y], [], [], _method, _args, _kwargs)
+    r = Rule([y], [], [], _method, _args, _kwargs, {}, b'key')
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.path.parent)
     assert os.path.isdir(y.path.parent)
@@ -224,10 +261,9 @@ def test_postprocess(tmp_path):
     x1 = File(tmp_path / 'x1')
     x2 = VFile(tmp_path / 'x2')
 
-    r = Rule([y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs)
+    r = Rule([y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs, {}, b'key')
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)
 
-    saved = load_vfile_hashes(r.metadata_fname)
-    assert saved == create_vfile_hashes([('k2', x2)])
+    # TODO: test
