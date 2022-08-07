@@ -939,7 +939,7 @@ def _create_logwriter(f, loglevel):
         return TextWriter(f, loglevel)
 
 
-_DEFAULT_PICKLE_KEY = b'FFFF'
+_DEFAULT_PICKLE_KEY = bytes.fromhex('FFFF')
 _default_pickle_key = _DEFAULT_PICKLE_KEY
 
 def set_default_pickle_key(key):
