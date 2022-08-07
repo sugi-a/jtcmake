@@ -1,5 +1,5 @@
 import sys, os, shutil, glob, time
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import pytest
 
@@ -128,38 +128,14 @@ def test_4(tmp_path):
     assert globfiles(tmp_path) == []
 
 
-def test_force_update(tmp_path):
-    x = '1'
-    def _writer(p):
-        p.write_text(x)
-
-    # no-force-update case
-    r = create_group(tmp_path).add('a', _writer)
-    r.make()
-    x = '2'
-    r.make()
-    assert (tmp_path / 'a').read_text() == '1'
-    create_group(tmp_path).add('a', _writer).make()
-    assert (tmp_path / 'a').read_text() == '1'
-
-    # force-update case
-    r = create_group(tmp_path).add('a', _writer, force_update=True)
-    r.make()
-    assert (tmp_path / 'a').read_text() == '2'
-    x = '3'
-    r.make()
-    assert (tmp_path / 'a').read_text() == '3'
-
-    # VFile
-    x = '4'
-    r = create_group(tmp_path).addvf('a', _writer, force_update=True).make()
-    assert (tmp_path / 'a').read_text() == '4'
-
-
 def test_addvf(tmp_path):
+    from jtcmake import Atom
+
+    dummy = [1]
+
     x, y = 'x0', 'y0'
     g = create_group(tmp_path)
-    g.addvf('a', lambda p: p.write_text(x), force_update=True)
+    g.addvf('a', lambda p,_: p.write_text(x), Atom(dummy))
     g.add('b', lambda p,_: p.write_text(y), g.a)
 
     g.make()
@@ -167,14 +143,118 @@ def test_addvf(tmp_path):
 
     time.sleep(0.01)
     x, y = 'x1', 'y1'
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
 
     time.sleep(0.01)
     y = 'y2'
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
 
     os.utime(g.b.path, (0,0))
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y2'
+
+
+def test_memoization(tmp_path):
+    from jtcmake.gen_pickle_key import gen_key
+    import jtcmake
+
+    def _write(p, t):
+        p.write_text(repr(t))
+
+    pickle_key = gen_key()
+
+    #### str case ('abc' -> 'def') ####
+    before, after = 'abc', 'def'
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(after)
+
+    #### set case ({1, 2} -> {2, 3}) ####
+    before, after = {1,2}, {2,3}
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(after)
+
+    #### PurePath/Path case (PurePath -> Path) ####
+    before, after = PurePath('a'), Path('a')
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, before)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, after)
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    #### ignore change ({1, 2} -> {2, 3}) ####
+    before, after = {1,2}, {2,3}
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, jtcmake.Atom(before, lambda _: None))
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)
+
+    g = create_group(tmp_path, pickle_key=pickle_key)
+    g.add('a', _write, jtcmake.Atom(before, lambda _: None))
+    g.make()
+
+    assert g.a.path.read_text() == repr(before)  # not after
+
+    
+def test_memoization_global_pickle_key(tmp_path):
+    import jtcmake
+
+    def _write(p, t):
+        p.write_text(repr(t))
+
+    KEY = b'abc'.hex()
+    jtcmake.set_default_pickle_key(KEY)
+    
+    g = create_group(tmp_path)  # use the default key b'abc'
+    g.add('a', _write, "a")
+    g.make()
+
+    g = create_group(tmp_path, pickle_key=KEY)  # explicitly give b'abc'
+    g.add('a', _write, "b")
+    g.make()  # don't raise
+
+    assert g.a.path.read_text() == repr('b')
+
+    KEY2 = b'xyz'.hex()
+    g = create_group(tmp_path, pickle_key=KEY2)  # use non-default key b'xyz'
+    g.add('x', _write, "a")
+    g.make()
+
+    g = create_group(tmp_path, pickle_key=KEY2)
+    g.add('x', _write, "b")
+    g.make()  # don't raise
+
+    assert g.x.path.read_text() == repr('b')

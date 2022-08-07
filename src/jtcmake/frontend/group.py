@@ -1,5 +1,5 @@
 from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect
+import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect, warnings
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -21,6 +21,33 @@ from ..utils.nest import \
     StructKey, map_structure, flatten, struct_get, \
     flatten_to_struct_keys, pack_sequence_as
 
+
+class Atom:
+    def __init__(self, value, memo_value=lambda x: x):
+        """Create Atom: special object that can be placed in args/kwargs
+        of Group.add. Atom is used to explicitly indicate an object being
+        atom.
+
+        Args:
+            value: argument value to be wrapped by Atom
+            memo_value: value used for memoization.
+                If callable, `memo_value(value)` will be used for memoization
+                of this argument. Otherwise, memo_value itself will be used
+                for memoization.
+
+        Note:
+            You can use it to exclude a lambda function from memoization:
+            `g.add('rule.txt', method, Atom(lambda x: x**2, None))`
+        """
+        self.value = value
+        if callable(memo_value):
+            self.memo_value = memo_value(value)
+        else:
+            self.memo_value = memo_value
+    
+    def __repr__(self):
+        v, m = repr(self.value), repr(self.memo_value)
+        return f'Atom(value={v}, memo_value={m})'
 
 
 class IFileNode:
@@ -50,6 +77,7 @@ class FileNodeAtom(IFileNode):
         return self._file.abspath
 
     def touch(self, _t=None):
+        """Touch this file"""
         if _t is None:
             _t = time.time()
         open(self._file.path, 'w').close()
@@ -57,6 +85,7 @@ class FileNodeAtom(IFileNode):
         self._info.callback(group_events.Touch(self.path))
 
     def clean(self):
+        """Delete this file if exists"""
         try:
             os.remove(self._file.path)
             self._info.callback(group_events.Clean(self.path))
@@ -82,11 +111,13 @@ class FileNodeTuple(tuple, IFileNode):
         return tuple(x.abspath for x in self)
 
     def touch(self, _t=None):
+        """Touch files in this tuple"""
         if _t is None:
             _t = time.time()
         for x in self: x.touch(_t)
 
     def clean(self):
+        """Delete files in this tuple"""
         for x in self: x.clean()
 
     def __repr__(self):
@@ -106,12 +137,14 @@ class FileNodeDict(Mapping, IFileNode):
         return {k: v.abspath for k,v in self._dic.items()}
 
     def touch(self, _t=None):
+        """Touch files in this dict"""
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
             v.touch(_t)
 
     def clean(self):
+        """Delete files in this dict"""
         for k,v in self._dic.items(): v.clean()
 
     def __getitem__(self, k):
@@ -194,10 +227,11 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters):
+    def __init__(self, logwriters, pickle_key):
         self.path_to_rule = {}
         self.path_to_file = {}
         self.rule_to_name = {}
+        self.pickle_key = pickle_key
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
@@ -287,11 +321,11 @@ class Group(IGroup):
 
 
     # APIs
-    def add(self, name, *args, force_update=False, **kwargs):
+    def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -301,7 +335,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs) on update
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
@@ -343,14 +376,14 @@ class Group(IGroup):
             return adder
 
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
-    def addvf(self, name, *args, force_update=False, **kwargs):
+    def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -360,7 +393,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs)
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node
@@ -411,12 +443,12 @@ class Group(IGroup):
         path = map_structure(wrap_by_VFile, path)
             
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
     def _add(
         self, name, files,
-        method, *args, force_update=False, **kwargs
+        method, *args, **kwargs
     ):
         assert isinstance(name, str)
         assert callable(method)
@@ -573,33 +605,47 @@ class Group(IGroup):
             if isinstance(f, IFile) and f.path not in ypaths
         ]
 
-        # check if keys for IVFiles are JSON convertible
-        def _assert_key_json_convertible(key, f):
-            try:
-                json.dumps(key)
-            except Exception as e:
-                raise Exception(
-                    f'keys to identify the location of VFile {f.path} '
-                    f'contains an element not convertible to JSON: {key}'
-                ) from e
-            
+        # check if keys for IVFiles are str/int/float
         for struct_key, f in xfiles:
             if isinstance(f, IVFile):
                 for k in struct_key:
-                    _assert_key_json_convertible(k, f)
+                    if not isinstance(k, (str, int, float)):
+                        raise TypeError(
+                            'keys of dicts in args/kwargs must be either'
+                            f'str, int, or float. Given {k}'
+                        )
 
         # create method args
-        method_args_ = [
-            f.path if isinstance(f, IFile) else f for f in args_
-        ]
-        method_args, method_kwargs = \
-            pack_sequence_as((args, kwargs), method_args_)
+        def _unwrap_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return x.path
+            elif isinstance(x, Atom):
+                return x.value
+            else:
+                return x
+
+        method_args = pack_sequence_as((args, kwargs), args_)
+        method_args = map_structure(_unwrap_IFile_Atom, method_args)
+        method_args, method_kwargs = method_args
+
+        # create memoization args
+        def _repl_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return None
+            elif isinstance(x, Atom):
+                return x.memo_value
+            else:
+                return x
+
+        memo_args = pack_sequence_as((args, kwargs), args_)
+        memo_args = map_structure(_repl_IFile_Atom, memo_args)
 
         # create Rule
         r = Rule(
             files_, xfiles, deplist,
             method, method_args, method_kwargs,
-            force_update=force_update
+            kwargs_to_be_memoized=memo_args,
+            pickle_key=self._info.pickle_key,
         )
 
         # create RuleNode
@@ -645,10 +691,12 @@ class Group(IGroup):
 
 
     def clean(self):
+        """Delete files under this Group"""
         for c in self._children.values():
             c.clean()
 
     def touch(self, _t=None):
+        """Touch (set the mtime to now) files under this Group"""
         if _t is None:
             _t = time.time()
         for c in self._children.values():
@@ -788,18 +836,32 @@ def make(
 
 def create_group(
     dirname=None, prefix=None, *,
-    loglevel=None, use_default_logger=True, logfile=None):
+    loglevel=None, use_default_logger=True, logfile=None,
+    pickle_key=None,
+):
     """Create a root Group node.
     Args:
-        dirname: directory name for this Group node. (str|os.PathLike)
-        prefix: path prefix for this Group node. (str|os.PathLike).
+        dirname (str|os.PathLike): directory name for this Group node.
+        prefix (str|os.PathLike): path prefix for this Group node.
             - Either (but not both) dirname or prefix must be specified.
             - The following two are equivalent:
                 1. `create_group(dirname='dir')`
                 2. `create_group(prefix='dir/')`
+        loglevel ("debug"|"info"|"warning"|"error"|None):
+            log level. Defaults to "info"
+        use_default_logger (bool): If True, logs will be printed to terminal.
+            Defaults to True.
+        logfile (str|os.PathLike|tuple[str|os.PathLike]|None):
+            If specified, logs are printed to the file(s).
+            If the file extension is .html, logs are printed in HTML format.
+        pickle_key (bytes|str||None): key used to authenticate pickle data.
+            If str, it must be a hexadecimal str, and will be converted to
+            bytes by `bytes.fromhex(pickle_key)`.
+            If None, the default pickle key will be used. You can configure
+            the default by `jtcmake.set_default_pickle_key(key)`
 
     Returns:
-        Group node
+        Group: Root group node
     """
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
@@ -825,7 +887,25 @@ def create_group(
     if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
-    tree_info = GroupTreeInfo(logwriters=logwriters)
+    if pickle_key is None:
+        pickle_key = _default_pickle_key
+    elif type(pickle_key) == str:
+        pickle_key = bytes.fromhex(pickle_key)
+    elif type(pickle_key) != bytes:
+        raise TypeError('pickle_key must be bytes or hexadecimal str')
+
+    if pickle_key == _DEFAULT_PICKLE_KEY:
+        warning_ = (
+            f'You are using the default pickle key {_DEFAULT_PICKLE_KEY}.\n'
+            'For security reasons, it is recommended to provide your own '
+            'key by either,\n\n'
+            '* jtcmake.set_default_pickle_key(b"your own key"), or\n'
+            '* jtcmake.create_group("dir", pickle_key=b"your own key")\n'
+            'Pickle key is used to authenticate pickled data.'
+        )
+        warnings.warn(warning_)
+
+    tree_info = GroupTreeInfo(logwriters=logwriters, pickle_key=pickle_key)
 
     return Group(tree_info, str(prefix), ())
 
@@ -857,6 +937,19 @@ def _create_logwriter(f, loglevel):
             pass
 
         return TextWriter(f, loglevel)
+
+
+_DEFAULT_PICKLE_KEY = bytes.fromhex('FFFF')
+_default_pickle_key = _DEFAULT_PICKLE_KEY
+
+def set_default_pickle_key(key):
+    global _default_pickle_key
+    if type(key) == bytes:
+        _default_pickle_key = key
+    elif type(key) == str:
+        _default_pickle_key = bytes.fromhex(key)
+    else:
+        raise TypeError('key must be bytes or hexadecimal str')
 
 
 SELF = StructKey(())

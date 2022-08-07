@@ -1,11 +1,24 @@
 import os, sys, re, json, subprocess, shutil
 from html import escape
+from pathlib import Path
 
 from ..logwriter.writer import term_is_jupyter
 from .igroup import IGroup
 
 
 def print_graphviz(group, output_file=None):
+    """Visualize the dependency graph using Graphviz
+    Args:
+        group (Group): Group node whose Rules will be visualized
+        output_file (str|os.PathLike|None):
+            If specified, graph will be written into the file.
+            Otherwise, graph will be printed to the terminal (available on
+            Jupyter only). Graph format depends on the file extension:
+
+            - .svg: SVG
+            - .htm or .html: HTML (SVG image inside)
+            - .dot: Graphviz's DOT code (text)
+    """
     if output_file is None:
         if term_is_jupyter():
             from IPython.display import display, SVG
@@ -16,8 +29,11 @@ def print_graphviz(group, output_file=None):
         else:
             raise Exception('Printing to console is available on Jupyter only')
     else:
+        assert isinstance(output_file, (str, os.PathLike))
+        output_file = str(output_file)
+
         dot_code = \
-            gen_dot_code(group, os.path.dirname(output_file))
+            gen_dot_code(group, Path(output_file).parent)
 
         if output_file[-4:] == '.svg':
             data = convert(dot_code, 'svg')

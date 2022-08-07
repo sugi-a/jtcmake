@@ -95,8 +95,7 @@ def event_callback(w, rule_to_name, e):
     elif isinstance(e, group_events.Touch):
         w.info('touch ', RichStr(str(e.path) + '\n', link=str(e.path)))
     else:
-        w.warning(f'Unhandled event for {r}\n')
-        
+        w.warning(f'Unhandled event {e}\n')
 
 
 def add_indent(sl, indent):

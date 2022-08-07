@@ -223,9 +223,20 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group('r').add('a', ['a1', 'a2'], fn, SELF[0])
     
-    # struct_keys for IVFiles not JSON convertible
+    # struct_keys for IVFiles not str/int/float
     with pytest.raises(Exception):
         create_group('r').add('a', fn, {object(): VFile('b')})
+
+    with pytest.raises(Exception):
+        create_group('r').add('a', fn, {(1,2): VFile('b')})
+
+    # args contain an object that lacks pickle-unpickle invariance
+    with pytest.raises(Exception):
+        create_group('r').add('a', fn, object())
+
+    # unpicklable args
+    with pytest.raises(Exception):
+        create_group('r').add('a', fn, lambda: 0)
 
 
 def test_rule_touch(tmp_path):
