@@ -24,6 +24,21 @@ from ..utils.nest import \
 
 class Atom:
     def __init__(self, value, memo_value=lambda x: x):
+        """Create Atom: special object that can be placed in args/kwargs
+        of Group.add. Atom is used to explicitly indicate an object being
+        atom.
+
+        Args:
+            value: argument value to be wrapped by Atom
+            memo_value: value used for memoization.
+                If callable, `memo_value(value)` will be used for memoization
+                of this argument. Otherwise, memo_value itself will be used
+                for memoization.
+
+        Note:
+            You can use it to exclude a lambda function from memoization:
+            `g.add('rule.txt', method, Atom(lambda x: x**2, None))`
+        """
         self.value = value
         if callable(memo_value):
             self.memo_value = memo_value(value)
@@ -62,6 +77,7 @@ class FileNodeAtom(IFileNode):
         return self._file.abspath
 
     def touch(self, _t=None):
+        """Touch this file"""
         if _t is None:
             _t = time.time()
         open(self._file.path, 'w').close()
@@ -69,6 +85,7 @@ class FileNodeAtom(IFileNode):
         self._info.callback(group_events.Touch(self.path))
 
     def clean(self):
+        """Delete this file if exists"""
         try:
             os.remove(self._file.path)
             self._info.callback(group_events.Clean(self.path))
@@ -94,11 +111,13 @@ class FileNodeTuple(tuple, IFileNode):
         return tuple(x.abspath for x in self)
 
     def touch(self, _t=None):
+        """Touch files in this tuple"""
         if _t is None:
             _t = time.time()
         for x in self: x.touch(_t)
 
     def clean(self):
+        """Delete files in this tuple"""
         for x in self: x.clean()
 
     def __repr__(self):
@@ -118,12 +137,14 @@ class FileNodeDict(Mapping, IFileNode):
         return {k: v.abspath for k,v in self._dic.items()}
 
     def touch(self, _t=None):
+        """Touch files in this dict"""
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
             v.touch(_t)
 
     def clean(self):
+        """Delete files in this dict"""
         for k,v in self._dic.items(): v.clean()
 
     def __getitem__(self, k):
@@ -670,10 +691,12 @@ class Group(IGroup):
 
 
     def clean(self):
+        """Delete files under this Group"""
         for c in self._children.values():
             c.clean()
 
     def touch(self, _t=None):
+        """Touch (set the mtime to now) files under this Group"""
         if _t is None:
             _t = time.time()
         for c in self._children.values():
