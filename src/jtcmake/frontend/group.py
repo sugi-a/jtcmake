@@ -1,5 +1,5 @@
 from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect
+import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect, warnings
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -817,7 +817,7 @@ def make(
 def create_group(
     dirname=None, prefix=None, *,
     loglevel=None, use_default_logger=True, logfile=None,
-    pickle_key='00FF',
+    pickle_key=None,
 ):
     """Create a root Group node.
     Args:
@@ -855,10 +855,23 @@ def create_group(
     if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
-    if type(pickle_key) != str:
-        raise TypeError('pickle_key must be str')
+    if pickle_key is None:
+        pickle_key = _default_pickle_key
+    elif type(pickle_key) == str:
+        pickle_key = bytes.fromhex(pickle_key)
+    elif type(pickle_key) != bytes:
+        raise TypeError('pickle_key must be bytes or hexadecimal str')
 
-    pickle_key = bytes.fromhex(pickle_key)
+    if pickle_key == _DEFAULT_PICKLE_KEY:
+        warning_ = (
+            f'You are using the default pickle key {_DEFAULT_PICKLE_KEY}.\n'
+            'For security reasons, it is recommended to provide your own '
+            'key by either,\n\n'
+            '* jtcmake.set_default_pickle_key(b"your own key"), or\n'
+            '* jtcmake.create_group("dir", pickle_key=b"your own key")\n'
+            'Pickle key is used to authenticate pickled data.'
+        )
+        warnings.warn(warning_)
 
     tree_info = GroupTreeInfo(logwriters=logwriters, pickle_key=pickle_key)
 
@@ -892,6 +905,19 @@ def _create_logwriter(f, loglevel):
             pass
 
         return TextWriter(f, loglevel)
+
+
+_DEFAULT_PICKLE_KEY = b'FFFF'
+_default_pickle_key = _DEFAULT_PICKLE_KEY
+
+def set_default_pickle_key(key):
+    global _default_pickle_key
+    if type(key) == bytes:
+        _default_pickle_key = key
+    elif type(key) == str:
+        _default_pickle_key = bytes.fromhex(key)
+    else:
+        raise TypeError('key must be bytes or hexadecimal str')
 
 
 SELF = StructKey(())

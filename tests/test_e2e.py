@@ -250,3 +250,32 @@ def test_memoization(tmp_path):
     assert g.a.path.read_text() == repr(before)  # not after
 
     
+def test_memoization_global_pickle_key(tmp_path):
+    import jtcmake
+
+    def _write(p, t):
+        p.write_text(repr(t))
+
+    KEY = b'abc'.hex()
+    jtcmake.set_default_pickle_key(KEY)
+    
+    g = create_group(tmp_path)  # use the default key b'abc'
+    g.add('a', _write, "a")
+    g.make()
+
+    g = create_group(tmp_path, pickle_key=KEY)  # explicitly give b'abc'
+    g.add('a', _write, "b")
+    g.make()  # don't raise
+
+    assert g.a.path.read_text() == repr('b')
+
+    KEY2 = b'xyz'.hex()
+    g = create_group(tmp_path, pickle_key=KEY2)  # use non-default key b'xyz'
+    g.add('x', _write, "a")
+    g.make()
+
+    g = create_group(tmp_path, pickle_key=KEY2)
+    g.add('x', _write, "b")
+    g.make()  # don't raise
+
+    assert g.x.path.read_text() == repr('b')
