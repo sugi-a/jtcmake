@@ -16,7 +16,6 @@ class Rule(IRule):
         kwargs,
         kwargs_to_be_memoized,
         pickle_key,
-        force_update=False
     ):
         self.yfiles = yfiles
         self.xfiles = xfiles
@@ -24,7 +23,6 @@ class Rule(IRule):
         self._method = method
         self._args = args
         self._kwargs = kwargs
-        self.force_update = force_update
 
         self.raw_memo_args = kwargs_to_be_memoized
         self.pickle_key = pickle_key
@@ -52,9 +50,6 @@ class Rule(IRule):
                         f'Input files with mtime of 0 are considered to be '
                         f'invalid for reducing operational error.'
                     )
-
-        if self.force_update:
-            return True
 
         if dry_run and any(r in updated_rules for r in self._deplist):
             return True

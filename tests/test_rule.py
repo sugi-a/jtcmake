@@ -100,16 +100,15 @@ def test_rule_should_update(tmp_path, mocker):
     2. Any x does not exist or has mtime of 0:
         1. dry_run: True
         2. !dry_run: raise
-    3. Force update: True
-    4. Any y is missing: True
-    5. Any y has a mtime of 0: True
-    6. Let Y := the oldest y,
+    3. Any y is missing: True
+    4. Any y has a mtime of 0: True
+    5. Let Y := the oldest y,
         1. Any x with non-IVFile type is newer than Y: True
         2. Any x with IVFile type, whose location in the argument structure
            is specified with keys K=(k_1, ..., k_n), is newer than Y and
            the cached VFile hash for K is not equal to hash(x): True
-    7. Memoized values are updated: True
-    8. Otherwise: False
+    6. Memoized values are updated: True
+    7. Otherwise: False
     """
 
     q1 = mocker.MagicMock('Rule')
@@ -147,15 +146,15 @@ def test_rule_should_update(tmp_path, mocker):
     with pytest.raises(Exception):
         r.should_update(set(), False)
 
-    # case 4: y1 is missing
+    # case 3: y1 is missing
     rm(y1); touch(x1, x2, y2)
     assert r.should_update(set(), False)
 
-    # case 6.1
+    # case 5.1
     touch(y2, x1, x2); touch(y1, t=time.time() - 1)
     assert r.should_update(set(), False)
 
-    # case 6.2
+    # case 5.2
     touch(y1, y2, x1, t=time.time() - 1) 
     touch(x2)
 
@@ -166,7 +165,7 @@ def test_rule_should_update(tmp_path, mocker):
     x2.path.write_text('a') # hash differs
     assert r.should_update(set(), False)
 
-    # case 8
+    # case 7
     # simple
     touch(y1, y2); touch(x1, x2, t=time.time()-1)
     assert not r.should_update(set(), False)
@@ -191,29 +190,20 @@ def test_rule_should_update(tmp_path, mocker):
     ys = [y1, y2]
     r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, {}, b'key')
 
-    # case 4: y1 is missing
+    # case 3: y1 is missing
     rm(y1); touch(y2)
     assert r.should_update(set(), False)
 
-    # case 5: y1 is of mtime 0
+    # case 4: y1 is of mtime 0
     touch(y2); touch(y1, t=0)
     assert r.should_update(set(), False)
 
-    # case 8.
+    # case 7.
     touch(y1, y2)
     assert not r.should_update(set(), False)
 
 
-    #### case 3. Force Update ####
-    y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
-    ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, {}, b'key', True)
-
-    touch(y1, y2, x1, x2)
-    assert r.should_update(set(), False)
-
-
-    #### case 7. args updated ####
+    #### case 6. args updated ####
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
     r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, ['a'], b'key')

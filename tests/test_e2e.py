@@ -128,38 +128,14 @@ def test_4(tmp_path):
     assert globfiles(tmp_path) == []
 
 
-def test_force_update(tmp_path):
-    x = '1'
-    def _writer(p):
-        p.write_text(x)
-
-    # no-force-update case
-    r = create_group(tmp_path).add('a', _writer)
-    r.make()
-    x = '2'
-    r.make()
-    assert (tmp_path / 'a').read_text() == '1'
-    create_group(tmp_path).add('a', _writer).make()
-    assert (tmp_path / 'a').read_text() == '1'
-
-    # force-update case
-    r = create_group(tmp_path).add('a', _writer, force_update=True)
-    r.make()
-    assert (tmp_path / 'a').read_text() == '2'
-    x = '3'
-    r.make()
-    assert (tmp_path / 'a').read_text() == '3'
-
-    # VFile
-    x = '4'
-    r = create_group(tmp_path).addvf('a', _writer, force_update=True).make()
-    assert (tmp_path / 'a').read_text() == '4'
-
-
 def test_addvf(tmp_path):
+    from jtcmake import Atom
+
+    dummy = [1]
+
     x, y = 'x0', 'y0'
     g = create_group(tmp_path)
-    g.addvf('a', lambda p: p.write_text(x), force_update=True)
+    g.addvf('a', lambda p,_: p.write_text(x), Atom(dummy))
     g.add('b', lambda p,_: p.write_text(y), g.a)
 
     g.make()
@@ -167,15 +143,18 @@ def test_addvf(tmp_path):
 
     time.sleep(0.01)
     x, y = 'x1', 'y1'
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
 
     time.sleep(0.01)
     y = 'y2'
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y1'
 
     os.utime(g.b.path, (0,0))
+    dummy[0] += 1
     g.make()
     assert (tmp_path / 'b').read_text() == 'y2'
 

@@ -300,11 +300,11 @@ class Group(IGroup):
 
 
     # APIs
-    def add(self, name, *args, force_update=False, **kwargs):
+    def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -314,7 +314,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs) on update
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
@@ -356,14 +355,14 @@ class Group(IGroup):
             return adder
 
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
-    def addvf(self, name, *args, force_update=False, **kwargs):
+    def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -373,7 +372,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs)
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node
@@ -424,12 +422,12 @@ class Group(IGroup):
         path = map_structure(wrap_by_VFile, path)
             
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
     def _add(
         self, name, files,
-        method, *args, force_update=False, **kwargs
+        method, *args, **kwargs
     ):
         assert isinstance(name, str)
         assert callable(method)
@@ -627,7 +625,6 @@ class Group(IGroup):
             method, method_args, method_kwargs,
             kwargs_to_be_memoized=memo_args,
             pickle_key=self._info.pickle_key,
-            force_update=force_update
         )
 
         # create RuleNode
