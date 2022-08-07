@@ -1,5 +1,6 @@
 import os, sys, re, json, subprocess, shutil
 from html import escape
+from pathlib import Path
 
 from ..logwriter.writer import term_is_jupyter
 from .igroup import IGroup
