@@ -821,15 +821,27 @@ def create_group(
 ):
     """Create a root Group node.
     Args:
-        dirname: directory name for this Group node. (str|os.PathLike)
-        prefix: path prefix for this Group node. (str|os.PathLike).
+        dirname (str|os.PathLike): directory name for this Group node.
+        prefix (str|os.PathLike): path prefix for this Group node.
             - Either (but not both) dirname or prefix must be specified.
             - The following two are equivalent:
                 1. `create_group(dirname='dir')`
                 2. `create_group(prefix='dir/')`
+        loglevel ("debug"|"info"|"warning"|"error"|None):
+            log level. Defaults to "info"
+        use_default_logger (bool): If True, logs will be printed to terminal.
+            Defaults to True.
+        logfile (str|os.PathLike|tuple[str|os.PathLike]|None):
+            If specified, logs are printed to the file(s).
+            If the file extension is .html, logs are printed in HTML format.
+        pickle_key (bytes|str||None): key used to authenticate pickle data.
+            If str, it must be a hexadecimal str, and will be converted to
+            bytes by `bytes.fromhex(pickle_key)`.
+            If None, the default pickle key will be used. You can configure
+            the default by `jtcmake.set_default_pickle_key(key)`
 
     Returns:
-        Group node
+        Group: Root group node
     """
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
