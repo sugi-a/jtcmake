@@ -229,7 +229,9 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 class GroupTreeInfo:
     def __init__(self, logwriters, pickle_key):
-        self.path_to_rule = {}
+        self.id2rule = []  # list<Rule>
+        self.rule2id = {}  # dict<int, Rule>
+        self.path_to_rule = {}  # dict<str, Rule>
         self.path_to_file = {}
         self.rule_to_name = {}
         self.pickle_key = pickle_key
@@ -586,9 +588,10 @@ class Group(IGroup):
         _added = set()
         for f in args_:
             if isinstance(f, IFile) and path_to_rule.get(f.abspath) is not None:
-                if path_to_rule[f.abspath] not in _added:
-                    deplist.append(path_to_rule[f.abspath])
-                    _added.add(path_to_rule[f.abspath])
+                dep = self._info.rule2id[path_to_rule[f.abspath]]
+                if dep not in _added:
+                    deplist.append(dep)
+                    _added.add(dep)
 
         # create xfiles
         ypaths = set(f.path for f in files_)
@@ -686,6 +689,10 @@ class Group(IGroup):
 
         for f in itertools.chain(files_, (x[1] for x in xfiles)):
             path_to_file[f.abspath] = f
+
+        self._info.id2rule.append(r)
+        self._info.rule2id[r] = len(self._info.rule2id)
+        assert len(self._info.id2rule) == len(self._info.rule2id)
 
         self._info.rule_to_name[r] = '/'.join((*self._name, name))
 
@@ -809,6 +816,9 @@ def make(
     stack = list(reversed(rule_or_groups))
     _info = None
 
+    if len(rule_or_groups) == 0:
+        return True
+
     while stack:
         node = stack.pop()
         
@@ -828,10 +838,13 @@ def make(
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
+    ids = [_info.rule2id[r] for r in rules]
+
     if njobs is not None and njobs >= 2:
-        make_mp_spawn(rules, dry_run, keep_going, _info.callback, njobs)
+        make_mp_spawn(
+            _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
     else:
-        _make(rules, dry_run, keep_going, _info.callback)
+        _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
 
 
 

@@ -173,7 +173,7 @@ def test_group_add():
     g.add('a', fn)
     g.add('b', fn)
     g.add('c', fn, {'b': g.a, 'a': g.b})
-    assert set(g.c._rule.deplist) == set([g.b._rule, g.a._rule])
+    assert set(g.c._rule.deplist) == set([0, 1])
 
 
     ######## invalid calls ######## 

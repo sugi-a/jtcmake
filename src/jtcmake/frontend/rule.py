@@ -33,7 +33,7 @@ class Rule(IRule):
 
     def should_update(
         self,
-        updated_rules,
+        par_updated,
         dry_run
     ):
         for k,f in self.xfiles:
@@ -53,7 +53,7 @@ class Rule(IRule):
                         f'invalid for reducing operational error.'
                     )
 
-        if dry_run and any(r in updated_rules for r in self._deplist):
+        if dry_run and par_updated:
             return True
 
         if any(not os.path.exists(f.path) for f in self.yfiles):

@@ -9,29 +9,29 @@ from .rule import Event, IRule
 from .make import process_rule, Result
 
 
-def _collect_rules(seed_rules):
-    """collect rules which seed_rules depend on"""
-    rules = set()           # set<Rule>
-    b2a = defaultdict(set)  # dict<Rule, Rule> before to after
+def _collect_rules(id2rule, seed_ids):
+    """collect rules on which seed rules depend"""
+    ids = set()           # set<ID>
+    b2a = defaultdict(set)  # dict<ID, ID> before to after
 
-    def find_deps(r):
-        if r in rules:
+    def find_deps(i):
+        if i in ids:
             return
 
-        rules.add(r)
+        ids.add(i)
 
-        for depr in r.deplist:
-            find_deps(depr)
-            b2a[depr].add(r)
+        for dep in id2rule[i].deplist:
+            find_deps(dep)
+            b2a[dep].add(i)
 
-    for r in seed_rules:
-        find_deps(r)
+    for i in seed_ids:
+        find_deps(i)
     
-    return list(rules), b2a
+    return list(ids), b2a
         
 
-def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
-    if len(rules) == 0:
+def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
+    if len(ids) == 0:
         return
 
     assert njobs >= 2
@@ -40,18 +40,19 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
     ctx = get_context('spawn')
 
     # Gather relevant rules
-    main_rules = rules
-    rules, b2a = _collect_rules(main_rules)
+    main_ids = ids
+    ids, b2a = _collect_rules(id2rule, main_ids)
 
-    dep_cnt = { r: len(r.deplist) for r in rules }
+    dep_cnt = { i: len(id2rule[i].deplist) for i in ids }
 
     # Check inter-process transferability
+    rules = [id2rule[i] for i in ids]
     sendable = _test_interproc_portabability(rules, ctx)
     _log_sendable_stats(sendable)
-    sendable = { rules[i]: v for i, v in enumerate(sendable) }
+    sendable = { ids[j]: sendable[j] for j in range(len(ids)) }
 
     # state vars
-    updated_rules = set()  # rules processed and not skipped
+    updated_ids = set()  # rules processed and not skipped
 
     job_q = []  # FIFO: visit nodes in depth-first order
 
@@ -65,14 +66,14 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
     event_q = ctx.Queue()
 
     # Add rules with no dependencies to the job queue
-    for r in rules:
-        if dep_cnt[r] == 0:
-            job_q.append(r)
+    for i in ids:
+        if dep_cnt[i] == 0:
+            job_q.append(i)
 
     def stop_or_done():
         return stop or (len(job_q) == 0 and nidles == njobs)
 
-    def get_rule():
+    def get_job():
         nonlocal nidles
 
         with cv:
@@ -88,7 +89,7 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
 
                 cv.wait()
 
-    def set_result(rule, res):
+    def set_result(i, res):
         nonlocal stop, nidles
 
         with cv:
@@ -102,9 +103,9 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
                     stop = True
             else:
                 if res == Result.Update:
-                    updated_rules.add(rule)
+                    updated_ids.add(i)
 
-                for nxt in b2a[rule]:
+                for nxt in b2a[i]:
                     dep_cnt[nxt] -= 1
                     assert dep_cnt[nxt] >= 0
 
@@ -124,15 +125,24 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
                 return
 
             try:
-                event_q.get(True, 1)
+                callback_(event_q.get(True, 1))
             except queue.Empty as e:
                 pass
+            except Exception:
+                traceback.print_exc()
         
 
     args = (
-        ctx, get_rule, set_result,
+        ctx,
+        get_job,
+        set_result,
         event_q,
-        main_rules, sendable, dry_run, callback_
+        id2rule,
+        updated_ids,
+        main_ids,
+        sendable,
+        dry_run,
+        callback_
     )
 
     threads = [Thread(target=worker, args=(*args, i)) for i in range(njobs)]
@@ -155,36 +165,43 @@ def make_mp_spawn(rules, dry_run, keep_going, callback, njobs):
 
 
 def worker(
-    ctx, get_rule, set_result,
+    ctx,
+    get_job,
+    set_result,
     event_q,  # for process only
-    main_rules, sendable, dry_run, callback,
+    id2rule,
+    updated_ids,
+    main_ids,
+    sendable,
+    dry_run,
+    callback,
     name,
 ):
     name = f'worker{name}'
     with ctx.Pool(1, _init_event_q, (event_q,)) as pool:
         while True:
-            rule = get_rule()
+            i = get_job()
 
-            if rule is None:
+            if i is None:
                 return
+
+            rule = id2rule[i]
 
             res = None
 
             try:
-                t = time.time()
-                if sendable[rule]:
-                    res = pool.apply(process_worker, (rule, dry_run))
+                par_updated = any(dep in updated_ids for dep in rule.deplist)
+                args = (rule, dry_run, par_updated, i in main_ids)
+
+                if sendable[i]:
+                    res = pool.apply(process_worker, args)
                 else:
-                    res = process_rule(rule, dry_run, set(), set(), callback)
-                print('elapsed', time.time() - t)
+                    res = process_rule(*args, callback)
             except (Exception, KeyboardInterrupt) as e:
                 traceback.print_exc()
-                try:
-                    callback(events.FatalError(rule, e))
-                except:
-                    pass
+                callback(events.FatalError(rule, e))
             finally:
-                set_result(rule, res)
+                set_result(i, res)
 
                 if res is None:
                     return
@@ -198,11 +215,11 @@ def _init_event_q(q):
     _event_q = q
 
 
-def process_worker(rule, dry_run):
+def process_worker(rule, dry_run, par_updated, is_main):
     def cb(e):
         _event_q.put(e)
 
-    return process_rule(rule, dry_run, set(), set(), cb)
+    return process_rule(rule, dry_run, par_updated, is_main, cb)
 
 
 def _test_interproc_portabability(objs, ctx):
