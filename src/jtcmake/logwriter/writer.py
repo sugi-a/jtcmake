@@ -122,8 +122,7 @@ class TextFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname):
         super().__init__(loglevel)
 
-        if not os.path.exists(Path(fname).parent):
-            raise FileNotFoundError(f'parent dir for {fname} not found')
+        os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.fname = fname
 
@@ -192,8 +191,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname, basedir=None):
         super().__init__(loglevel)
 
-        if not os.path.exists(Path(fname).parent):
-            raise FileNotFoundError(f'parent dir for {fname} not found')
+        os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.basedir = basedir
         self.fname = fname
