@@ -39,6 +39,11 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     # Use the process starting method 'spawn' regardless of OS
     ctx = get_context('spawn')
 
+    # Not very confident but this useless Pool seems necessary for later
+    # use of Pool in threads to work reliably.
+    with ctx.Pool(1):
+        pass
+
     # Gather relevant rules
     main_ids = ids
     ids, b2a = _collect_rules(id2rule, main_ids)
