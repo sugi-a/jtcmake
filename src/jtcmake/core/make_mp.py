@@ -273,8 +273,11 @@ def _log_sendable_stats(sendables):
     ok = sum(1 for x in sendables if x)
     ng = n - ok
 
-    sys.stderr.write(
-        f'{ng} out of {n} Rules will be executed in the main process '
-        'since they cannot be transfered to a child process\n'
-    )
+    if ng > 0:
+        sys.stderr.write(
+            f'{ng} of {n} Rules will be executed using threads in the main '
+            'process instad of using multi-processing. This is because '
+            'their method/args/kwargs contain some objects that cannot be '
+            'transfered to child processes.\n'
+        )
 
