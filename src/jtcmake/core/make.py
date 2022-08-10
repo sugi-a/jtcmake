@@ -65,7 +65,7 @@ def make(
         except Exception as e:
             traceback.print_exc()
             try:
-                callback(events.FatalError(t, e))
+                callback(events.FatalError(r, e))
             except Exception:
                 traceback.print_exc()
                 pass
