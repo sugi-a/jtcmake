@@ -303,6 +303,8 @@ def create_color_str(sl):
 
         res.append(str(s))
 
+    res.append('\x1b[49m\x1b[39m')
+
     return ''.join(res)
 
 

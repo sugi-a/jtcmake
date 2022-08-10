@@ -43,7 +43,7 @@ def event_callback(w, rule_to_name, e):
             )
         elif isinstance(e, events.ExecError):
             w.error(
-                f'Failed to make ',  name, ': Method failed: {err}\n'
+                f'Failed to make ',  name, f': Method failed: {err}\n'
             )
         elif isinstance(e, events.PostProcError):
             w.error(
