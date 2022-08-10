@@ -42,8 +42,8 @@ def globfiles(dirname):
     return ps
 
 
-@pytest.mark.parametrize("nthreads", [0, 1, 2])
-def test_1(nthreads, tmp_path):
+@pytest.mark.parametrize("njobs", [None, 1, 2, 3])
+def test_1(njobs, tmp_path):
     """basics"""
 
     g = create_group(tmp_path)
@@ -60,12 +60,12 @@ def test_1(nthreads, tmp_path):
 
 
     # dry-run
-    g.make(dry_run=True, nthreads=nthreads)
+    g.make(dry_run=True, njobs=njobs)
     assert globfiles(tmp_path) == []
 
 
     # run all
-    g.make(nthreads=nthreads)
+    g.make(njobs=njobs)
     # make sure to deal with windows path \\
     assert globfiles(tmp_path) == sorted(
         str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
@@ -76,13 +76,13 @@ def test_1(nthreads, tmp_path):
     assert globfiles(tmp_path) == []
 
     # run some
-    g.g1.ab.make(nthreads=nthreads)
+    g.g1.ab.make(njobs=njobs)
     assert globfiles(tmp_path) == \
         sorted(str(Path(x)) for x in ['a.txt', 'g1/ab.txt'])
 
     # run rest
     mt = os.path.getmtime(g.a.path)
-    g.make(nthreads=nthreads)
+    g.make(njobs=njobs)
     assert os.path.getmtime(g.a.path) == mt
     assert globfiles(tmp_path) == sorted(
         str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
@@ -121,7 +121,7 @@ def test_4(tmp_path):
     assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     # make (don't stop on fail; multi-thread)
-    g.make(keep_going=True, nthreads=2)
+    g.make(keep_going=True, njobs=2)
     assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     g.clean()

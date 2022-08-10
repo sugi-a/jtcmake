@@ -16,6 +16,7 @@ class Rule(IRule):
         kwargs,
         kwargs_to_be_memoized,
         pickle_key,
+        name=None,
     ):
         self.yfiles = yfiles
         self.xfiles = xfiles
@@ -23,6 +24,7 @@ class Rule(IRule):
         self._method = method
         self._args = args
         self._kwargs = kwargs
+        self.name = name
 
         self.raw_memo_args = kwargs_to_be_memoized
         self.pickle_key = pickle_key

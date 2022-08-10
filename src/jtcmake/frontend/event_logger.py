@@ -21,6 +21,9 @@ def event_callback(w, rule_to_name, e):
         err = e.err
         name = rule_to_name.get(r)
 
+        if name is None and r.name is not None:
+            name = '/'.join(r.name)
+
         if name is None:
             w.warning(f'An event of unknown Rule has been emitted.\n')
             name = '<unknown>'

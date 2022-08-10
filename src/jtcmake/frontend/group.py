@@ -12,7 +12,8 @@ from .file import File, VFile, IFile, IVFile
 from . import events as group_events
 from .event_logger import create_event_callback
 from . import graphviz
-from ..core.make import make as _make, make_multi_thread, Event
+from ..core.make import make as _make, Event
+from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
     term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
@@ -177,13 +178,13 @@ class RuleNodeBase:
         dry_run=False,
         keep_going=False,
         *,
-        nthreads=1
+        njobs=None,
     ):
         make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            nthreads=nthreads
+            njobs=njobs,
         )
 
     @property
@@ -310,13 +311,13 @@ class Group(IGroup):
         dry_run=False,
         keep_going=False,
         *,
-        nthreads=1
+        njobs=None,
     ):
         make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            nthreads=nthreads
+            njobs=njobs,
         )
 
 
@@ -646,6 +647,7 @@ class Group(IGroup):
             method, method_args, method_kwargs,
             kwargs_to_be_memoized=memo_args,
             pickle_key=self._info.pickle_key,
+            name=(*self._name, name)
         )
 
         # create RuleNode
@@ -799,7 +801,7 @@ def make(
     *rule_or_groups,
     dry_run=False,
     keep_going=False,
-    nthreads=1
+    njobs=None
 ):
     # create list of unique rules by DFS
     _added = set()
@@ -826,11 +828,10 @@ def make(
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
-    if nthreads <= 1:
-        _make(rules, dry_run, keep_going, _info.callback)
+    if njobs is not None and njobs >= 2:
+        make_mp_spawn(rules, dry_run, keep_going, _info.callback, njobs)
     else:
-        make_multi_thread(
-            rules, dry_run, keep_going, nthreads, _info.callback)
+        _make(rules, dry_run, keep_going, _info.callback)
 
 
 
