@@ -50,8 +50,8 @@ class MockRule(IRule):
         self._preprocess_err = preprocess_err
         self._postprocess_err = postprocess_err
 
-    def should_update(self, updated_rules, dry_run):
-        log.append(('should_update', self, set(updated_rules), dry_run))
+    def should_update(self, par_updated, dry_run):
+        log.append(('should_update', self, par_updated, dry_run))
         if isinstance(self._should_update, Exception):
             raise self._should_update
         return self._should_update
@@ -88,20 +88,22 @@ def test_basic():
         log.append(('method', ))
 
     r1 = MockRule([], args, kwargs, method)
-    r2 = MockRule([r1], args, kwargs, method)
+    r2 = MockRule([0], args, kwargs, method)
+
+    id2rule = [r1, r2]
 
     # pass both
     log.clear()
-    make([r1, r2], False, False, callback)
+    make(id2rule, [0, 1], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         ('method',),
         ('postprocess', r1, True),
         events.Done(r1),
 
-        ('should_update', r2, {r1}, False),
+        ('should_update', r2, True, False),
         events.Start(r2),
         ('preprocess', r2),
         ('method',),
@@ -111,9 +113,9 @@ def test_basic():
 
     # pass r1
     log.clear()
-    make([r1], False, False, callback)
+    make(id2rule, [0], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         ('method',),
@@ -123,16 +125,16 @@ def test_basic():
 
     # pass r2
     log.clear()
-    make([r2], False, False, callback)
+    make(id2rule, [1], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         ('method',),
         ('postprocess', r1, True),
         events.Done(r1),
 
-        ('should_update', r2, {r1}, False),
+        ('should_update', r2, True, False),
         events.Start(r2),
         ('preprocess', r2),
         ('method',),
@@ -150,18 +152,20 @@ def test_skip():
         log.append(('method', ))
 
     r1 = MockRule([], args, kwargs, method)
-    r2 = MockRule([r1], args, kwargs, method)
+    r2 = MockRule([1], args, kwargs, method)
+
+    id2rule = { 1: r1, 2: r2 }
 
     # skip both
     log.clear()
     r1._should_update = False
     r2._should_update = False
 
-    make([r2], False, False, callback)
+    make(id2rule, [2], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Skip(r1, False),
-        ('should_update', r2, set(), False),
+        ('should_update', r2, False, False),
         events.Skip(r2, True),
     ])
 
@@ -170,12 +174,12 @@ def test_skip():
     r1._should_update = False
     r2._should_update = True
 
-    make([r2], False, False, callback)
+    make(id2rule, [2], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Skip(r1, False),
 
-        ('should_update', r2, set(), False),
+        ('should_update', r2, False, False),
         events.Start(r2),
         ('preprocess', r2),
         ('method',),
@@ -186,21 +190,23 @@ def test_skip():
 
 def test_dryrun():
     r1 = MockRule([], (), {}, lambda: None)
-    r2 = MockRule([r1], (), {}, lambda: None)
+    r2 = MockRule([1], (), {}, lambda: None)
+
+    id2rule = { 1: r1, 2: r2 }
 
     # dry-run r1
     log.clear()
-    make([r1], True, False, callback)
+    make(id2rule, [1], True, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), True), events.DryRun(r1)
+        ('should_update', r1, False, True), events.DryRun(r1)
     ])
 
     # dry-run r2
     log.clear()
-    make([r2], True, False, callback)
+    make(id2rule, [2], True, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), True), events.DryRun(r1),
-        ('should_update', r2, {r1}, True), events.DryRun(r2),
+        ('should_update', r1, False, True), events.DryRun(r1),
+        ('should_update', r2, True, True), events.DryRun(r2),
     ])
 
 
@@ -208,10 +214,12 @@ def test_should_update_error():
     e = Exception()
     r1 = MockRule([], (), {}, lambda: None, should_update=e)
 
+    id2rule = [r1]
+
     log.clear()
-    make([r1], False, False, callback)
+    make(id2rule, [0], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.UpdateCheckError(r1, e),
         events.StopOnFail()
     ])
@@ -221,10 +229,12 @@ def test_preprocess_error():
     e = Exception()
     r1 = MockRule([], (), {}, lambda: None, preprocess_err=e)
 
+    id2rule = [r1]
+
     log.clear()
-    make([r1], False, False, callback)
+    make(id2rule, [0], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         events.PreProcError(r1, e),
@@ -238,11 +248,13 @@ def test_exec_error():
         raise e
     r1 = MockRule([], (), {}, raiser)
 
+    id2rule = [r1]
+
     log.clear()
-    make([r1], False, False, callback)
+    make(id2rule, [0], False, False, callback)
     print(log)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         events.ExecError(r1, e),
@@ -255,10 +267,12 @@ def test_postprocess_error(tmp_path):
     e = Exception()
     r1 = MockRule([], (), {}, lambda: None, postprocess_err=e)
 
+    id2rule = [r1]
+
     log.clear()
-    make([r1], False, False, callback)
+    make(id2rule, [0], False, False, callback)
     assert_same_log(log, [
-        ('should_update', r1, set(), False),
+        ('should_update', r1, False, False),
         events.Start(r1),
         ('preprocess', r1),
         # method

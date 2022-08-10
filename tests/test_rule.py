@@ -162,6 +162,7 @@ def test_rule_should_update(tmp_path, mocker):
     assert r.should_update(set(), False)
 
     r.update_memo()
+    time.sleep(0.01)  # ensure time elapse after touch(x2)
     x2.path.write_text('a') # hash differs
     assert r.should_update(set(), False)
 

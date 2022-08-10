@@ -16,7 +16,7 @@ def print_graphviz(group, output_file=None):
             Jupyter only). Graph format depends on the file extension:
 
             - .svg: SVG
-            - .htm or .html: HTML (SVG image inside)
+            - .htm or .html: HTML (SVG image embedded)
             - .dot: Graphviz's DOT code (text)
     """
     if output_file is None:
