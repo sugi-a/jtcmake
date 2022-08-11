@@ -35,6 +35,11 @@ def test_group_add_group():
     _test('x/y', 'a', prefix=_PathLike('x/y'))
     _test(os.path.abspath('x/y'), 'a', prefix=os.path.abspath('x/y'))
 
+    # posix home dir ~
+    if os.name == 'posix':
+        _test(os.path.expanduser('~/x/'), '~/x')
+        _test(os.path.expanduser('~/x/'), 'a', prefix='~/x/')
+
     # accessing as attribute or via dict key
     g = create_group('root')
     g.add_group('a')
@@ -74,7 +79,7 @@ def test_group_add_group():
 
 
 def test_group_add():
-    APath = lambda p: Path(p).absolute()
+    APath = lambda p: Path(os.path.abspath(p))
 
     ######## Output file path ########
     #### atom path ####
@@ -93,6 +98,10 @@ def test_group_add():
 
     # omit path
     _test('a1', 'a1', fn)
+
+    # posix home dir
+    if os.name == 'posix':
+        _test(os.path.expanduser('~/a1'), 'a', '~/a1', fn)
 
     #### structured path ####
     a = create_group('r').add('a', ['a1', {'x': File('a2')}, ('a3',)], fn)

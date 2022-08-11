@@ -292,6 +292,9 @@ class Group(IGroup):
 
         assert isinstance(prefix, (str, os.PathLike))
 
+        if os.name == 'posix':
+            prefix = os.path.expanduser(prefix)
+
         if isinstance(prefix, os.PathLike):
             prefix = prefix.__fspath__()
 
@@ -479,10 +482,15 @@ class Group(IGroup):
 
         # add prefix to paths of yfiles if necessary 
         def add_pfx(f):
-            if os.path.isabs(f.path):
-                return f
+            if os.name == 'posix':
+                p = os.path.expanduser(f.path)
             else:
-                return f.__class__(self._prefix + str(f.path))
+                p = f.path
+
+            if os.path.isabs(p):
+                return f.__class__(p)
+            else:
+                return f.__class__(self._prefix + str(p))
                 # TODO: __init__ of f's class may take args other than path
 
         files = map_structure(add_pfx, files)
@@ -540,6 +548,8 @@ class Group(IGroup):
         def _shorter_path(p):
             cwd = os.getcwd()
             try:
+                if os.name == 'posix':
+                    p = os.path.expanduser(p)
                 rel = Path(os.path.relpath(p, cwd))
                 return rel if len(str(rel)) < len(str(p)) else p
             except:
@@ -885,6 +895,9 @@ def create_group(
         prefix = str(dirname) + os.path.sep
 
     assert isinstance(prefix, (str, os.PathLike))
+
+    if os.name == 'posix':
+        prefix = os.path.expanduser(prefix)
 
     loglevel = loglevel or 'info'
 

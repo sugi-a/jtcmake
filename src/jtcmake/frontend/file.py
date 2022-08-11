@@ -30,7 +30,7 @@ class File(IFile):
 
     @property
     def abspath(self):
-        return self._path.absolute()
+        return Path(os.path.abspath(self._path))
 
     def __hash__(self):
         return hash(self._path)
