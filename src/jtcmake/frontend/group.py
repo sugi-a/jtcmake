@@ -180,6 +180,22 @@ class RuleNodeBase:
         *,
         njobs=None,
     ):
+        """Make this rule and its dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
         return make(
             self,
             dry_run=dry_run,
@@ -318,6 +334,22 @@ class Group(IGroup):
         *,
         njobs=None,
     ):
+        """Make rules in this group and their dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
         return make(
             self,
             dry_run=dry_run,
@@ -820,6 +852,46 @@ def make(
     keep_going=False,
     njobs=None
 ):
+    """make rules
+
+    Args:
+        rules_or_groups (Sequence[RuleNodeBase|Group]):
+            Rules and Groups containing target Rules
+        dry_run:
+            instead of actually excuting methods, print expected execution logs.
+        keep_going:
+            If False (default), stop everything when a rule fails.
+            If True, when a rule fails, keep executing other rules
+            except the ones depend on the failed rule.
+        njobs:
+            Maximum number of rules that can be made concurrently.
+            Defaults to 1 (single process, single thread).
+
+            Note that safely using njobs >= 2 and fully exploiting the power
+            of multi-core processors require a certain level of
+            understanding of Python's threading and multiprocessing.
+
+            Each rule is made on a child process if it is transferable.
+            A rule is "transferable" if both of the following conditions
+            are met:
+
+            - method/args/kwargs of the rule are all picklable
+            - Pickle representation of method/args/kwargs created in the
+              main process is unpicklable in child processes
+
+            If a rule is not transferable, it is made on a sub-thread of
+            the main process. Thus the method must be thread-safe. Also note
+            that methods running on the main process are subject to the
+            global interpreter lock (GIL) constraints.
+
+            Child processes are started by the 'spawn' method, not 'fork',
+            even on Linux systems.
+            njobs >= 2 may not work on interactive interpreters.
+            It should work on Jupyter Notebook/Lab but any function or class
+            that are defined on the notebook is not transferable and thus
+            executed in the main process.
+    """
+
     # create list of unique rules by DFS
     _added = set()
     rules = []
