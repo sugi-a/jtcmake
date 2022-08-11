@@ -3,7 +3,8 @@ from pathlib import Path, PurePath
 
 import pytest
 
-from jtcmake import create_group, SELF
+from jtcmake import create_group, SELF, MakeSummary
+import jtcmake
 
 
 def touch(*dst):
@@ -46,6 +47,8 @@ def globfiles(dirname):
 def test_1(njobs, tmp_path):
     """basics"""
 
+    jtcmake.set_default_pickle_key('ABABAB')
+
     g = create_group(tmp_path)
 
     g.add('a', 'a.txt', add_text, None, 'a')
@@ -60,12 +63,16 @@ def test_1(njobs, tmp_path):
 
 
     # dry-run
-    g.make(dry_run=True, njobs=njobs)
+    res = g.make(dry_run=True, njobs=njobs)
+
+    assert res == MakeSummary(total=4, update=4, skip=0, fail=0, discard=0)
     assert globfiles(tmp_path) == []
 
-
     # run all
-    g.make(njobs=njobs)
+    res = g.make(njobs=njobs)
+
+    assert res == MakeSummary(total=4, update=4, skip=0, fail=0, discard=0)
+
     # make sure to deal with windows path \\
     assert globfiles(tmp_path) == sorted(
         str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
@@ -76,13 +83,17 @@ def test_1(njobs, tmp_path):
     assert globfiles(tmp_path) == []
 
     # run some
-    g.g1.ab.make(njobs=njobs)
+    res = g.g1.ab.make(njobs=njobs)
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert globfiles(tmp_path) == \
         sorted(str(Path(x)) for x in ['a.txt', 'g1/ab.txt'])
 
     # run rest
     mt = os.path.getmtime(g.a.path)
-    g.make(njobs=njobs)
+    res = g.make(njobs=njobs)
+
+    assert res == MakeSummary(total=4, update=2, skip=2, fail=0, discard=0)
     assert os.path.getmtime(g.a.path) == mt
     assert globfiles(tmp_path) == sorted(
         str(Path(x)) for x in ['a.txt', 'aa.txt', 'aaa.txt', 'g1/ab.txt'])
@@ -94,6 +105,8 @@ def test_1(njobs, tmp_path):
 
 
 def test_2(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     # nested path and args
     g = create_group(tmp_path)
 
@@ -107,6 +120,8 @@ def test_2(tmp_path):
 
 
 def test_4(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     # make failure
     g = create_group(tmp_path)
     
@@ -117,11 +132,17 @@ def test_4(tmp_path):
     g.add('c2', 'c2.txt', add_text, g.b2)
 
     # make (don't stop on fail)
-    g.make(keep_going=True)
+    res = g.make(keep_going=True)
+
+    assert res == MakeSummary(total=5, update=3, skip=0, fail=1, discard=1)
     assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
+    g.clean()
+
     # make (don't stop on fail; multi-thread)
-    g.make(keep_going=True, njobs=2)
+    res = g.make(keep_going=True, njobs=2)
+
+    assert res == MakeSummary(total=5, update=3, skip=0, fail=1, discard=1)
     assert globfiles(tmp_path) == sorted(['a.txt', 'b2.txt', 'c2.txt'])
 
     g.clean()
@@ -129,6 +150,8 @@ def test_4(tmp_path):
 
 
 def test_addvf(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     from jtcmake import Atom
 
     dummy = [1]
@@ -141,27 +164,37 @@ def test_addvf(tmp_path):
     g.make()
     assert (tmp_path / 'b').read_text() == 'y0'
 
+    # when x was modified, y must be updated
     time.sleep(0.01)
     x, y = 'x1', 'y1'
     dummy[0] += 1
-    g.make()
+    res = g.make()
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert (tmp_path / 'b').read_text() == 'y1'
 
+    # when x was not modified, y must not be updated
     time.sleep(0.01)
     y = 'y2'
     dummy[0] += 1
-    g.make()
+    res = g.make()
+
+    assert res == MakeSummary(total=2, update=1, skip=1, fail=0, discard=0)
     assert (tmp_path / 'b').read_text() == 'y1'
 
+    # regardless of x, if y's mtime is 0, y must be updated
     os.utime(g.b.path, (0,0))
     dummy[0] += 1
-    g.make()
+    res = g.make()
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert (tmp_path / 'b').read_text() == 'y2'
 
 
 def test_memoization(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     from jtcmake.gen_pickle_key import gen_key
-    import jtcmake
 
     def _write(p, t):
         p.write_text(repr(t))
@@ -179,8 +212,9 @@ def test_memoization(tmp_path):
 
     g = create_group(tmp_path, pickle_key=pickle_key)
     g.add('a', _write, after)
-    g.make()
+    res = g.make()
 
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert g.a.path.read_text() == repr(after)
 
     #### set case ({1, 2} -> {2, 3}) ####
@@ -194,11 +228,12 @@ def test_memoization(tmp_path):
 
     g = create_group(tmp_path, pickle_key=pickle_key)
     g.add('a', _write, after)
-    g.make()
+    res = g.make()
 
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert g.a.path.read_text() == repr(after)
 
-    #### PurePath/Path case (PurePath -> Path) ####
+    #### PurePath/Path case (don't update) (PurePath -> Path) ####
     before, after = PurePath('a'), Path('a')
 
     g = create_group(tmp_path, pickle_key=pickle_key)
@@ -209,11 +244,12 @@ def test_memoization(tmp_path):
 
     g = create_group(tmp_path, pickle_key=pickle_key)
     g.add('a', _write, after)
-    g.make()
+    res = g.make()
 
+    assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)
     assert g.a.path.read_text() == repr(before)
 
-    #### ignore change ({1, 2} -> {2, 3}) ####
+    #### ignore change using Atom(_, None) ({1, 2} -> {2, 3}) ####
     before, after = {1,2}, {2,3}
 
     g = create_group(tmp_path, pickle_key=pickle_key)
@@ -224,37 +260,54 @@ def test_memoization(tmp_path):
 
     g = create_group(tmp_path, pickle_key=pickle_key)
     g.add('a', _write, jtcmake.Atom(before, lambda _: None))
-    g.make()
+    res = g.make()
 
+    assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)
     assert g.a.path.read_text() == repr(before)  # not after
 
     
 def test_memoization_global_pickle_key(tmp_path):
-    import jtcmake
-
     def _write(p, t):
         p.write_text(repr(t))
 
+    # using the default key
     KEY = b'abc'.hex()
     jtcmake.set_default_pickle_key(KEY)
     
     g = create_group(tmp_path)  # use the default key b'abc'
-    g.add('a', _write, "a")
+    g.add('1', _write, "a")
     g.make()
 
     g = create_group(tmp_path, pickle_key=KEY)  # explicitly give b'abc'
-    g.add('a', _write, "b")
-    g.make()  # don't raise
+    g.add('1', _write, "b")
+    res = g.make()
 
-    assert g.a.path.read_text() == repr('b')
+    # no failure
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
 
+    # passing key to create_group
     KEY2 = b'xyz'.hex()
     g = create_group(tmp_path, pickle_key=KEY2)  # use non-default key b'xyz'
-    g.add('x', _write, "a")
+    g.add('2', _write, "a")
     g.make()
 
     g = create_group(tmp_path, pickle_key=KEY2)
-    g.add('x', _write, "b")
-    g.make()  # don't raise
+    g.add('2', _write, "b")
+    res = g.make()
 
-    assert g.x.path.read_text() == repr('b')
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
+
+    # failing key validation
+    KEY3_1 = b'abc'.hex()
+    KEY3_2 = b'xyz'.hex()
+
+    g = create_group(tmp_path, pickle_key=KEY3_1)
+    g.add('3', _write, "a")
+    g.make()
+
+    g = create_group(tmp_path, pickle_key=KEY3_2)
+    g.add('3', _write, "b")
+    res = g.make()
+
+    # fail (error on checking update)
+    assert res == MakeSummary(total=1, update=0, skip=0, fail=1, discard=0)

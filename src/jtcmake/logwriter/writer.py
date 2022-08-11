@@ -122,8 +122,7 @@ class TextFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname):
         super().__init__(loglevel)
 
-        if not os.path.exists(Path(fname).parent):
-            raise FileNotFoundError(f'parent dir for {fname} not found')
+        os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.fname = fname
 
@@ -192,8 +191,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname, basedir=None):
         super().__init__(loglevel)
 
-        if not os.path.exists(Path(fname).parent):
-            raise FileNotFoundError(f'parent dir for {fname} not found')
+        os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.basedir = basedir
         self.fname = fname
@@ -304,6 +302,8 @@ def create_color_str(sl):
                 res.append(f'\x1b[38;5;{_comp_8bit_term_color(*s.c)}m')
 
         res.append(str(s))
+
+    res.append('\x1b[49m\x1b[39m')
 
     return ''.join(res)
 

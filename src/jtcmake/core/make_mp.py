@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from . import events
 from .rule import Event, IRule
-from .make import process_rule, Result
+from .make import process_rule, Result, MakeSummary
 
 
 def _collect_rules(id2rule, seed_ids):
@@ -32,12 +32,17 @@ def _collect_rules(id2rule, seed_ids):
 
 def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     if len(ids) == 0:
-        return
+        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
     assert njobs >= 2
 
     # Use the process starting method 'spawn' regardless of OS
     ctx = get_context('spawn')
+
+    # Not very confident but this useless Pool seems necessary for later
+    # use of Pool in threads to work reliably.
+    with ctx.Pool(1):
+        pass
 
     # Gather relevant rules
     main_ids = ids
@@ -53,6 +58,9 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
 
     # state vars
     updated_ids = set()  # rules processed and not skipped
+
+    nskips = 0  # for stats report
+    nfails = 0  # for stats report
 
     job_q = []  # FIFO: visit nodes in depth-first order
 
@@ -90,7 +98,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
                 cv.wait()
 
     def set_result(i, res):
-        nonlocal stop, nidles
+        nonlocal stop, nidles, nskips, nfails
 
         with cv:
             nidles += 1
@@ -99,11 +107,14 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             if res is None:  # fatal error
                 stop = True
             elif res == Result.Fail:
+                nfails += 1
                 if not keep_going:
                     stop = True
             else:
                 if res == Result.Update:
                     updated_ids.add(i)
+                else:
+                    nskips += 1
 
                 for nxt in b2a[i]:
                     dep_cnt[nxt] -= 1
@@ -158,10 +169,20 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             t.join()
 
         #thread_event_q_handler.join()
-    except:
+    except Exception:
+        pass
+    finally:
         with cv:
             stop = True
             cv.notify_all()
+
+    return MakeSummary(
+        total=len(ids),
+        update=len(updated_ids),
+        skip=nskips,
+        fail=nfails,
+        discard=len(ids) - (len(updated_ids) + nskips + nfails)
+    )
 
 
 def worker(
@@ -268,8 +289,11 @@ def _log_sendable_stats(sendables):
     ok = sum(1 for x in sendables if x)
     ng = n - ok
 
-    sys.stderr.write(
-        f'{ng} out of {n} Rules will be executed in the main process '
-        'since they cannot be transfered to a child process\n'
-    )
+    if ng > 0:
+        sys.stderr.write(
+            f'{ng} of {n} Rules will be executed using threads in the main '
+            'process instad of using multi-processing. This is because '
+            'their method/args/kwargs contain some objects that cannot be '
+            'transfered to child processes.\n'
+        )
 

@@ -180,7 +180,23 @@ class RuleNodeBase:
         *,
         njobs=None,
     ):
-        make(
+        """Make this rule and its dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
@@ -292,6 +308,9 @@ class Group(IGroup):
 
         assert isinstance(prefix, (str, os.PathLike))
 
+        if os.name == 'posix':
+            prefix = os.path.expanduser(prefix)
+
         if isinstance(prefix, os.PathLike):
             prefix = prefix.__fspath__()
 
@@ -315,7 +334,23 @@ class Group(IGroup):
         *,
         njobs=None,
     ):
-        make(
+        """Make rules in this group and their dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
@@ -479,10 +514,15 @@ class Group(IGroup):
 
         # add prefix to paths of yfiles if necessary 
         def add_pfx(f):
-            if os.path.isabs(f.path):
-                return f
+            if os.name == 'posix':
+                p = os.path.expanduser(f.path)
             else:
-                return f.__class__(self._prefix + str(f.path))
+                p = f.path
+
+            if os.path.isabs(p):
+                return f.__class__(p)
+            else:
+                return f.__class__(self._prefix + str(p))
                 # TODO: __init__ of f's class may take args other than path
 
         files = map_structure(add_pfx, files)
@@ -540,6 +580,8 @@ class Group(IGroup):
         def _shorter_path(p):
             cwd = os.getcwd()
             try:
+                if os.name == 'posix':
+                    p = os.path.expanduser(p)
                 rel = Path(os.path.relpath(p, cwd))
                 return rel if len(str(rel)) < len(str(p)) else p
             except:
@@ -725,14 +767,90 @@ class Group(IGroup):
 
 
 
-    def select(self, pattern):
-        if len(pattern) == 0:
-            raise ValueError(f'Invalid pattern "{pattern}"')
+    def select(self, pattern, group=False):
+        """Obtain child groups or rules of this group.
 
-        is_group = pattern[-1] == '/'
+        Signature-1:
+            select(group_tree_pattern: str)
+        Signature-2:
+            select(group_tree_pattern: list[str]|tuple[str], group=False)
 
-        pattern = pattern.strip('/')
-        parts = re.split('/+', pattern)
+        Args for Signature-1:
+            group_tree_pattern (str):
+                Pattern of the relative name of child nodes of this group.
+                Pattern consists of names concatenated with the delimiter '/'.
+                Double star '**' can appear as a name indicating zero or
+                more repetition of arbitrary names.
+
+                Single star can appear as a part of a name indicating zero
+                or more repetition of arbitrary character.
+
+                If `group_tree_pattern[-1] == '/'`, it matches groups only.
+                Otherwise, it matches rules only.
+
+                For example, calling g.select(pattern) with a pattern
+                * "a/b"  matches a rule `g.a.b`
+                * "a/b/" matches a group `g.a.b`
+                * "a*"   matches rules `g.a`, `g.a1`, `g.a2`, etc
+                * "a*/"  matches groups `g.a`, `g.a1`, `g.a2`, etc
+                * "**"   matches all the offspring rules of `g`
+                * "**/"  matches all the offspring groups of `g`
+                * "a/**" matches all the offspring rules of the group `g.a`
+                * "**/b" matches all the offspring rules of `g` with a name "b"
+            group: ignored
+
+        Args for Signature-2:
+            group_tree_pattern (list[str] | tuple[str]):
+                Pattern representation using a sequence of names.
+
+                Following two are equivalent:
+
+                * `g.select(["a", "*", "c", "**"])`
+                * `g.select("a/*/c/**")`
+
+                Following two are equivalent:
+
+                * `g.select(["a", "*", "c", "**"], True)`
+                * `g.select("a/*/c/**/")`
+
+            group (bool):
+                if False (default), select rules only.
+                if True, select groups only.
+
+        Returns:
+            List of rules if
+
+            * called with Signature-1 and pattern[-1] != '/' or
+            * called with Signature-2 and group is False
+
+            List of groups Otherwise.
+
+        Note:
+            Cases where Signature-2 is absolutely necessary is when you need
+            to select a node whose name contains "/".
+            For example,
+            ```
+            g = create_group('group')
+            rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+
+            g.select(['dir/a.txt']) == [rule]  # OK
+            g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
+            ```
+        """
+        if isinstance(pattern, str):
+            if len(pattern) == 0:
+                raise ValueError(f'Invalid pattern "{pattern}"')
+
+            group = pattern[-1] == '/'
+            pattern = pattern.strip('/')
+            parts = re.split('/+', pattern)
+        elif isinstance(pattern, (tuple, list)):
+            if not all(isinstance(v, str) for v in pattern):
+                raise TypeError('Pattern sequence items must be str')
+
+            parts = pattern
+        else:
+            raise TypeError('Pattern must be str or sequence of str')
 
         SEP = ';'
         regex = []
@@ -757,8 +875,8 @@ class Group(IGroup):
                     regex.append(f'{SEP}{p}')
 
         regex = re.compile('^' + ''.join(regex) + '$')
-        chnames = [self._name] if is_group else []
-        self._get_children_names(chnames, is_group, not is_group)
+        chnames = [self._name] if group else []
+        self._get_children_names(chnames, group, not group)
 
         res = []
         for name in chnames:
@@ -810,6 +928,46 @@ def make(
     keep_going=False,
     njobs=None
 ):
+    """make rules
+
+    Args:
+        rules_or_groups (Sequence[RuleNodeBase|Group]):
+            Rules and Groups containing target Rules
+        dry_run:
+            instead of actually excuting methods, print expected execution logs.
+        keep_going:
+            If False (default), stop everything when a rule fails.
+            If True, when a rule fails, keep executing other rules
+            except the ones depend on the failed rule.
+        njobs:
+            Maximum number of rules that can be made concurrently.
+            Defaults to 1 (single process, single thread).
+
+            Note that safely using njobs >= 2 and fully exploiting the power
+            of multi-core processors require a certain level of
+            understanding of Python's threading and multiprocessing.
+
+            Each rule is made on a child process if it is transferable.
+            A rule is "transferable" if both of the following conditions
+            are met:
+
+            - method/args/kwargs of the rule are all picklable
+            - Pickle representation of method/args/kwargs created in the
+              main process is unpicklable in child processes
+
+            If a rule is not transferable, it is made on a sub-thread of
+            the main process. Thus the method must be thread-safe. Also note
+            that methods running on the main process are subject to the
+            global interpreter lock (GIL) constraints.
+
+            Child processes are started by the 'spawn' method, not 'fork',
+            even on Linux systems.
+            njobs >= 2 may not work on interactive interpreters.
+            It should work on Jupyter Notebook/Lab but any function or class
+            that are defined on the notebook is not transferable and thus
+            executed in the main process.
+    """
+
     # create list of unique rules by DFS
     _added = set()
     rules = []
@@ -841,10 +999,10 @@ def make(
     ids = [_info.rule2id[r] for r in rules]
 
     if njobs is not None and njobs >= 2:
-        make_mp_spawn(
+        return make_mp_spawn(
             _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
     else:
-        _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
+        return _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
 
 
 
@@ -885,6 +1043,9 @@ def create_group(
         prefix = str(dirname) + os.path.sep
 
     assert isinstance(prefix, (str, os.PathLike))
+
+    if os.name == 'posix':
+        prefix = os.path.expanduser(prefix)
 
     loglevel = loglevel or 'info'
 
