@@ -154,7 +154,7 @@ def test_group_add():
     """
     def _to_abs(o):
         return map_structure(
-            lambda x: x.absolute() if isinstance(x, Path) else x, o
+            lambda x: Path(os.path.abspath(x)) if isinstance(x, Path) else x, o
         )
     g = create_group('r')
     g.add('a', fn, 1, a=1)
@@ -275,9 +275,12 @@ def test_rule_clean(tmp_path):
 
 
 
-def test_select():
+def test_select_sig1():
     """
-    Group.select(group_tree_pattern: str)
+    Signature-1: Group.select(group_tree_pattern: str)
+    Signature-2: Group.select(group_tree_pattern: Sequence[str], group=False)
+
+    This test is for Signature-1
     """
 
     """
@@ -361,3 +364,52 @@ def test_select():
     with pytest.raises(ValueError):
         g.select('**a')
 
+
+    # names containing parents
+    g = create_group('root')
+    a = g.add('a/a', fn)
+    sub = g.add_group('x/y')
+    b = sub.add('b/b/', fn)
+
+    assert g.select('*') == [a]
+    assert g.select('**') == [a, b]
+    assert g.select('*/') == [sub]
+    assert sub.select('*') == [b]
+
+
+def test_select_sig2():
+    """
+    Signature-1: Group.select(group_tree_pattern: str)
+    Signature-2: Group.select(group_tree_pattern: Sequence[str], group=False)
+
+    This test is for Signature-2.
+    Test for Signature-1 is assumed to be succeeded.
+    """
+    fn = lambda x: None
+
+    g = create_group('root')
+    g.add('a1', fn)
+    g.add('a2', fn)
+    g.add_group('sub')
+    g.sub.add('b1', fn)
+    g.sub.add('b2', fn)
+    g.sub.add_group('sub')
+
+    a = g.add('a/a', fn)
+    sub = g.add_group('x/y')
+    b = sub.add('b/b/', fn)
+
+    assert g.select(['a1']) == g.select('a1')
+    assert g.select(['sub', 'b1']) == g.select('sub/b1')
+    assert g.select(['*']) == g.select('*')
+    assert g.select(['**']) == g.select('**')
+    assert g.select(('*', '*')) == g.select('*/*')
+    assert g.select(('**', '*1')) == g.select('**/*1')
+
+    assert g.select(['sub'], True) == g.select('sub/')
+    assert g.select(['**'], True) == g.select('**/')
+
+    assert g.select(['a/a']) == [a]
+    assert g.select(['**', '*/*']) == [a, b]
+    assert g.select(['x/y'], True) == [sub]
+    assert g.select(['x/y', '*']) == [b]
