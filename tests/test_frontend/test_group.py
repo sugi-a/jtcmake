@@ -6,6 +6,7 @@ import pytest
 from jtcmake.frontend.group import create_group, SELF
 from jtcmake.frontend.file import File, VFile
 from jtcmake.utils.nest import map_structure
+import jtcmake
 
 class _PathLike:
     def __init__(self, p):
@@ -18,6 +19,8 @@ fn = lambda *x,**y: None
     
 
 def test_group_add_group():
+    jtcmake.set_default_pickle_key('ABABAB')
+
     #### normal cases ####
     def _test(expect, *args, **kwargs):
         g = create_group('root').add_group(*args, **kwargs)
@@ -78,7 +81,18 @@ def test_group_add_group():
         g.add_group('a')
 
 
+def test_warn_default_auth_key():
+    """warn when user usees the default pickle authentication key"""
+    # Improve this test
+    from jtcmake.frontend.group import _DEFAULT_PICKLE_KEY
+    jtcmake.set_default_pickle_key(_DEFAULT_PICKLE_KEY)
+    with pytest.warns(UserWarning):
+        create_group('a')
+
+
 def test_group_add():
+    jtcmake.set_default_pickle_key('ABABAB')
+
     APath = lambda p: Path(os.path.abspath(p))
 
     ######## Output file path ########
@@ -249,6 +263,8 @@ def test_group_add():
 
 
 def test_rule_touch(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     r = create_group(tmp_path).add('a', ['a1', 'a2'], fn)
 
     # both
@@ -263,6 +279,8 @@ def test_rule_touch(tmp_path):
 
 
 def test_rule_clean(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     r = create_group(tmp_path).add('a', ['a1', 'a2'], fn)
 
     # don't raise if file does not exist
@@ -302,6 +320,8 @@ def test_select_sig1():
     `-- d/
         `-- a
     """
+    jtcmake.set_default_pickle_key('ABABAB')
+
     fn = lambda x: None
 
     g = create_group('a')
@@ -385,6 +405,8 @@ def test_select_sig2():
     This test is for Signature-2.
     Test for Signature-1 is assumed to be succeeded.
     """
+    jtcmake.set_default_pickle_key('ABABAB')
+
     fn = lambda x: None
 
     g = create_group('root')

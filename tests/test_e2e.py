@@ -4,6 +4,7 @@ from pathlib import Path, PurePath
 import pytest
 
 from jtcmake import create_group, SELF, MakeSummary
+import jtcmake
 
 
 def touch(*dst):
@@ -45,6 +46,8 @@ def globfiles(dirname):
 @pytest.mark.parametrize("njobs", [None, 1, 2, 3])
 def test_1(njobs, tmp_path):
     """basics"""
+
+    jtcmake.set_default_pickle_key('ABABAB')
 
     g = create_group(tmp_path)
 
@@ -102,6 +105,8 @@ def test_1(njobs, tmp_path):
 
 
 def test_2(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     # nested path and args
     g = create_group(tmp_path)
 
@@ -115,6 +120,8 @@ def test_2(tmp_path):
 
 
 def test_4(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     # make failure
     g = create_group(tmp_path)
     
@@ -143,6 +150,8 @@ def test_4(tmp_path):
 
 
 def test_addvf(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     from jtcmake import Atom
 
     dummy = [1]
@@ -183,8 +192,9 @@ def test_addvf(tmp_path):
 
 
 def test_memoization(tmp_path):
+    jtcmake.set_default_pickle_key('ABABAB')
+
     from jtcmake.gen_pickle_key import gen_key
-    import jtcmake
 
     def _write(p, t):
         p.write_text(repr(t))
@@ -257,8 +267,6 @@ def test_memoization(tmp_path):
 
     
 def test_memoization_global_pickle_key(tmp_path):
-    import jtcmake
-
     def _write(p, t):
         p.write_text(repr(t))
 
