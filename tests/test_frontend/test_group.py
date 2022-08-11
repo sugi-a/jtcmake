@@ -246,7 +246,7 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group('r').add('a', ['a1', 'a2'], fn, SELF[0])
     
-    # struct_keys for IVFiles not str/int/float
+    # nest_key for IVFiles not str/int/float
     with pytest.raises(Exception):
         create_group('r').add('a', fn, {object(): VFile('b')})
 
