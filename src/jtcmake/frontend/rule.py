@@ -1,5 +1,6 @@
-import sys, os, hashlib, json
+import sys, os, hashlib, json, pickle, hashlib, hmac
 from pathlib import Path, PurePath
+from collections import namedtuple
 
 from ..core.rule import Event, IRule
 from .file import IFile, IVFile
@@ -13,7 +14,9 @@ class Rule(IRule):
         method,
         args,
         kwargs,
-        force_update=False
+        kwargs_to_be_memoized,
+        pickle_key,
+        name=None,
     ):
         self.yfiles = yfiles
         self.xfiles = xfiles
@@ -21,12 +24,16 @@ class Rule(IRule):
         self._method = method
         self._args = args
         self._kwargs = kwargs
-        self.force_update = force_update
+        self.name = name
 
+        self.raw_memo_args = kwargs_to_be_memoized
+        self.pickle_key = pickle_key
+        self.encoded_memo_args = \
+            create_args_memo_pickle(kwargs_to_be_memoized, pickle_key)
 
     def should_update(
         self,
-        updated_rules,
+        par_updated,
         dry_run
     ):
         for k,f in self.xfiles:
@@ -46,10 +53,7 @@ class Rule(IRule):
                         f'invalid for reducing operational error.'
                     )
 
-        if self.force_update:
-            return True
-
-        if dry_run and any(r in updated_rules for r in self._deplist):
+        if dry_run and par_updated:
             return True
 
         if any(not os.path.exists(f.path) for f in self.yfiles):
@@ -69,21 +73,37 @@ class Rule(IRule):
                 else:
                     return True
 
-        if len(xvfiles) > 0:
-            hash_dic = \
-                {tuple(k): (h,t) for k,h,t in load_vfile_hashes(self.metadata_fname)}
-                
-            for k,f in xvfiles:
-                if k not in hash_dic:
-                    return True
+        memo = load_memo(self.metadata_fname)
 
-                mtime = os.path.getmtime(f.path)
-                hash_, mtime_ = hash_dic[k]
+        if memo is None:
+            return True
 
-                # Optimization: skip computing hash if the current mtime
-                # is equal to the one in the cache
-                if mtime != mtime_ and f.get_hash() != hash_:
-                    return True
+        vfile_hashes, arg_memo = memo
+
+        hash_dic = {tuple(k): (h,t) for k,h,t in vfile_hashes}
+            
+        for k,f in xvfiles:
+            if k not in hash_dic:
+                return True
+
+            mtime = os.path.getmtime(f.path)
+            hash_, mtime_ = hash_dic[k]
+
+            # Optimization: skip computing hash if the current mtime
+            # is equal to the one in the cache
+            if mtime != mtime_ and f.get_hash() != hash_:
+                return True
+
+        code = bytes.fromhex(arg_memo['value'])
+
+        if validate_digest(code, arg_memo['digest'], self.pickle_key):
+            if pickle.loads(code) != self.raw_memo_args:
+                return True
+        else:
+            raise Exception(
+                'Authentication error: failed to authenticate '
+                f'the pickle code in {self.metadata_fname}.'
+            )
 
         return False
 
@@ -98,7 +118,7 @@ class Rule(IRule):
 
     def postprocess(self, callback, succ):
         if succ:
-            self.update_xvfile_hashes()
+            self.update_memo()
         else:
             # set mtime to 0
             for f in self.yfiles:
@@ -120,10 +140,10 @@ class Rule(IRule):
         return p.parent / '.jtcmake' / p.name
 
 
-    def update_xvfile_hashes(self):
+    def update_memo(self):
         xvfiles = [(k,v) for k,v in self.xfiles if isinstance(v, IVFile)]
-        if len(xvfiles) > 0:
-            save_vfile_hashes(self.metadata_fname, xvfiles)
+
+        save_memo(self.metadata_fname, xvfiles, self.encoded_memo_args)
 
 
     @property
@@ -170,3 +190,56 @@ def load_vfile_hashes(metadata_fname):
         return json.load(f)
 
 
+def pickle_obj(obj):
+    try:
+        code = pickle.dumps(obj)
+    except pickle.PicklingError as e:
+        raise Exception('Failed to make a memo') from e
+
+    # check round-trip equiality
+    decoded = pickle.loads(code)
+    if obj != decoded:
+        raise ValueError(
+            'Arguments to be memoized include an object that changes'
+            'after pickled and unpickled. i.e. let x be the object. Then, '
+            'x != unpickle(pickle(x)).'
+        )
+
+    return code
+
+
+def create_auth_digest(data, key):
+    return hmac.new(key, data, 'sha256').hexdigest()
+
+
+def create_args_memo_pickle(kwargs, key):
+    code = pickle_obj(kwargs)
+    digest = create_auth_digest(code, key)
+    return { "type": "pickle", "value": code.hex(), "digest": digest }
+
+
+def validate_digest(data, ref_digest, key):
+    digest = create_auth_digest(data, key)
+    return hmac.compare_digest(digest, ref_digest)
+
+
+def save_memo(metadata_fname, vfiles, args_memo):
+    vfile_hashes = create_vfile_hashes(vfiles)
+    data = { "vfiles": vfile_hashes, "args": args_memo }
+    os.makedirs(Path(metadata_fname).parent, exist_ok=True)
+    with open(metadata_fname, 'w') as f:
+        json.dump(data, f)
+
+
+def load_memo(metadata_fname):
+    if not os.path.exists(metadata_fname):
+        return None
+
+    with open(metadata_fname) as f:
+        data = json.load(f)
+
+    vfile_hashes = data['vfiles']
+    args = data['args']
+
+    return vfile_hashes, args
+    

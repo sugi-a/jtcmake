@@ -21,6 +21,9 @@ def event_callback(w, rule_to_name, e):
         err = e.err
         name = rule_to_name.get(r)
 
+        if name is None and r.name is not None:
+            name = '/'.join(r.name)
+
         if name is None:
             w.warning(f'An event of unknown Rule has been emitted.\n')
             name = '<unknown>'
@@ -40,7 +43,7 @@ def event_callback(w, rule_to_name, e):
             )
         elif isinstance(e, events.ExecError):
             w.error(
-                f'Failed to make ',  name, ': Method failed: {err}\n'
+                f'Failed to make ',  name, f': Method failed: {err}\n'
             )
         elif isinstance(e, events.PostProcError):
             w.error(
@@ -95,8 +98,7 @@ def event_callback(w, rule_to_name, e):
     elif isinstance(e, group_events.Touch):
         w.info('touch ', RichStr(str(e.path) + '\n', link=str(e.path)))
     else:
-        w.warning(f'Unhandled event for {r}\n')
-        
+        w.warning(f'Unhandled event {e}\n')
 
 
 def add_indent(sl, indent):

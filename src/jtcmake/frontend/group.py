@@ -1,5 +1,5 @@
 from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect
+import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect, warnings
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -12,7 +12,8 @@ from .file import File, VFile, IFile, IVFile
 from . import events as group_events
 from .event_logger import create_event_callback
 from . import graphviz
-from ..core.make import make as _make, make_multi_thread, Event
+from ..core.make import make as _make, Event
+from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
     term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
@@ -21,6 +22,33 @@ from ..utils.nest import \
     StructKey, map_structure, flatten, struct_get, \
     flatten_to_struct_keys, pack_sequence_as
 
+
+class Atom:
+    def __init__(self, value, memo_value=lambda x: x):
+        """Create Atom: special object that can be placed in args/kwargs
+        of Group.add. Atom is used to explicitly indicate an object being
+        atom.
+
+        Args:
+            value: argument value to be wrapped by Atom
+            memo_value: value used for memoization.
+                If callable, `memo_value(value)` will be used for memoization
+                of this argument. Otherwise, memo_value itself will be used
+                for memoization.
+
+        Note:
+            You can use it to exclude a lambda function from memoization:
+            `g.add('rule.txt', method, Atom(lambda x: x**2, None))`
+        """
+        self.value = value
+        if callable(memo_value):
+            self.memo_value = memo_value(value)
+        else:
+            self.memo_value = memo_value
+    
+    def __repr__(self):
+        v, m = repr(self.value), repr(self.memo_value)
+        return f'Atom(value={v}, memo_value={m})'
 
 
 class IFileNode:
@@ -50,6 +78,7 @@ class FileNodeAtom(IFileNode):
         return self._file.abspath
 
     def touch(self, _t=None):
+        """Touch this file"""
         if _t is None:
             _t = time.time()
         open(self._file.path, 'w').close()
@@ -57,6 +86,7 @@ class FileNodeAtom(IFileNode):
         self._info.callback(group_events.Touch(self.path))
 
     def clean(self):
+        """Delete this file if exists"""
         try:
             os.remove(self._file.path)
             self._info.callback(group_events.Clean(self.path))
@@ -82,11 +112,13 @@ class FileNodeTuple(tuple, IFileNode):
         return tuple(x.abspath for x in self)
 
     def touch(self, _t=None):
+        """Touch files in this tuple"""
         if _t is None:
             _t = time.time()
         for x in self: x.touch(_t)
 
     def clean(self):
+        """Delete files in this tuple"""
         for x in self: x.clean()
 
     def __repr__(self):
@@ -106,12 +138,14 @@ class FileNodeDict(Mapping, IFileNode):
         return {k: v.abspath for k,v in self._dic.items()}
 
     def touch(self, _t=None):
+        """Touch files in this dict"""
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
             v.touch(_t)
 
     def clean(self):
+        """Delete files in this dict"""
         for k,v in self._dic.items(): v.clean()
 
     def __getitem__(self, k):
@@ -144,13 +178,29 @@ class RuleNodeBase:
         dry_run=False,
         keep_going=False,
         *,
-        nthreads=1
+        njobs=None,
     ):
-        make(
+        """Make this rule and its dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            nthreads=nthreads
+            njobs=njobs,
         )
 
     @property
@@ -194,10 +244,13 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters):
-        self.path_to_rule = {}
+    def __init__(self, logwriters, pickle_key):
+        self.id2rule = []  # list<Rule>
+        self.rule2id = {}  # dict<int, Rule>
+        self.path_to_rule = {}  # dict<str, Rule>
         self.path_to_file = {}
         self.rule_to_name = {}
+        self.pickle_key = pickle_key
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
@@ -255,6 +308,9 @@ class Group(IGroup):
 
         assert isinstance(prefix, (str, os.PathLike))
 
+        if os.name == 'posix':
+            prefix = os.path.expanduser(prefix)
+
         if isinstance(prefix, os.PathLike):
             prefix = prefix.__fspath__()
 
@@ -276,22 +332,38 @@ class Group(IGroup):
         dry_run=False,
         keep_going=False,
         *,
-        nthreads=1
+        njobs=None,
     ):
-        make(
+        """Make rules in this group and their dependencies
+        Args:
+            dry_run:
+                instead of actually excuting the methods,
+                print expected execution logs.
+            keep_going:
+                If False (default), stop everything when a rule fails.
+                If True, when a rule fails, keep executing other rules
+                except the ones depend on the failed rule.
+            njobs:
+                Maximum number of rules that can be made concurrently.
+                Defaults to 1 (single process, single thread).
+
+        See also:
+            See the description of jtcmake.make for more detail of njobs
+        """
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
-            nthreads=nthreads
+            njobs=njobs,
         )
 
 
     # APIs
-    def add(self, name, *args, force_update=False, **kwargs):
+    def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -301,7 +373,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs) on update
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
@@ -343,14 +414,14 @@ class Group(IGroup):
             return adder
 
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
-    def addvf(self, name, *args, force_update=False, **kwargs):
+    def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
         Call signatures:
-            (1) add(name, [output_files], method, *args, force_update=False, **kwargs)
-            (2) add(name, [output_files], None, *args, force_update=False, **kwargs)
+            (1) add(name, [output_files], method, *args, **kwargs)
+            (2) add(name, [output_files], None, *args, **kwargs)
 
 
         Args:
@@ -360,7 +431,6 @@ class Group(IGroup):
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFile (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs)
-            force_update: bool. If True, method will always be executed on make
 
         Returns (1):
             Rule node
@@ -411,12 +481,12 @@ class Group(IGroup):
         path = map_structure(wrap_by_VFile, path)
             
         return self._add(
-            name, path, method, *args, force_update=force_update, **kwargs)
+            name, path, method, *args, **kwargs)
 
 
     def _add(
         self, name, files,
-        method, *args, force_update=False, **kwargs
+        method, *args, **kwargs
     ):
         assert isinstance(name, str)
         assert callable(method)
@@ -444,10 +514,15 @@ class Group(IGroup):
 
         # add prefix to paths of yfiles if necessary 
         def add_pfx(f):
-            if os.path.isabs(f.path):
-                return f
+            if os.name == 'posix':
+                p = os.path.expanduser(f.path)
             else:
-                return f.__class__(self._prefix + str(f.path))
+                p = f.path
+
+            if os.path.isabs(p):
+                return f.__class__(p)
+            else:
+                return f.__class__(self._prefix + str(p))
                 # TODO: __init__ of f's class may take args other than path
 
         files = map_structure(add_pfx, files)
@@ -505,6 +580,8 @@ class Group(IGroup):
         def _shorter_path(p):
             cwd = os.getcwd()
             try:
+                if os.name == 'posix':
+                    p = os.path.expanduser(p)
                 rel = Path(os.path.relpath(p, cwd))
                 return rel if len(str(rel)) < len(str(p)) else p
             except:
@@ -553,9 +630,10 @@ class Group(IGroup):
         _added = set()
         for f in args_:
             if isinstance(f, IFile) and path_to_rule.get(f.abspath) is not None:
-                if path_to_rule[f.abspath] not in _added:
-                    deplist.append(path_to_rule[f.abspath])
-                    _added.add(path_to_rule[f.abspath])
+                dep = self._info.rule2id[path_to_rule[f.abspath]]
+                if dep not in _added:
+                    deplist.append(dep)
+                    _added.add(dep)
 
         # create xfiles
         ypaths = set(f.path for f in files_)
@@ -573,33 +651,48 @@ class Group(IGroup):
             if isinstance(f, IFile) and f.path not in ypaths
         ]
 
-        # check if keys for IVFiles are JSON convertible
-        def _assert_key_json_convertible(key, f):
-            try:
-                json.dumps(key)
-            except Exception as e:
-                raise Exception(
-                    f'keys to identify the location of VFile {f.path} '
-                    f'contains an element not convertible to JSON: {key}'
-                ) from e
-            
+        # check if keys for IVFiles are str/int/float
         for struct_key, f in xfiles:
             if isinstance(f, IVFile):
                 for k in struct_key:
-                    _assert_key_json_convertible(k, f)
+                    if not isinstance(k, (str, int, float)):
+                        raise TypeError(
+                            'keys of dicts in args/kwargs must be either'
+                            f'str, int, or float. Given {k}'
+                        )
 
         # create method args
-        method_args_ = [
-            f.path if isinstance(f, IFile) else f for f in args_
-        ]
-        method_args, method_kwargs = \
-            pack_sequence_as((args, kwargs), method_args_)
+        def _unwrap_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return x.path
+            elif isinstance(x, Atom):
+                return x.value
+            else:
+                return x
+
+        method_args = pack_sequence_as((args, kwargs), args_)
+        method_args = map_structure(_unwrap_IFile_Atom, method_args)
+        method_args, method_kwargs = method_args
+
+        # create memoization args
+        def _repl_IFile_Atom(x):
+            if isinstance(x, IFile):
+                return None
+            elif isinstance(x, Atom):
+                return x.memo_value
+            else:
+                return x
+
+        memo_args = pack_sequence_as((args, kwargs), args_)
+        memo_args = map_structure(_repl_IFile_Atom, memo_args)
 
         # create Rule
         r = Rule(
             files_, xfiles, deplist,
             method, method_args, method_kwargs,
-            force_update=force_update
+            kwargs_to_be_memoized=memo_args,
+            pickle_key=self._info.pickle_key,
+            name=(*self._name, name)
         )
 
         # create RuleNode
@@ -639,16 +732,22 @@ class Group(IGroup):
         for f in itertools.chain(files_, (x[1] for x in xfiles)):
             path_to_file[f.abspath] = f
 
+        self._info.id2rule.append(r)
+        self._info.rule2id[r] = len(self._info.rule2id)
+        assert len(self._info.id2rule) == len(self._info.rule2id)
+
         self._info.rule_to_name[r] = '/'.join((*self._name, name))
 
         return rc
 
 
     def clean(self):
+        """Delete files under this Group"""
         for c in self._children.values():
             c.clean()
 
     def touch(self, _t=None):
+        """Touch (set the mtime to now) files under this Group"""
         if _t is None:
             _t = time.time()
         for c in self._children.values():
@@ -668,14 +767,90 @@ class Group(IGroup):
 
 
 
-    def select(self, pattern):
-        if len(pattern) == 0:
-            raise ValueError(f'Invalid pattern "{pattern}"')
+    def select(self, pattern, group=False):
+        """Obtain child groups or rules of this group.
 
-        is_group = pattern[-1] == '/'
+        Signature-1:
+            select(group_tree_pattern: str)
+        Signature-2:
+            select(group_tree_pattern: list[str]|tuple[str], group=False)
 
-        pattern = pattern.strip('/')
-        parts = re.split('/+', pattern)
+        Args for Signature-1:
+            group_tree_pattern (str):
+                Pattern of the relative name of child nodes of this group.
+                Pattern consists of names concatenated with the delimiter '/'.
+                Double star '**' can appear as a name indicating zero or
+                more repetition of arbitrary names.
+
+                Single star can appear as a part of a name indicating zero
+                or more repetition of arbitrary character.
+
+                If `group_tree_pattern[-1] == '/'`, it matches groups only.
+                Otherwise, it matches rules only.
+
+                For example, calling g.select(pattern) with a pattern
+                * "a/b"  matches a rule `g.a.b`
+                * "a/b/" matches a group `g.a.b`
+                * "a*"   matches rules `g.a`, `g.a1`, `g.a2`, etc
+                * "a*/"  matches groups `g.a`, `g.a1`, `g.a2`, etc
+                * "**"   matches all the offspring rules of `g`
+                * "**/"  matches all the offspring groups of `g`
+                * "a/**" matches all the offspring rules of the group `g.a`
+                * "**/b" matches all the offspring rules of `g` with a name "b"
+            group: ignored
+
+        Args for Signature-2:
+            group_tree_pattern (list[str] | tuple[str]):
+                Pattern representation using a sequence of names.
+
+                Following two are equivalent:
+
+                * `g.select(["a", "*", "c", "**"])`
+                * `g.select("a/*/c/**")`
+
+                Following two are equivalent:
+
+                * `g.select(["a", "*", "c", "**"], True)`
+                * `g.select("a/*/c/**/")`
+
+            group (bool):
+                if False (default), select rules only.
+                if True, select groups only.
+
+        Returns:
+            List of rules if
+
+            * called with Signature-1 and pattern[-1] != '/' or
+            * called with Signature-2 and group is False
+
+            List of groups Otherwise.
+
+        Note:
+            Cases where Signature-2 is absolutely necessary is when you need
+            to select a node whose name contains "/".
+            For example,
+            ```
+            g = create_group('group')
+            rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+
+            g.select(['dir/a.txt']) == [rule]  # OK
+            g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
+            ```
+        """
+        if isinstance(pattern, str):
+            if len(pattern) == 0:
+                raise ValueError(f'Invalid pattern "{pattern}"')
+
+            group = pattern[-1] == '/'
+            pattern = pattern.strip('/')
+            parts = re.split('/+', pattern)
+        elif isinstance(pattern, (tuple, list)):
+            if not all(isinstance(v, str) for v in pattern):
+                raise TypeError('Pattern sequence items must be str')
+
+            parts = pattern
+        else:
+            raise TypeError('Pattern must be str or sequence of str')
 
         SEP = ';'
         regex = []
@@ -700,8 +875,8 @@ class Group(IGroup):
                     regex.append(f'{SEP}{p}')
 
         regex = re.compile('^' + ''.join(regex) + '$')
-        chnames = [self._name] if is_group else []
-        self._get_children_names(chnames, is_group, not is_group)
+        chnames = [self._name] if group else []
+        self._get_children_names(chnames, group, not group)
 
         res = []
         for name in chnames:
@@ -751,13 +926,56 @@ def make(
     *rule_or_groups,
     dry_run=False,
     keep_going=False,
-    nthreads=1
+    njobs=None
 ):
+    """make rules
+
+    Args:
+        rules_or_groups (Sequence[RuleNodeBase|Group]):
+            Rules and Groups containing target Rules
+        dry_run:
+            instead of actually excuting methods, print expected execution logs.
+        keep_going:
+            If False (default), stop everything when a rule fails.
+            If True, when a rule fails, keep executing other rules
+            except the ones depend on the failed rule.
+        njobs:
+            Maximum number of rules that can be made concurrently.
+            Defaults to 1 (single process, single thread).
+
+            Note that safely using njobs >= 2 and fully exploiting the power
+            of multi-core processors require a certain level of
+            understanding of Python's threading and multiprocessing.
+
+            Each rule is made on a child process if it is transferable.
+            A rule is "transferable" if both of the following conditions
+            are met:
+
+            - method/args/kwargs of the rule are all picklable
+            - Pickle representation of method/args/kwargs created in the
+              main process is unpicklable in child processes
+
+            If a rule is not transferable, it is made on a sub-thread of
+            the main process. Thus the method must be thread-safe. Also note
+            that methods running on the main process are subject to the
+            global interpreter lock (GIL) constraints.
+
+            Child processes are started by the 'spawn' method, not 'fork',
+            even on Linux systems.
+            njobs >= 2 may not work on interactive interpreters.
+            It should work on Jupyter Notebook/Lab but any function or class
+            that are defined on the notebook is not transferable and thus
+            executed in the main process.
+    """
+
     # create list of unique rules by DFS
     _added = set()
     rules = []
     stack = list(reversed(rule_or_groups))
     _info = None
+
+    if len(rule_or_groups) == 0:
+        return True
 
     while stack:
         node = stack.pop()
@@ -778,28 +996,44 @@ def make(
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
-    if nthreads <= 1:
-        _make(rules, dry_run, keep_going, _info.callback)
+    ids = [_info.rule2id[r] for r in rules]
+
+    if njobs is not None and njobs >= 2:
+        return make_mp_spawn(
+            _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
     else:
-        make_multi_thread(
-            rules, dry_run, keep_going, nthreads, _info.callback)
+        return _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
 
 
 
 def create_group(
     dirname=None, prefix=None, *,
-    loglevel=None, use_default_logger=True, logfile=None):
+    loglevel=None, use_default_logger=True, logfile=None,
+    pickle_key=None,
+):
     """Create a root Group node.
     Args:
-        dirname: directory name for this Group node. (str|os.PathLike)
-        prefix: path prefix for this Group node. (str|os.PathLike).
+        dirname (str|os.PathLike): directory name for this Group node.
+        prefix (str|os.PathLike): path prefix for this Group node.
             - Either (but not both) dirname or prefix must be specified.
             - The following two are equivalent:
                 1. `create_group(dirname='dir')`
                 2. `create_group(prefix='dir/')`
+        loglevel ("debug"|"info"|"warning"|"error"|None):
+            log level. Defaults to "info"
+        use_default_logger (bool): If True, logs will be printed to terminal.
+            Defaults to True.
+        logfile (str|os.PathLike|tuple[str|os.PathLike]|None):
+            If specified, logs are printed to the file(s).
+            If the file extension is .html, logs are printed in HTML format.
+        pickle_key (bytes|str||None): key used to authenticate pickle data.
+            If str, it must be a hexadecimal str, and will be converted to
+            bytes by `bytes.fromhex(pickle_key)`.
+            If None, the default pickle key will be used. You can configure
+            the default by `jtcmake.set_default_pickle_key(key)`
 
     Returns:
-        Group node
+        Group: Root group node
     """
     if (dirname is None) == (prefix is None):
         raise TypeError('Either dirname or prefix must be specified')
@@ -809,6 +1043,9 @@ def create_group(
         prefix = str(dirname) + os.path.sep
 
     assert isinstance(prefix, (str, os.PathLike))
+
+    if os.name == 'posix':
+        prefix = os.path.expanduser(prefix)
 
     loglevel = loglevel or 'info'
 
@@ -825,7 +1062,25 @@ def create_group(
     if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
-    tree_info = GroupTreeInfo(logwriters=logwriters)
+    if pickle_key is None:
+        pickle_key = _default_pickle_key
+    elif type(pickle_key) == str:
+        pickle_key = bytes.fromhex(pickle_key)
+    elif type(pickle_key) != bytes:
+        raise TypeError('pickle_key must be bytes or hexadecimal str')
+
+    if pickle_key == _DEFAULT_PICKLE_KEY:
+        warning_ = (
+            f'You are using the default pickle key {_DEFAULT_PICKLE_KEY}.\n'
+            'For security reasons, it is recommended to provide your own '
+            'key by either,\n\n'
+            '* jtcmake.set_default_pickle_key(b"your own key"), or\n'
+            '* jtcmake.create_group("dir", pickle_key=b"your own key")\n'
+            'Pickle key is used to authenticate pickled data.'
+        )
+        warnings.warn(warning_)
+
+    tree_info = GroupTreeInfo(logwriters=logwriters, pickle_key=pickle_key)
 
     return Group(tree_info, str(prefix), ())
 
@@ -857,6 +1112,19 @@ def _create_logwriter(f, loglevel):
             pass
 
         return TextWriter(f, loglevel)
+
+
+_DEFAULT_PICKLE_KEY = bytes.fromhex('FFFF')
+_default_pickle_key = _DEFAULT_PICKLE_KEY
+
+def set_default_pickle_key(key):
+    global _default_pickle_key
+    if type(key) == bytes:
+        _default_pickle_key = key
+    elif type(key) == str:
+        _default_pickle_key = bytes.fromhex(key)
+    else:
+        raise TypeError('key must be bytes or hexadecimal str')
 
 
 SELF = StructKey(())
