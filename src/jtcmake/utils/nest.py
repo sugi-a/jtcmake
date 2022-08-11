@@ -1,85 +1,85 @@
 from collections.abc import Mapping
 
 
-class StructKey(tuple):
-    def __new__(cls, struct_key):
-        return super().__new__(cls, struct_key)
+class NestKey(tuple):
+    def __new__(cls, nest_key):
+        return super().__new__(cls, nest_key)
 
     def __getitem__(self, key):
         if not isinstance(key, (int, str)):
             raise ValueError(f'Key must be int or str. Given {key}')
 
-        return StructKey((*self, key))
+        return NestKey((*self, key))
 
     def __getattr__(self, key):
         return self[key]
 
     def __repr__(self):
-        return f'StructKey({super().__repr__()})'
+        return f'NestKey({super().__repr__()})'
 
 
-def struct_get(struct, struct_key):
-    for k in struct_key:
-        struct = struct[k]
+def nest_get(nest, nest_key):
+    for k in nest_key:
+        nest = nest[k]
 
-    return struct
+    return nest
 
 
 def map_structure(
-    map_fn, struct,
+    map_fn, nest,
     seq_factory={list: list, tuple: tuple},
     map_factory={(dict, Mapping): dict}
 ):
     assert callable(map_fn)
 
-    def rec(struct):
-        if isinstance(struct, StructKey):
-            return map_fn(struct)
+    def rec(nest):
+        if isinstance(nest, NestKey):
+            return map_fn(nest)
 
         for src, dst in seq_factory.items():
-            if isinstance(struct, src):
-                return dst(map(rec, struct))
+            if isinstance(nest, src):
+                return dst(map(rec, nest))
 
         for src, dst in map_factory.items():
-            if isinstance(struct, src):
-                return dst({k: rec(struct[k]) for k in struct.keys()})
+            if isinstance(nest, src):
+                return dst({k: rec(nest[k]) for k in nest.keys()})
 
-        return map_fn(struct)
+        return map_fn(nest)
 
-    return rec(struct)
+    return rec(nest)
 
 
 def ordered_map_structure(
-    map_fn, struct,
+    map_fn, nest,
     seq_factory={list: list, tuple: tuple},
     map_factory={(dict, Mapping): dict}
 ):
     assert callable(map_fn)
 
-    def rec(struct):
-        if isinstance(struct, StructKey):
-            return map_fn(struct)
+    def rec(nest):
+        if isinstance(nest, NestKey):
+            return map_fn(nest)
 
         for src, dst in seq_factory.items():
-            if isinstance(struct, src):
-                return dst(map(rec, struct))
+            if isinstance(nest, src):
+                return dst(map(rec, nest))
 
         for src, dst in map_factory.items():
-            if isinstance(struct, src):
-                keys = sorted(struct.keys(), key=lambda x: (hash(x), x))
-                return dst({k: rec(struct[k]) for k in keys})
+            if isinstance(nest, src):
+                keys = sorted(nest.keys(), key=lambda x: (hash(x), x))
+                return dst({k: rec(nest[k]) for k in keys})
 
-        return map_fn(struct)
+        return map_fn(nest)
 
-    return rec(struct)
+    return rec(nest)
 
 
 
-def flatten(struct):
+def flatten(nest):
     res = []
 
     def rec(node):
-        if isinstance(node, StructKey):
+        if isinstance(node, NestKey):
             res.append(node)
         elif isinstance(node, (tuple, list)):
             for v in node:
@@ -91,27 +91,27 @@ def flatten(struct):
         else:
             res.append(node)
 
-    rec(struct)
+    rec(nest)
     return res
 
 
-def flatten_to_struct_keys(struct):
+def flatten_to_nest_keys(nest):
     res = []
 
-    def rec(node, struct_key):
-        if isinstance(node, StructKey):
-            res.append(struct_key)
+    def rec(node, nest_key):
+        if isinstance(node, NestKey):
+            res.append(nest_key)
         elif isinstance(node, (tuple, list)):
             for i,v in enumerate(node):
-                rec(v, (*struct_key, i))
+                rec(v, (*nest_key, i))
         elif isinstance(node, (dict, Mapping)):
             keys = sorted(node.keys(), key=lambda x: (hash(x), x))
             for k in keys:
-                rec(node[k], (*struct_key, k))
+                rec(node[k], (*nest_key, k))
         else:
-            res.append(struct_key)
+            res.append(nest_key)
 
-    rec(struct, ())
+    rec(nest, ())
     return res
 
 

@@ -28,8 +28,10 @@ class Rule(IRule):
 
         self.raw_memo_args = kwargs_to_be_memoized
         self.pickle_key = pickle_key
+
         self.encoded_memo_args = \
             create_args_memo_pickle(kwargs_to_be_memoized, pickle_key)
+
 
     def should_update(
         self,
@@ -161,7 +163,7 @@ class Rule(IRule):
 
 def create_vfile_hashes(vfiles):
     """
-    list of (StructKey, file name, mtime)
+    list of (NestKey, file name, mtime)
     """
     res = [(k, f.get_hash(), os.path.getmtime(f.path)) for k,f in vfiles]
     res = json.loads(json.dumps(res)) # round trip JSON conversion
@@ -191,10 +193,7 @@ def load_vfile_hashes(metadata_fname):
 
 
 def pickle_obj(obj):
-    try:
-        code = pickle.dumps(obj)
-    except pickle.PicklingError as e:
-        raise Exception('Failed to make a memo') from e
+    code = pickle.dumps(obj)
 
     # check round-trip equiality
     decoded = pickle.loads(code)
@@ -213,7 +212,25 @@ def create_auth_digest(data, key):
 
 
 def create_args_memo_pickle(kwargs, key):
-    code = pickle_obj(kwargs)
+    try:
+        code = pickle_obj(kwargs)
+    except Exception as e:
+        raise Exception(
+            'Failed to pickle some arguments.\nEvery atom in the method '
+            'arguments must satisfy the following two conditions:\n\n'
+            '1. It must be picklable\n'
+            '2. It must be pickle-unpickle invariant, i.e.\n'
+            '      unpickle(pickle(atom)) == atom\n'
+            '   must hold.\n\n'
+            'For example, closures do not satisfy the first condition. '
+            'And instances of a class that does not implement a custom '
+            '__eq__ do not satisfy the condition 2.\n\n'
+            'To pass such an object to the method, wrap it by jtcmake.Atom '
+            'like\n'
+            '`g.add("rule.txt", func, jtcmake.Atom(lambda x: x*2, None)`'
+
+        ) from e
+        
     digest = create_auth_digest(code, key)
     return { "type": "pickle", "value": code.hex(), "digest": digest }
 

@@ -19,8 +19,8 @@ from ..logwriter.writer import \
     term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
 
 from ..utils.nest import \
-    StructKey, map_structure, flatten, struct_get, \
-    flatten_to_struct_keys, pack_sequence_as
+    NestKey, map_structure, flatten, nest_get, \
+    flatten_to_nest_keys, pack_sequence_as
 
 
 class Atom:
@@ -531,10 +531,10 @@ class Group(IGroup):
         _expanded = False
         def expand_self(arg):
             nonlocal _expanded
-            if isinstance(arg, StructKey):
+            if isinstance(arg, NestKey):
                 _expanded = True
                 try:
-                    return struct_get(files, arg)
+                    return nest_get(files, arg)
                 except:
                     raise ValueError(f'Invalid keys for SELF')
             else:
@@ -638,7 +638,7 @@ class Group(IGroup):
         # create xfiles
         ypaths = set(f.path for f in files_)
         try:
-            arg_keys = flatten_to_struct_keys(args)
+            arg_keys = flatten_to_nest_keys(args)
         except Exception as e:
             raise Exception(
                 f'Failed to flatten keyword arguments. '
@@ -652,9 +652,9 @@ class Group(IGroup):
         ]
 
         # check if keys for IVFiles are str/int/float
-        for struct_key, f in xfiles:
+        for nest_key, f in xfiles:
             if isinstance(f, IVFile):
-                for k in struct_key:
+                for k in nest_key:
                     if not isinstance(k, (str, int, float)):
                         raise TypeError(
                             'keys of dicts in args/kwargs must be either'
@@ -882,7 +882,7 @@ class Group(IGroup):
         for name in chnames:
             name = name[len(self._name):]
             if regex.match(''.join(SEP + n for n in name)):
-                res.append(struct_get(self, name))
+                res.append(nest_get(self, name))
         
         return res
 
@@ -1127,4 +1127,4 @@ def set_default_pickle_key(key):
         raise TypeError('key must be bytes or hexadecimal str')
 
 
-SELF = StructKey(())
+SELF = NestKey(())
