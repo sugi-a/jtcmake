@@ -12,10 +12,14 @@ Furthermore, JTCMake,
 
 * leverages the expressiveness of Python
 * ships with Windows
-* supports update determination based on the file content in addition to mtime-based update determination
-* supports visualization of dependency graph
+* supports content-hash-based update check in addition to mtime-based update check
+* enables efficient management of a large number of files
+  spanning a deep directory structure
+* provides useful features such as a dependency graph visualizer
+  and a rule selector
 
-Although JTCMake was originally developed for data processing for machine learning on Jupyter Notebook, it can also be used in standard Python script files and on the interactive interpreter for general build processes.
+Although JTCMake was originally developed for data processing for machine learning on Jupyter Notebook,
+it can also be used in standard Python script files and on the interactive interpreter for general build processes.
 
 Since JTCMake is small and simple, we'll cover everything about it in this tutorial.
 
@@ -23,16 +27,15 @@ Since JTCMake is small and simple, we'll cover everything about it in this tutor
 Imports
 *******
 
-We assume that we have already imported the following components of JTCMake in the later sections. ::
+We assume that we have already imported the following items and thus the import directives may be omitted
+in the sample codes in the later sections. ::
+
+  from pathlib import Path
 
   from jtcmake import create_group, SELF
   import jtcmake as jtc
 
-``create_group`` and ``SELF`` are the most frequently used items.
-
-We also assume that ``pathlib.Path`` has been imported as follows and we will write ``Path`` alone when necessary. ::
-
-  from pathlib import Path
+``create_group`` and ``SELF`` are the most frequently used components of JTCMake.
 
 
 ********
@@ -42,7 +45,7 @@ Overview
 Typical workflow using JTCMake consists of three steps:
 
 1. Create Group
-2. Add Rules
+2. Add rules
 3. Make
 
 Example: Writing to a file
@@ -65,7 +68,7 @@ Its JTCMake counterpart looks like::
   # 1. Create Group
   g = create_group('output')
 
-  # 2. Add Rule(s)
+  # 2. Add rule(s)
   g.add('hello', 'hello.txt', write_text, SELF, 'Hello!')
 
   # 3. Make
@@ -73,27 +76,26 @@ Its JTCMake counterpart looks like::
 
 In the above code, we
 
-1. create a **Group** that we use as a container for the Rules we will add later
+1. create a **Group** that we use as a container for the rules we will add later
 
    * The argument ``"output"`` will be used to prefix the paths of the Group's child elements
 
-2. add a **Rule** to the Group by ``Group.add()``
+2. add a **rule** to the Group by ``Group.add()``
 
    * Its signature is ``Group.add(name, output_file, method, *args, **kwargs)``, meaning
-     the Rule is called ``name``, and ``output_file`` must be created by calling ``method(*args, **kwargs)``
+     the name of the rule is ``name``, and ``output_file`` must be created by calling ``method(*args, **kwargs)``
 
-   * In this case, we add a Rule named "hello" which demands that a file ``output/hello.txt`` should be created
+   * In this case, we add a rule named "hello" which demands that a file ``output/hello.txt`` should be created
      by ``write_text(Path("output/hello.txt"), "Hello!")``
 
    * Note that JTCMake replaces ``SELF`` in args/kwargs by the target file path, in this case ``Path("output/hello.txt")``
 
-3. execute ``make`` and JTCMake creates the file following the Rule defined in the Group
+3. execute ``make`` and JTCMake creates the file following the rule(s) defined in the Group
 
    * Note that the directory ``output/`` is automatically created by JTCMake so you don't need to
      write a code for it
 
 You will see the following log after running ``g.make()``
-(please substitute ``WindowsPath`` for ``PosixPath`` if you are on Windows).
 
 ------
 
@@ -109,8 +111,9 @@ You will see the following log after running ``g.make()``
 
 ------
 
-For those who are not familiar with Python's pathlib, ``pathlib.Path`` works as alias for ``pathlib.WindowsPath`` on Windows and ``pathlib.PosixPath`` on Linux and MacOS.
-
+Please substitute ``WindowsPath`` for ``PosixPath`` if you are on Windows.
+For those who are not familiar with Python's pathlib, ``pathlib.Path`` works as alias for
+``pathlib.WindowsPath`` on Windows and ``pathlib.PosixPath`` on Linux and MacOS.
 On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you can click them and jump to the files.
 
 This example task is so simple that an incremental build tool does not seem very helpful.
@@ -159,7 +162,7 @@ And the JTCMake equivalent is, ::
   # 1. Create the root Group with directory `output`
   g = create_group('output')
 
-  # 2. Add Rules to the Group
+  # 2. Add rules to the Group
   g.add('cp1', 'copy1.txt', shutil.copy, jtc.File('original1.txt'), SELF)
   g.add('cp2', 'copy2.txt', shutil.copy, jtc.File('original2.txt'), SELF)
   g.add('concat', 'concat.txt', concat, SELF, g.cp1, g.cp2)
@@ -210,8 +213,8 @@ I hope this behavior is intuitive enough to you.
 Re-run
 ------
 
-Just like Makefile, JTCMake checks the existence and modification time of the input/output files before processing each Rule.
-If the output files exist and are newer than the input files, JTCMake skips the execution of the Rule.
+Just like Makefile, JTCMake checks the existence and modification time of the input/output files before processing each rule.
+If the output files exist and are newer than the input files, JTCMake skips the execution of the rule.
 So running make again will do nothing. ::
 
   g.make()
@@ -239,7 +242,7 @@ JTCMake re-creates the files that depends on the updated file. ::
 
   g.make()
 
-As you see in the following log, Rule "cp1" and "concat" were executed but "cp2" were skipped.
+As you see in the following log, rule "cp1" and "concat" were executed but "cp2" was skipped.
 
 -----------------
 
@@ -272,55 +275,66 @@ Subsequent sections will describe the concepts and usage of JTCMake in detail.
 
 
 ***************
-Rules in Depth
+Adding Rules
 ***************
 
-What a Rule is
+What a rule is
 ==============
 
-Conceptually, a Rule is a set of input files, output files, and a method
+Conceptually, a rule is a set of *input files*, *input Python objects*, *output files*, and a *method*
 that creates the output files based on the content of the input files.
+Note unlike Makefile JTCMake can treat Python objects as input values (with several considerations).
 
 .. image:: _static/rule_in_out.svg
 
-JTCMake can handle build processes that can be expressed in a directed asyclic graph of such Rules.
-Other types of file manupulation, for example, updating a file by appending some text to it, are not supported.
+Combining such rules, we can create an acyclic directed bipartite graph of file/object nodes and method nodes.
+We define the term "build procedure" as a series of file manipulations that can be modeled by this kind of graph,
+and that is where you can take advantage of JTCMake.
+Many tasks can be understood in that way. For example training and evaluation of a English-to-Japanese
+machine translation model could be illustrated as follows.
+
+.. image:: _static/translation-task-graph.svg
+
+Actual graph should be much more complex because we need to compare multiple models and compute variety of stats
+of the dataset for analysis. Therefore, efficient management using a good build tool is important.
+
+Note that the graph needs to be acyclic. File manupulation procedures containing loops, for example,
+updating a file by appending some text to it, are out of scope.
 
 
-Creating Rules
+Creating rules
 ==============
 
-Before defining Rules, you need to create a Group, that is where you place Rules. ::
+Before defining rules, we need to create a Group. We will place rules there. ::
   
   g = create_group("some_dir")
 
-Groups provides grouping of Rules not only on the Python code but also on the file system.
+Groups provides grouping of rules not only on the Python code but also on the file system.
+In this case, rules in this group will output files under the directory *./some_dir/*.
 How groups are mapped to directory trees will be covered in the next chapter.
 
-You can add Rules into the Group using Group.add(). ::
+We can add rules into the Group using Group.add(). ::
 
   g.add("rule_name", "output.txt", some_func, arg1, arg2, kwarg1=foo, kwarg2=bar)
 
-This method has two call signatures:
+Its signature is ``add(name, [output_files], method, *args, **kwargs)`` .
 
-``add(name, [output_files], method, *args, force_update=False, **kwargs)``
-``add(name, [output_files], None, *args, force_update=False, **kwargs)``
-
-:name: Name of the Rule (str).
+:name: Name of the rule (str).
 :output_files: Nested structure of output files (optional)
 :method: Callable that will be basically called as ``method(*args, **kwargs)`` on update
-:force_update: If True, method will be executed on make regardless of mtime of input/output files
 :args/kwargs: Positional and keyword arguments that will be passed to ``method``.
 
 We first assume that ``output_files`` is a plain single file, so we can call it ``output_file`` (without s).
 Rules holding multiple output files will be explained later.
 
+``method`` can be None. In that case, a decorator is returned.
 
-Access to the Rule object
-=========================
 
-``Group.add()`` returns an object representing the added Rule.
-We can also get the Rule object by ``group[name]`` or, if the name is a valid attribute string, by ``group.<name>``.  ::
+Getting rule objects
+====================
+
+``Group.add()`` returns an object representing the added rule.
+We can also get the rule object by ``group[name]`` or, if the name is a valid attribute string, by ``group.<name>``.  ::
 
   g = create_group("some_dir")
 
@@ -331,9 +345,8 @@ We can also get the Rule object by ``group[name]`` or, if the name is a valid at
 
 It has an attribute ``path`` which is a pathlib.Path pointing to the output file. ::
 
-  print(g.rule_name.path)
+  print(g.rule_name.path)  # prints ``PosixPath("some_dir/output")``
 
-prints ``PosixPath("some_dir/output.txt")``.
 
 **Caution**
   ``rule.path`` being a relative path is not guaranteed.
@@ -344,21 +357,19 @@ prints ``PosixPath("some_dir/output.txt")``.
 Type of output file
 ===================
 
-``output_file`` can be an object that is an instance of str, os.PathLike, or jtcmake.IFile [#IFile]_ . ::
+``output_file`` can be an object that is an instance of str, os.PathLike, jtcmake.File, or jtcmake.VFile. ::
 
-  g.add("rule1", "output1.txt", some_func, arg, kwarg=foo)  # OK
-  g.add("rule2", Path("output2.txt"), some_func, arg, kwarg=foo)  # OK
-  g.add("rule3", jtc.File("output3.txt"), some_func, arg, kwarg=foo)  # OK
+  g.add("rule1", "output1.txt", some_func, arg, kwarg=foo)             # OK
+  g.add("rule2", Path("output2.txt"), some_func, arg, kwarg=foo)       # OK
+  g.add("rule3", jtc.File("output3.txt"), some_func, arg, kwarg=foo)   # OK
   g.add("rule4", jtc.VFile("output4.txt"), some_func, arg, kwarg=foo)  # OK
   g.add("rule5", 0, some_func, arg, kwarg=foo)  # TypeError
 
-Here jtcmake.File and jtcmake.VFile are subclasses of jtcmake.IFile.
-
-If you pass a str or os.PathLike as ``output_file``, JTCMake internally converts it to jtcmake.File.
+When you pass a str or os.PathLike as ``output_file``, JTCMake internally converts it to jtcmake.File.
 So the following are equivalent
 
-  - ``g.add('rule_name', 'output.txt', some_func, arg, kwarg=foo)``
-  - ``g.add('rule_name', Path('output.txt'), some_func, arg, kwarg=foo)``
+  - ``g.add('rule_name', 'output.txt',           some_func, arg, kwarg=foo)``
+  - ``g.add('rule_name', Path('output.txt'),     some_func, arg, kwarg=foo)``
   - ``g.add('rule_name', jtc.File('output.txt'), some_func, arg, kwarg=foo)``
 
 
@@ -372,35 +383,37 @@ The output file path that you give will be prefixed by the parent Group's direct
 
   print(g.rule.path)  # prints Path("some_dir/output.txt"), not Path("./output.txt")
 
-You can disable prefixing by giving an absolute path::
+We can disable prefixing by giving an absolute path::
 
   g = create_group('some_dir')
 
   g.add("rule", "/abs/path/to/output.txt", some_func, arg, kwarg=foo)  
 
-Now the actual path is "/abs/path/to/output.txt" just as you specified.
+  print(g.rule.path)  # prints Path("/abs/path/to/output.txt")
 
 
-Rule as an input to another Rule
+Rule as an input to another rule
 ================================
 
-You can pass a Rule object as an argument to ``Group.add``
-to let its output file be an input file of the new Rule. ::
+You can pass a rule object as an argument to ``Group.add`` .
+It makes the output file of the first rule an input file to the new rule. ::
 
   g = create_group("some_dir")
-  g.add('rule1', 'output1.txt', some_func1, arg, kwarg=foo)
+
+  g.add('rule1', 'output1.txt', some_func1)
   g.add('rule2', 'output2.txt', some_func2, foo, g.rule1, bar)
 
   g.make()
 
-``some_func2`` will be called as ``some_func2(foo, Path("some_dir/output1.txt"), bar)``.
+``some_func2`` will be called as ``some_func2(foo, Path("some_dir/output1.txt"), bar)`` .
 
 Note:
-  This explanation (and the following ones) are a little inaccurate (but almost accurate).
+  This explanation (and the following ones) are a little inaccurate.
   You will see how when we learn the **Auto-SELF** rule in the later section.
 
 Rule objects in args/kwargs are replaced by the path of their output file.
 This path replacement occurs inside the args/kwargs that has a deeply nested structure.
+JTCMake searches for rule objects in args/kwargs by recursively checking the elements of tuples and lists, and the values of dicts.
 For example, ::
 
   g = create_group("dir")
@@ -409,7 +422,7 @@ For example, ::
   g.add('rule1', 'out1', some_func, foo, (bar, g.rule))   # tuple
   g.add('rule2', 'out2', some_func, foo, [bar, g.rule])   # list
   g.add('rule3', 'out3', some_func, foo, {bar: g.rule})   # dict
-  g.add('rule4', 'out4', some_func, [foo, {bar: (g.rule, baz)}])  # complex structure
+  g.add('rule4', 'out4', some_func, [foo, {bar: (g.rule, baz)}])  # deeply nested structure
 
   g.make()
 
@@ -421,22 +434,15 @@ will execute ::
   some_func([foo, {bar: (Path("dir/out"), baz)}])
 
 Though the behavior is simple and intuitive, there are some pitfalls around it.
-JTCMake searches for Rule objects in args/kwargs by recursively checking the elements of tuples and lists,
-and the values of dicts.
-The pitfalls are:
 
-1. JTCMake does not go deeper into container objects that are neither tuple, list, nor dict. ::
+1. JTCMake does not go deeper into container objects other than tuple, list, nor dict. ::
 
     g.add('rule', 'out', some_func, arg, kwarg=foo)
 
     # JTCMake does not look inside the set to find g.rule
     g.add('rule1', 'out1', some_func, {foo, g.rule})   
 
-    # JTCMake does not look inside the deque to find g.rule
-    from collections import deque
-    g.add('rule2', 'out2', some_func, deque([foo, g.rule]))
-  
-   rule1 will execute ``some_func({foo, g.rule})`` which should not be what we want.
+   rule1 will execute ``some_func({foo, g.rule})`` instead of ``some_func({foo, Path("dir/out")})`` which should not be what we want.
 
 2. JTCMake does not check dict *keys*. It only checks *values* of dict
 
@@ -444,51 +450,53 @@ The pitfalls are:
 SELF
 ====
 
-Now we know how to pass a Rule's output file to another Rule's method.
-But how to pass it to its own method?  ``jtcmake.SELF`` is for that. ::
+Now we know how to pass a rule's output file to another rule's method.
+But how to pass a rule's output file to its own method?  ``jtcmake.SELF`` is for that. ::
 
   g = create_group("dir")
+
   g.add('rule', 'out', some_func, foo, SELF, a=bar)
 
   g.make()
 
 will execute ``some_func(foo, Path("dir/out"), a=bar)``.
-Here, SELF was replaced by ``Path("dir/out")``.
-JTCMake finds and replaces SELFs in args/kwargs of nested structure, just like it does for other Rule objects. ::
+Here, ``SELF`` was replaced by ``Path("dir/out")`` .
+JTCMake finds and replaces SELFs in args/kwargs of nested structure, just like it does for rule objects. ::
 
   g = create_group("dir")
   g.add('rule', 'out', some_func, [foo, {bar: (SELF, baz)}], a=SELF)
 
 will execute ``some_func([foo, {bar: (Path("dir/out"), baz)}], a=Path("dir/out"))``.
 
-Auto-SELF
-=========
+Auto-SELF (Important)
+=====================
 
-If JTCMake has found no SELF in args/kwargs that you provided, it adds a SELF
+If JTCMake has found no SELF in args/kwargs that you have provided, it adds a SELF
 into the first position of the arguments. ::
 
   g = create_group("dir")
-  g.add('rule', 'out', some_func, 'foo', a='bar')  # no SELF given
+  g.add('rule', 'out', some_func, 'foo', a='bar')  # you gave no SELF
 
   # The above is equivalent to
   # g.add('rule', 'out', some_func, SELF, 'foo', a='bar')
 
   g.make()
 
-will run ``some_func(Path("dir/out"), "foo", a="bar")``.
+will run ::
 
-So, is it possible to prevent SELF from being passed to the method?
-No, it is not possible.
-JTCMake forces you to eventually pass at least one SELF to the method.
+  some_func(Path("dir/out"), "foo", a="bar")
+
+You cannot force JTCMake not to pass a SELF to the method.
 
 
 Output file omission
 ====================
 
-You can omit the argument ``output_file`` when it is equal to the name of the Rule. ::
+You can omit the argument ``output_file`` when it same as the name of the rule. ::
   
   g = create_group('some_dir')
-  rule = g.add('a.txt', some_func, SELF)  # equivalent to g.add('a.txt', 'a.txt', some_func, SELF)
+
+  rule = g.add('a.txt', some_func, SELF)  # same as g.add('a.txt', 'a.txt', some_func, SELF)
 
   assert rule is g['a.txt']
 
@@ -496,9 +504,9 @@ You can omit the argument ``output_file`` when it is equal to the name of the Ru
 Original files
 ==============
 
-When building something, we often have "original files" that do not depend on other files
+When building something, we often have "original files" that do not depend on any other files
 and, therefore, are the start points of the build process.
-We can bring those files into our definition of Rules using wrapping them by ``jtcmake.File`` or ``jtcmake.VFile`` .
+We can bring those files into our definition of rules by wrapping them using ``jtcmake.File`` or ``jtcmake.VFile`` .
 Actually we have already seen a case in the first chapter. Here I repost it. ::
 
   import shutil
@@ -512,7 +520,7 @@ Actually we have already seen a case in the first chapter. Here I repost it. ::
   # 1. Create the root Group with directory `output`
   g = create_group('output')
 
-  # 2. Add Rules to the Group
+  # 2. Add rules to the Group
   g.add('cp1', 'copy1.txt', shutil.copy, jtc.File('original1.txt'), SELF)
   g.add('cp2', 'copy2.txt', shutil.copy, jtc.File('original2.txt'), SELF)
   g.add('concat', 'concat.txt', concat, SELF, g.cp1, g.cp2)
@@ -520,14 +528,20 @@ Actually we have already seen a case in the first chapter. Here I repost it. ::
   # 3. Make
   g.make()
 
+will execute ::
+
+  shutil.copy(Path("original1.txt"), Path("output/copy1.txt"))
+  shutil.copy(Path("original2.txt"), Path("output/copy2.txt"))
+  concat(Path("output/concat.txt"), Path("output/copy1.txt"), Path("output/copy2.txt"))
+
 JTCMake replaces ``jtcmake.File`` and ``jtcmake.VFile`` in args/kwargs by corresponding pathlib.Path instances.
-Difference of the two classes will be described in the **Value File** section.
+Difference of the two classes will be described in the **Memoization and Value Files** section.
 
 
-Make specific Rules
-===================
+Make a subset of rules
+======================
 
-By executing ``rule.make()`` you can make that Rule and its dependencies only. ::
+By executing ``rule.make()`` you can make that rule and its dependencies only. ::
 
   g = create_group('dir')
 
@@ -542,36 +556,41 @@ will run ::
   some_func2(Path("dir/out2.txt"))
   some_func3(Path("dir/out3.txt"), Path("dir/out2.txt"))
 
+``jtcmake.make`` offers a way to make a subset of rules. ::
 
-Nested Structure of Output Files
+  jtcmake.make(rule1, rule2, rule5, rule10)
+
+
+Specifying multiple output files
 ================================
 
-So far, we have been dealing with Rules that have only one output file.
-In practice, we often need Rules that have multiple output files.
+So far, we have been dealing with rules that have only one output file.
+However in practice, we often need rules that have multiple output files.
+For example, we may need to split a file into two pieces.
 
 .. image:: _static/train_test_split.svg
 
-In such cases, we can specify nested structure of output files (hereafter **output file structure**) instead of a single file like, ::
+In such cases, we can specify nested structure (hereafter **nest**) of output files instead of a single file like, ::
 
   g.add("original_data", "original.txt", download_data)
   g.add("rule", { "train": "train.csv", "test": "text.csv" }, split_train_test, g.original_data)
              #  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-             #  This is output file structure containing "train.csv" and "test.csv"
+             #  This is a nest of output files containing "train.csv" and "test.csv"
 
 
-Definition of Output File Structure
------------------------------------
+Nest of Output Files 
+---------------------
 
-output file structure is kind of a tree composed of tuple, list, and dict
-whose leaf nodes are str, os.PathLike, jtcmake.File, jtcmake.VFile.
+Nest of output files is any data structure consisting of containers (tuple, list, or dict)
+and leaf nodes (str, os.PathLike, jtcmake.File, or jtcmake.VFile).
 
-Formally, output file structure is recursively defined as follows:
+Formally, "nest of output files" is recursively defined as follows:
 
-- *str*, *os.PathLike*, *jtcmake.File*, *jtcmake.VFile* are output file structure (we call them "atom" nodes)
-- tuple/list whose elements are output file structure is also output file structure
-- dict whose values are output file structure is also ouput file structure
+- *str*, *os.PathLike*, *jtcmake.File*, *jtcmake.VFile* are nest of output files (we call them "atom")
+- tuple/list whose elements are nest of output files is also nest of output files
+- dict whose values are nest of output files is also nest of output files
 
-Those who have used a deep learning library like Tensorflow or Pytorch should be familiar with this concept.
+This concept was imported from Tensorflow.
 
 
 Examples
@@ -583,24 +602,23 @@ Following objects are output file structure
 - ``Path("/tmp/file.txt")``
 - ``jtc.File("./foo")``
 - ``[ "foo", "bar" ]``
-- ``[ jtc.File("foo"), { "a": Path("bar.exe"), "b": ("bar1.o", "bar2.o") } ]``
+- ``[ jtc.File("foo"), { "a": Path("bar.exe"), 0: ("bar1.o", "bar2.o") } ]``
 
 
 Following objects are not output file structure
 
-- ``{ "foo.txt", "bar.txt" }`` because *set* cannot be a component of an output file structure
-- ``[ "foo".txt", 0 ]`` because *0* cannot be a component of an output file structure
+- ``{ "foo.txt", "bar.txt" }`` *set* is not allowed
+- ``[ "foo".txt", 0 ]`` int is not allowed
 
 
-Internal Atom Conversions
--------------------------
+Internal Atom Normalization
+----------------------------
 
-After you call Group.add with an output file structure, its atom elements undergo a two-step transformation.
+Just like the single output file case, each atom in the nested output files undergo a two-step normalization.
 
-Step 1: jtcmake.File conversion
+Step 1: str and os.PathLike is converted to jtcmake.File
 
-  Every atom in the output file structure is internally converted to jtcmake.File
-  if its type is either str or os.PathLike. For example, ::
+  For example, ::
 
     [ "foo.txt", Path("bar.txt"), jtcmake.VFile("/tmp/baz") ]
 
@@ -608,70 +626,67 @@ Step 1: jtcmake.File conversion
 
     [ jtcmake.File("foo.txt"), jtcmake.File("bar.txt" ), jtcmake.VFile("/tmp/baz") ]
 
-  Note that jtcmake.{File, VFile} remain the same.
-
 
 Step 2: Path Prefixing
 
   Every atom (File or VFile) in the structure gets the parent Group's prefix string added to the front of its path
-  if the path is not absolute, as mentioned in the previous section.
+  if the path is not absolute
 
   For example, after you run the code below, ::
 
     g = create_group('root_dir')
     g.add('foo', ["foo1", "/tmp/foo"], some_method, SELF)
 
-  Rule ``g.foo`` eventually holds an output file structure ``[ File("root_dir/foo1"), File("/tmp/foo") ]``.
+  Rule ``g.foo`` eventually holds a nest ::
+
+    [ File("root_dir/foo1"), File("/tmp/foo") ]
 
 
 Accessing Files of a Rule
 -----------------------------
 
-Now we know that a Rule owns an output file structure.
-We can access each file as if the Rule itself is an output file structure.
-
-That is, if the structure is an atom,
-
-  The Rule node object itself acts as the file.
-  For example, ::
-    
-    g = create_group('root_dir')
-    g.add('foo', 'foo.txt', some_method, SELF)
-
-  Now ``g.foo`` represents the Rule *foo* AND at the same time, its output file "root_dir/foo.txt".
-  You can get its path::
-
-    assert g.foo.path == pathlib.Path("root_dir/foo.txt")
-
-  And you can use it as an argument for another Rule::
-    
-    g.add('bar', 'bar.txt', some_method, g.foo, SELF)
-
-and if the structure is not an atom, and for example, tuple of two atoms,
+Now we know that a rule owns a nest of files.
+We can access each file as if the rule itself is the nest.
+That is, if the nest is an atom, the rule object itself acts as the output file.
+For example, ::
   
-  ::
+  g = create_group('root_dir')
+  g.add('foo', 'foo.txt', some_method, SELF)
 
-    g = create_group('root_dir')
-    g.add('foo', ('foo1.txt', 'foo2.txt'), some_method, SELF)
+Now ``g.foo`` represents the rule *foo* AND its output file "root_dir/foo.txt".
+You can get its path::
+
+  assert g.foo.path == pathlib.Path("root_dir/foo.txt")
+
+and you can use it as an argument for another rule::
   
-  Now ``g.foo`` can be considered a tuple containing two files ::
-    
-    assert g.foo[0].path == pathlib.Path("root_dir/foo1.txt")
-    assert g.foo[1].path == pathlib.Path("root_dir/foo2.txt")
+  g.add('bar', 'bar.txt', some_method, g.foo, SELF)
+
+  # some_method(Path("root_dir/foo.txt"), Path("root_dir/bar.txt")) will be run
+
+If the nest is not an atom but, for example, a tuple of two atoms, the rule object behaves as a tuple of two files::
+
+  g = create_group('root_dir')
+  g.add('foo', ('foo1.txt', 'foo2.txt'), some_method, SELF)
+
+Now ``g.foo`` can be considered a tuple containing two files ::
   
-  Or you can get paths at once::
+  assert g.foo[0].path == pathlib.Path("root_dir/foo1.txt")
+  assert g.foo[1].path == pathlib.Path("root_dir/foo2.txt")
 
-    assert g.foo.path == (
-                            pathlib.Path("root_dir/foo1.txt"),
-                            pathlib.Path("root_dir/foo2.txt")
-                         )
+or you can get paths at once::
 
-  Following two are equivalent
-  
-  - ``g.add('bar', 'bar.txt', some_method, SELF, g.foo)``
-  - ``g.add('bar', 'bar.txt', some_method, SELF, (g.foo[0], g.foo[1]))``
+  assert g.foo.path == (
+                          pathlib.Path("root_dir/foo1.txt"),
+                          pathlib.Path("root_dir/foo2.txt")
+                       )
 
-A Rule holding an output file structures of dict behaves the same way except
+Following two are equivalent
+
+- ``g.add('bar', 'bar.txt', some_method, SELF, g.foo)``
+- ``g.add('bar', 'bar.txt', some_method, SELF, (g.foo[0], g.foo[1]))``
+
+A rule holding an output file structures of dict behaves the same way except
 you can access its elements via attributes::
 
   g = create_group('root_dir')
@@ -680,18 +695,12 @@ you can access its elements via attributes::
   assert g.foo['a'] == g.foo.a
 
 
-SELF in depth
-=============
+SELF for nest of output files
+-----------------------------
 
-So far, we have treated the symbol ``SELF`` as something pointing to the Rule's output files.
-In this section, we will clarify what it really is.
-
-
-How SELF is used
-----------------
+When used for a class with multiple output files, SELF pretends to be the nest of the output files.
 
 It's easier to understand SELF by examples.
-So I give you ones to show how SELF(s) in args/kwargs are replaced.
 
 Example 1.
 
@@ -727,7 +736,7 @@ Example 2.
 
 Example 3.
 
-  You can get pointers to child elements of output file structure by indexing SELF like ::
+  You can get pointers to inner elements of the nest of output files by indexing SELF like ::
 
     g = create_group('root')
 
@@ -754,73 +763,36 @@ Example 3.
   
 
 Precise Understanding of SELF (can be skipped)
------------------------------------------------
+++++++++++++++++++++++++++++++++++++++++++++++
 
 You should have got how to use SELF from the above examples.
 Here I give a more detailed explanation of SELF, which you don't have to understand.
 
-- The type of SELF is *StructKey*, which is a type defined in JTCMake.
+- The type of SELF is *NestKey*, which is a type defined in JTCMake.
 
-  - A StructKey object holds a tuple (x1, x2, ... x_N)
+  - A NestKey object holds a tuple (x1, x2, ... x_N)
     
-    - This tuple identifies an element in a nested structure ``O`` by ``O[x1][x2]...[x_N]``
+    - With this tuple, you can identify an item in a nested structure ``O`` by ``O[x1][x2]...[x_N]``
     - This is similar to how XPath identifies an element in XML.
 
-  - Given a StructKey ``K`` holding a tuple (x1, x2, ... x_N),
-    you get a new StructKey holding a tuple (x1, x2, ... x_N, y) by ``K[y]``
+  - Given a NestKey ``K`` holding a tuple (x1, x2, ... x_N),
+    you can get a new NestKey holding a tuple (x1, x2, ... x_N, y) by ``K[y]``
 
-- The tuple that SELF holds is () (0 element tuple)
-- A StructKey in args/kwargs for a Rule is replaced with the element
-  that it identifies out of the Rule's output_files
-
-
-SELF Omission
-=============
-
-You can omit SELF when both of the following two conditions are met:
-
-1. SELF appears only once in args and kwargs and,
-2. It appears at the first position of ``args`` (i.e. ``args[0]``)
-
-So the following two are equivalent
-
-- ``g.add('x', 'x.txt', method, SELF, foo, a=bar)``
-- ``g.add('x', 'x.txt', method, foo, a=bar)``
-
-The following two are not equivalent (SELF's position is not args[0])
-
-- ``g.add('x', 'x.txt', method, foo, SELF, a=bar)``
-- ``g.add('x', 'x.txt', method, foo, a=bar)``
-
-The following tow are also not equivalent (SELF is used multiple times)
-
-- ``g.add('x', 'x.txt', method, SELF, foo, a=SELF)``
-- ``g.add('x', 'x.txt', method, foo, a=SELF)``
-
-
-Output File Omission
-====================
-
-As the signature-1 ``add(name, [output_files], method, *args, force_update=False, **kwargs)`` suggests,
-``output_files`` can be omitted.
-When omitted, ``name`` is used as ``output_files``.
-So the following two are equivalent:
-
-- ``g.add('x', 'x', method, SELF)``
-- ``g.add('x', method, SELF)``
+- The tuple that SELF holds is () (0 element tuple). For a nest ``O``, it points to ``O`` it self.
+- A NestKey in args/kwargs is considered to be pointing to an element in ``output_files`` of the rule
+  - it will be replaced by that element before passed to the ``method``
 
 
 Decorator-style add
 ===================
 
-When you call Group.add with Signature-2 ``add(name, [output_files], None, *args, force_update=False, **kwargs)``,
-it returns a decorator.
-You can use it like ::
+When you call Group.add with ``method`` being ``None``, it returns a decorator.
+You can use this feature like ::
 
   g = create_group('root_dir')
 
   @g.add('x', 'x.txt', None, "hello!")
-  def _(output_path, text):
+  def method(output_path, text):
       output_path.write_text(text)
 
 This is equivalent to ::
@@ -831,42 +803,20 @@ This is equivalent to ::
   g.add('x', 'x.txt', method, "hello!")
 
 
-Arguments with nested structures and Path conversion
-=====================================================
-
-args/kwargs can be nested structures.
-Formally, "nested structure" is recursively defined as follows:
-
-- Any object that is not an instance of tuple/list/dict is a nested structure (we call it "atom")
-- a tuple/list whose elements are nested structures is also a nested structure
-- a dict whose values are nested structures is also a nested structure
-
-So, nested structure is like a tree composed of tuple/list/dict and the leaf nodes are called "atom".
-To be presise, it's not dict but collections.abc.Mapping.
-
-
-Path conversion
----------------
-
-Before passed to method, any atom of args/kwargs is converted to pathlib.Path if its type is one of
-
-- Classes that implements jtcmake.IFile (currently, jtcmake.File and jtcmake.VFile)
-- Certain types of Rule nodes and File nodes which will be discussed in the later sections
-- SELF
 
 *******************************************
 Group Tree Model and Path Prefixing
 *******************************************
 
-- Group tree is a data structure we use as a container of Rules.
-- Basically, each Group node corresponds to a directory and each Rule corresponds to file(s).
-- Rules can be included as leaf nodes.
+* Group tree is a data structure we use to organize rules.
+* Rules are stored as leaf nodes of the tree.
+* Basically, each Group node corresponds to a directory and each rule node corresponds to file(s).
 
 .. image:: _static/group_tree_overview.svg
 
 
-Basics
-======
+Basic usage
+===========
 
 ::
 
@@ -895,15 +845,15 @@ Now the Group tree implicitly has the following directory structure::
   `--- dir4/is/deep/
 
 
-Adding a Rule node as a child of a Group node will place the Rule's output file in the Group's directory. ::
+Adding a rule node as a child of a Group node will place the rule's output file in the Group's directory. ::
 
   g = create_group('root_dir')
-  g.add('rule', 'rule.txt', lambda x: None, SELF)
+  g.add('rule', 'rule.txt', func, SELF)
   g.add_group('dir')
-  g.dir.add('rule', 'rule.txt', lambda x: None, SELF)
+  g.dir.add('rule', 'rule.txt', func, SELF)
   
-  # Rule's output file name can include directories
-  g.add('deep_rule', 'deep/rule.txt', lambda x: None, SELF)
+  # rule's output file name can include directories
+  g.add('deep_rule', 'deep/rule.txt', func, SELF)
 
 implies::
 
@@ -927,10 +877,10 @@ prefix vs dirname
   g = create_group('root_dir')
   
   g.add_group('sub', prefix='pfx-')  # add Group with prefix='pfx-'
-  g.sub.add('rule', 'rule.txt', lambda x: None, SELF)  # cumulative prefix is 'root_dir/pfx-'
+  g.sub.add('rule', 'rule.txt', func, SELF)  # cumulative prefix is 'root_dir/pfx-'
   
   g.sub.add_group('sub2', prefix='pfx2-')
-  g.sub.sub2.add('rule', 'rule.txt', lambda x: None, SELF)
+  g.sub.sub2.add('rule', 'rule.txt', func, SELF)
 
 implies::
 
@@ -942,20 +892,20 @@ implies::
 Absolute Path
 =============
 
-When you give an absolute path to a Group or Rule node, it won't be prefixed by its parent ::
+When you give an absolute path to a Group or rule node, it won't be prefixed by its parent ::
 
   if os.name == 'nt':
       # for Windows
       g = create_group('root_dir')
       g.add_group('abs_group', 'C:\\Users\\sugi\\abs')  # Group node with absolute path
-      g.abs_group.add('rule', 'rule.txt', lambda x: None, SELF)
-      g.add('abs_rule', 'C:\\Temp\\absolute.txt', lambda x: None, SELF)  # Rule node with absolute path
+      g.abs_group.add('rule', 'rule.txt', func, SELF)
+      g.add('abs_rule', 'C:\\Temp\\absolute.txt', func, SELF)  # rule node with absolute path
   else:
       # for Unix
       g = create_group('root_dir')
       g.add_group('abs_group', '/home/sugi/abs')  # Group node with absolute path
-      g.abs_group.add('rule', 'rule.txt', lambda x: None, SELF)
-      g.add('abs_rule', '/tmp/absolute.txt', lambda x: None, SELF)  # Rule node with absolute path
+      g.abs_group.add('rule', 'rule.txt', func, SELF)
+      g.add('abs_rule', '/tmp/absolute.txt', func, SELF)  # rule node with absolute path
 
 is mapped to directory structure like ::
 
@@ -977,7 +927,7 @@ Accessing Group node as a dict
 
   g = create_group('root_dir')
   g.add_group('dir')
-  g.dir.add('rule', lambda x: None)
+  g.dir.add('rule', func)
   
   assert g.dir == g['dir']
   assert g.dir.rule == g.dir['rule']
