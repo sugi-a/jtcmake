@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from . import events
 from .rule import Event, IRule
-from .make import process_rule, Result
+from .make import process_rule, Result, MakeSummary
 
 
 def _collect_rules(id2rule, seed_ids):
@@ -32,7 +32,7 @@ def _collect_rules(id2rule, seed_ids):
 
 def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     if len(ids) == 0:
-        return
+        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
     assert njobs >= 2
 
@@ -58,6 +58,9 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
 
     # state vars
     updated_ids = set()  # rules processed and not skipped
+
+    nskips = 0  # for stats report
+    nfails = 0  # for stats report
 
     job_q = []  # FIFO: visit nodes in depth-first order
 
@@ -95,7 +98,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
                 cv.wait()
 
     def set_result(i, res):
-        nonlocal stop, nidles
+        nonlocal stop, nidles, nskips, nfails
 
         with cv:
             nidles += 1
@@ -104,11 +107,14 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             if res is None:  # fatal error
                 stop = True
             elif res == Result.Fail:
+                nfails += 1
                 if not keep_going:
                     stop = True
             else:
                 if res == Result.Update:
                     updated_ids.add(i)
+                else:
+                    nskips += 1
 
                 for nxt in b2a[i]:
                     dep_cnt[nxt] -= 1
@@ -163,10 +169,20 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             t.join()
 
         #thread_event_q_handler.join()
-    except:
+    except Exception:
+        pass
+    finally:
         with cv:
             stop = True
             cv.notify_all()
+
+    return MakeSummary(
+        total=len(ids),
+        update=len(updated_ids),
+        skip=nskips,
+        fail=nfails,
+        discard=len(ids) - (len(updated_ids) + nskips + nfails)
+    )
 
 
 def worker(

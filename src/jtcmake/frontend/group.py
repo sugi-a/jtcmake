@@ -180,7 +180,7 @@ class RuleNodeBase:
         *,
         njobs=None,
     ):
-        make(
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
@@ -315,7 +315,7 @@ class Group(IGroup):
         *,
         njobs=None,
     ):
-        make(
+        return make(
             self,
             dry_run=dry_run,
             keep_going=keep_going,
@@ -841,10 +841,10 @@ def make(
     ids = [_info.rule2id[r] for r in rules]
 
     if njobs is not None and njobs >= 2:
-        make_mp_spawn(
+        return make_mp_spawn(
             _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
     else:
-        _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
+        return _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
 
 
 

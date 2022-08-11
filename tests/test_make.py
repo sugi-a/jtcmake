@@ -2,7 +2,7 @@ import sys, os, shutil
 import pytest
 
 from jtcmake.core.rule import Event, IRule
-from jtcmake.core.make import make
+from jtcmake.core.make import make, MakeSummary
 from jtcmake.core import events
 
 def fail(*args, exc=None, **kwargs):
@@ -94,7 +94,9 @@ def test_basic():
 
     # pass both
     log.clear()
-    make(id2rule, [0, 1], False, False, callback)
+    res = make(id2rule, [0, 1], False, False, callback)
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),
@@ -113,7 +115,9 @@ def test_basic():
 
     # pass r1
     log.clear()
-    make(id2rule, [0], False, False, callback)
+    res = make(id2rule, [0], False, False, callback)
+
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),
@@ -125,7 +129,9 @@ def test_basic():
 
     # pass r2
     log.clear()
-    make(id2rule, [1], False, False, callback)
+    res = make(id2rule, [1], False, False, callback)
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),
@@ -161,7 +167,9 @@ def test_skip():
     r1._should_update = False
     r2._should_update = False
 
-    make(id2rule, [2], False, False, callback)
+    res = make(id2rule, [2], False, False, callback)
+
+    assert res == MakeSummary(total=2, update=0, skip=2, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Skip(r1, False),
@@ -174,7 +182,9 @@ def test_skip():
     r1._should_update = False
     r2._should_update = True
 
-    make(id2rule, [2], False, False, callback)
+    res = make(id2rule, [2], False, False, callback)
+
+    assert res == MakeSummary(total=2, update=1, skip=1, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Skip(r1, False),
@@ -196,14 +206,18 @@ def test_dryrun():
 
     # dry-run r1
     log.clear()
-    make(id2rule, [1], True, False, callback)
+    res = make(id2rule, [1], True, False, callback)
+
+    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, True), events.DryRun(r1)
     ])
 
     # dry-run r2
     log.clear()
-    make(id2rule, [2], True, False, callback)
+    res = make(id2rule, [2], True, False, callback)
+
+    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
         ('should_update', r1, False, True), events.DryRun(r1),
         ('should_update', r2, True, True), events.DryRun(r2),
@@ -217,7 +231,9 @@ def test_should_update_error():
     id2rule = [r1]
 
     log.clear()
-    make(id2rule, [0], False, False, callback)
+    res = make(id2rule, [0], False, False, callback)
+
+    assert res == MakeSummary(1, 0, 0, 1, 0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.UpdateCheckError(r1, e),
@@ -232,7 +248,9 @@ def test_preprocess_error():
     id2rule = [r1]
 
     log.clear()
-    make(id2rule, [0], False, False, callback)
+    res = make(id2rule, [0], False, False, callback)
+
+    assert res == MakeSummary(1, 0, 0, 1, 0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),
@@ -251,8 +269,9 @@ def test_exec_error():
     id2rule = [r1]
 
     log.clear()
-    make(id2rule, [0], False, False, callback)
-    print(log)
+    res = make(id2rule, [0], False, False, callback)
+
+    assert res == MakeSummary(1, 0, 0, 1, 0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),
@@ -270,7 +289,9 @@ def test_postprocess_error(tmp_path):
     id2rule = [r1]
 
     log.clear()
-    make(id2rule, [0], False, False, callback)
+    res = make(id2rule, [0], False, False, callback)
+
+    assert res == MakeSummary(1, 0, 0, 1, 0)
     assert_same_log(log, [
         ('should_update', r1, False, False),
         events.Start(r1),

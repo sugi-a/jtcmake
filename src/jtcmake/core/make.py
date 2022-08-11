@@ -1,6 +1,6 @@
 import os, sys, re, traceback, inspect, abc, time, enum
 from threading import Condition, Thread
-from collections import defaultdict, deque
+from collections import defaultdict, deque, namedtuple
 
 from . import events
 from .rule import Event, IRule
@@ -9,6 +9,18 @@ class Result(enum.Enum):
     Update = 1
     Skip = 2
     Fail = 3
+
+
+MakeSummary = namedtuple(
+    'MakeSummary',
+    [
+        'total',   # planned to be update
+        'update',  # actually updated (method called)
+        'skip',    # "nothing to do with ..."
+        'fail',    # failed ones
+        'discard'  # not checked because of abort
+    ]
+)
 
 
 def _toplogical_sort(id2rule, seed_ids):
@@ -40,14 +52,16 @@ def make(
     callback,
     ):
     if len(ids) == 0:
-        return
+        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
     main_ids = set(ids)
 
     taskq = _toplogical_sort(id2rule, ids)
 
-    failed_ids = set()
+    failed_ids = set()  # includes discarded ones
     updated_ids = set()
+    nskips = 0  # for stats report
+    nfails = 0  # for stats report
 
     for i in taskq:
         r = id2rule[i]
@@ -69,20 +83,30 @@ def make(
             except Exception:
                 traceback.print_exc()
                 pass
-            return False
+            break
 
         if result == Result.Update:
             updated_ids.add(i)
         elif result == Result.Fail:
+            nfails += 1
             failed_ids.add(i)
             if not keep_going:
                 try:
                     callback(events.StopOnFail())
                 except Exception:
                     traceback.print_exc()
-                return False
+                break
+        else:
+            assert result == Result.Skip
+            nskips += 1
 
-    return True
+    return MakeSummary(
+        total=len(taskq),
+        update=len(updated_ids),
+        skip=nskips,
+        fail=nfails,
+        discard=len(taskq) - (len(updated_ids) + nskips + nfails)
+    )
         
 
 def process_rule(
