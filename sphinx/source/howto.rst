@@ -33,7 +33,7 @@ in the sample codes in the later sections. ::
   from pathlib import Path
 
   from jtcmake import create_group, SELF
-  import jtcmake as jtc
+  import jtcmake
 
 ``create_group`` and ``SELF`` are the most frequently used components of JTCMake.
 
@@ -82,8 +82,8 @@ In the above code, we
 
 2. add a **rule** to the Group by ``Group.add()``
 
-   * Its signature is ``Group.add(name, output_file, method, *args, **kwargs)``, meaning
-     the name of the rule is ``name``, and ``output_file`` must be created by calling ``method(*args, **kwargs)``
+   * Its signature is ``Group.add(name, output_file, method, *args, **kwargs)`` , meaning
+     the name of the rule is ``name`` , and ``output_file`` must be created by calling ``method(*args, **kwargs)``
 
    * In this case, we add a rule named "hello" which demands that a file ``output/hello.txt`` should be created
      by ``write_text(Path("output/hello.txt"), "Hello!")``
@@ -163,8 +163,8 @@ And the JTCMake equivalent is, ::
   g = create_group('output')
 
   # 2. Add rules to the Group
-  g.add('cp1', 'copy1.txt', shutil.copy, jtc.File('original1.txt'), SELF)
-  g.add('cp2', 'copy2.txt', shutil.copy, jtc.File('original2.txt'), SELF)
+  g.add('cp1', 'copy1.txt', shutil.copy, jtcmake.File('original1.txt'), SELF)
+  g.add('cp2', 'copy2.txt', shutil.copy, jtcmake.File('original2.txt'), SELF)
   g.add('concat', 'concat.txt', concat, SELF, g.cp1, g.cp2)
 
   # 3. Make
@@ -172,7 +172,7 @@ And the JTCMake equivalent is, ::
 
 
 What is noteworthy here is that, after we add the rules "cp1" and "cp2",
-we can refer to them by ``g.cp1`` and ``g.cp2``, respectively.
+we can refer to them by ``g.cp1`` and ``g.cp2`` , respectively.
 
 You will see what ``g.make()`` does from its log:
 
@@ -205,8 +205,8 @@ You will see what ``g.make()`` does from its log:
 -------
 
 As can be seen from this log, JTCMake called the function ``concat`` with the arguments where
-``SELF``,  ``g.cp1``, and ``g.cp2`` are replaced by
-``Path("output/concat.txt")``, ``Path("output/copy1.txt")`` and ``Path("output/copy1.txt")``, respectively.
+``SELF`` ,  ``g.cp1`` , and ``g.cp2`` are replaced by
+``Path("output/concat.txt")`` , ``Path("output/copy1.txt")`` and ``Path("output/copy1.txt")`` , respectively.
 I hope this behavior is intuitive enough to you.
 
 
@@ -361,8 +361,8 @@ Type of output file
 
   g.add("rule1", "output1.txt", some_func, arg, kwarg=foo)             # OK
   g.add("rule2", Path("output2.txt"), some_func, arg, kwarg=foo)       # OK
-  g.add("rule3", jtc.File("output3.txt"), some_func, arg, kwarg=foo)   # OK
-  g.add("rule4", jtc.VFile("output4.txt"), some_func, arg, kwarg=foo)  # OK
+  g.add("rule3", jtcmake.File("output3.txt"), some_func, arg, kwarg=foo)   # OK
+  g.add("rule4", jtcmake.VFile("output4.txt"), some_func, arg, kwarg=foo)  # OK
   g.add("rule5", 0, some_func, arg, kwarg=foo)  # TypeError
 
 When you pass a str or os.PathLike as ``output_file``, JTCMake internally converts it to jtcmake.File.
@@ -370,7 +370,7 @@ So the following are equivalent
 
   - ``g.add('rule_name', 'output.txt',           some_func, arg, kwarg=foo)``
   - ``g.add('rule_name', Path('output.txt'),     some_func, arg, kwarg=foo)``
-  - ``g.add('rule_name', jtc.File('output.txt'), some_func, arg, kwarg=foo)``
+  - ``g.add('rule_name', jtcmake.File('output.txt'), some_func, arg, kwarg=foo)``
 
 
 Path prefixing and absolute path
@@ -521,8 +521,8 @@ Actually we have already seen a case in the first chapter. Here I repost it. ::
   g = create_group('output')
 
   # 2. Add rules to the Group
-  g.add('cp1', 'copy1.txt', shutil.copy, jtc.File('original1.txt'), SELF)
-  g.add('cp2', 'copy2.txt', shutil.copy, jtc.File('original2.txt'), SELF)
+  g.add('cp1', 'copy1.txt', shutil.copy, jtcmake.File('original1.txt'), SELF)
+  g.add('cp2', 'copy2.txt', shutil.copy, jtcmake.File('original2.txt'), SELF)
   g.add('concat', 'concat.txt', concat, SELF, g.cp1, g.cp2)
 
   # 3. Make
@@ -600,9 +600,9 @@ Following objects are output file structure
 
 - ``"foo/bar.txt"``
 - ``Path("/tmp/file.txt")``
-- ``jtc.File("./foo")``
+- ``jtcmake.File("./foo")``
 - ``[ "foo", "bar" ]``
-- ``[ jtc.File("foo"), { "a": Path("bar.exe"), 0: ("bar1.o", "bar2.o") } ]``
+- ``[ jtcmake.File("foo"), { "a": Path("bar.exe"), 0: ("bar1.o", "bar2.o") } ]``
 
 
 Following objects are not output file structure
@@ -803,6 +803,55 @@ This is equivalent to ::
   g.add('x', 'x.txt', method, "hello!")
 
 
+Rejected args/kwargs and workaround
+====================================
+
+Not all kinds of Python objects can be included in args/kwargs. For example, closures are rejected::
+
+  g = create_group('root')
+
+  g.add('rule', func, lambda x: x * 2)  # error.
+
+To be accepted as an argument, the object must satisfy the following two conditions:
+
+1. It must be picklable
+2. It must be pickle-unpickle invariant. i.e. for the object ``o`` ,
+   ``unpickle(pickle(o)) == o`` must hold.
+
+This requirement comes from the **memoization** feature explained in the later section.
+
+Closure functions, for example, do not satisfy the first condition::
+
+  import pickle
+  pickle.dumps(lambda x: x * 2)  # error
+
+An instance of a custom class which does not implement ``__eq__`` method does not satisfy the second condition::
+
+  import pickle
+
+  class A:
+      ...
+
+  a = A()
+
+  assert pickle.loads(pickle.dumps(a)) != a
+
+
+Wraping with jtcmake.Atom
+--------------------------
+
+To pass an unaccepted object to the method, wrap it with ``jtcmake.Atom`` . ::
+
+  g = create_group('root')
+
+  g.add('rule', func, jtcmake.Atom(lambda x: x * 2, None))  # ok.
+
+  #g.add('rule', func, lambda x: x * 2)  # error.
+
+  g.make()
+
+It will run ``func(Path("root/rule"), lambda x: x*2)`` as expected.
+
 
 *******************************************
 Group Tree Model and Path Prefixing
@@ -934,24 +983,54 @@ Accessing Group node as a dict
 
 
 
-**********
-Value File
-**********
+**************************
+Memoization and Value File
+**************************
+
+(WIP)
+
+JTCMake provides *memoization* for args/kwargs.
+When a rule is successfully made, atoms in its args/kwargs are serialized by pickle and stored to a file. 
+Exception are the following atoms:
+
+* ``jtcmake.SELF`` : just ignored (``SELF[0]`` , ``SELF.foo`` , etc are also ignored)
+* ``jtcmake.File`` : just ignored
+* ``jtcmake.VFile`` : instead of pickling, sha256 hash of the file content is stored (**Value File**)
+* ``jtcmake.Atom`` : atom.memo_value is pickled and stored
+
+When we try to make the rule again, the cached values are unpickled and compared to the atoms
+in the current args/kwargs. If any atom differs, JTCMake determines that update is needed.
 
 
-***************
-Multi Threading
-***************
+*************
+Parallel Run 
+*************
+
+(WIP)
+
+By specifying an integer >= 2 for the ``njobs`` argument of ``RuleNode.make()`` , ``Group.make()`` ,
+or ``jtcmake.make()`` , JTCMake executes up to ``njobs`` methods concurrently.
+
+See also the docstring of ``jtcmake.make()`` .
 
 
 *****************
 Utility Functions
 *****************
 
+(WIP)
+
+``Group.select`` provides a way to obtain a list of groups/rules whose name have a certain pattern.
+
+See also its docstring.
+
 
 ***************
 Design Patterns
 ***************
+
+(WIP)
+
 
 .. rubric:: Footnotes
 
