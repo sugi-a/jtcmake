@@ -4,10 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from jtcmake.frontend.rule import \
+from jtcmake.rule.rule import \
     Rule, create_vfile_hashes, create_auth_digest
 
-from jtcmake.frontend.file import File, VFile, IFile
+from jtcmake.rule.file import File, VFile, IFile
 
 
 _args = (object(),)
@@ -57,7 +57,7 @@ def test_create_vfile_hashes(mocker):
     f2.get_hash = mocker.MagicMock(return_value='b')
 
     mocker.patch(
-        'jtcmake.frontend.file.os.path.getmtime',
+        'jtcmake.rule.file.os.path.getmtime',
         side_effect=lambda p: 1 if p == f1.path else 2
     )
 
@@ -76,7 +76,7 @@ def test_update_memo(tmp_path, mocker):
 
     r = Rule(ys, xs, [], _method, _args, _kwargs, ['xyz'], b'key')
 
-    m = mocker.patch('jtcmake.frontend.rule.save_memo')
+    m = mocker.patch('jtcmake.rule.rule.save_memo')
     r.update_memo()
 
     pickle_code = pickle.dumps(['xyz'])

@@ -4,7 +4,7 @@ from pathlib import Path, PurePath
 import pytest
 
 from jtcmake.frontend.group import create_group, SELF
-from jtcmake.frontend.file import File, VFile
+from jtcmake.rule.file import File, VFile
 from jtcmake.utils.nest import map_structure
 import jtcmake
 

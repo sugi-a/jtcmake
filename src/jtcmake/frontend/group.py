@@ -6,9 +6,9 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from ..core.rule import IRule
-from .rule import Rule
+from ..rule.rule import Rule
 from .igroup import IGroup
-from .file import File, VFile, IFile, IVFile
+from ..rule.file import File, VFile, IFile, IVFile
 from . import events as group_events
 from .event_logger import create_event_callback
 from . import graphviz
