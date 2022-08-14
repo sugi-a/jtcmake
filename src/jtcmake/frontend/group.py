@@ -1000,7 +1000,7 @@ def make(
 def create_group(
     dirname=None, prefix=None, *,
     loglevel=None, use_default_logger=True, logfile=None,
-    memo_kind='str-hash',
+    memo_kind='str_hash',
     pickle_key=None,
 ):
     """Create a root Group node.
@@ -1060,16 +1060,16 @@ def create_group(
                 'pickle_key must be specified when memo_kind is "pickle"')
 
         memo_factory = _get_memo_factory_pickle(pickle_key)
-    elif memo_kind == 'str-hash':
+    elif memo_kind == 'str_hash':
         if pickle_key is not None:
             raise TypeError(
                 'pickle_key must not be specified for '
-                'str-hash memoization method'
+                'str_hash memoization method'
             )
         memo_factory = _memo_factory_str_hash
     else:
         raise ValueError(
-            f'memo_kind must be "str-hash" or "pickle", given {memo_kind}')
+            f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
 
     tree_info = GroupTreeInfo(
         logwriters=logwriters,

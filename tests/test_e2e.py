@@ -181,10 +181,10 @@ def test_addvf(tmp_path):
 
 @pytest.mark.parametrize(
     "memo_kind,pickle_key",
-    [('str-hash', None), ('pickle', 'FFFF')]
+    [('str_hash', None), ('pickle', 'FFFF')]
 )
 def test_memoization_common(tmp_path, memo_kind, pickle_key):
-    """test memoization behavior that is common to 'pickle' and 'str-hash'"""
+    """test memoization behavior that is common to 'pickle' and 'str_hash'"""
 
     def _write(p, t):
         p.write_text(repr(t))
@@ -267,7 +267,7 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
 def test_memoization(tmp_path):
     def fn(*args): ...
 
-    # str-hash does not support functions, and classes
+    # str_hash does not support functions, and classes
     g = create_group(tmp_path)
 
     with pytest.raises(Exception):
