@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ..core.rule import IRule
 from ..rule.rule import Rule
+from ..rule.memo import PickleMemo, StrHashMemo
 from .igroup import IGroup
 from ..rule.file import File, VFile, IFile, IVFile
 from . import events as group_events
@@ -244,13 +245,13 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters, pickle_key):
+    def __init__(self, logwriters, memo_factory):
         self.id2rule = []  # list<Rule>
         self.rule2id = {}  # dict<int, Rule>
         self.path_to_rule = {}  # dict<str, Rule>
         self.path_to_file = {}
         self.rule_to_name = {}
-        self.pickle_key = pickle_key
+        self.memo_factory = memo_factory
 
         self.callback = create_event_callback(logwriters, self.rule_to_name)
 
@@ -674,24 +675,14 @@ class Group(IGroup):
         method_args = map_structure(_unwrap_IFile_Atom, method_args)
         method_args, method_kwargs = method_args
 
-        # create memoization args
-        def _repl_IFile_Atom(x):
-            if isinstance(x, IFile):
-                return None
-            elif isinstance(x, Atom):
-                return x.memo_value
-            else:
-                return x
-
         memo_args = pack_sequence_as((args, kwargs), args_)
-        memo_args = map_structure(_repl_IFile_Atom, memo_args)
+        memo = self._info.memo_factory(memo_args)
 
         # create Rule
         r = Rule(
             files_, xfiles, deplist,
             method, method_args, method_kwargs,
-            kwargs_to_be_memoized=memo_args,
-            pickle_key=self._info.pickle_key,
+            memo=memo,
             name=(*self._name, name)
         )
 
@@ -1009,6 +1000,7 @@ def make(
 def create_group(
     dirname=None, prefix=None, *,
     loglevel=None, use_default_logger=True, logfile=None,
+    memo_kind='str-hash',
     pickle_key=None,
 ):
     """Create a root Group node.
@@ -1062,25 +1054,27 @@ def create_group(
     if use_default_logger:
         logwriters.append(_create_default_logwriter(loglevel))
 
-    if pickle_key is None:
-        pickle_key = _default_pickle_key
-    elif type(pickle_key) == str:
-        pickle_key = bytes.fromhex(pickle_key)
-    elif type(pickle_key) != bytes:
-        raise TypeError('pickle_key must be bytes or hexadecimal str')
+    if memo_kind == 'pickle':
+        if pickle_key is None:
+            raise TypeError(
+                'pickle_key must be specified when memo_kind is "pickle"')
 
-    if pickle_key == _DEFAULT_PICKLE_KEY:
-        warning_ = (
-            f'You are using the default pickle key {_DEFAULT_PICKLE_KEY}.\n'
-            'For security reasons, it is recommended to provide your own '
-            'key by either,\n\n'
-            '* jtcmake.set_default_pickle_key(b"your own key"), or\n'
-            '* jtcmake.create_group("dir", pickle_key=b"your own key")\n'
-            'Pickle key is used to authenticate pickled data.'
-        )
-        warnings.warn(warning_)
+        memo_factory = _get_memo_factory_pickle(pickle_key)
+    elif memo_kind == 'str-hash':
+        if pickle_key is not None:
+            raise TypeError(
+                'pickle_key must not be specified for '
+                'str-hash memoization method'
+            )
+        memo_factory = _memo_factory_str_hash
+    else:
+        raise ValueError(
+            f'memo_kind must be "str-hash" or "pickle", given {memo_kind}')
 
-    tree_info = GroupTreeInfo(logwriters=logwriters, pickle_key=pickle_key)
+    tree_info = GroupTreeInfo(
+        logwriters=logwriters,
+        memo_factory=memo_factory
+    )
 
     return Group(tree_info, str(prefix), ())
 
@@ -1114,17 +1108,34 @@ def _create_logwriter(f, loglevel):
         return TextWriter(f, loglevel)
 
 
-_DEFAULT_PICKLE_KEY = bytes.fromhex('FFFF')
-_default_pickle_key = _DEFAULT_PICKLE_KEY
-
-def set_default_pickle_key(key):
-    global _default_pickle_key
-    if type(key) == bytes:
-        _default_pickle_key = key
-    elif type(key) == str:
-        _default_pickle_key = bytes.fromhex(key)
+def _unwrap_IFile_and_Atom(x):
+    if isinstance(x, IFile):
+        return ''
+    elif isinstance(x, Atom):
+        return x.memo_value
     else:
-        raise TypeError('key must be bytes or hexadecimal str')
+        return x
+
+def _get_memo_factory_pickle(pickle_key):
+    if type(pickle_key) == str:
+        try:
+            pickle_key = bytes.fromhex(pickle_key)
+        except ValueError as e:
+            raise ValueError(
+                'If given as str, pickle_key must be a hexadecimal string'
+            ) from e
+    elif type(pickle_key) != bytes:
+        raise TypeError('pickle_key must be bytes or hexadecimal str')
+
+    def _memo_factory_pickle(args):
+        args = map_structure(_unwrap_IFile_and_Atom, args)
+        return PickleMemo(args, pickle_key)
+
+    return _memo_factory_pickle
+
+
+def _memo_factory_str_hash(args):
+    return StrHashMemo(map_structure(_unwrap_IFile_and_Atom, args))
 
 
 SELF = NestKey(())

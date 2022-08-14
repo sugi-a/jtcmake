@@ -5,9 +5,11 @@ from unittest.mock import patch
 import pytest
 
 from jtcmake.rule.rule import \
-    Rule, create_vfile_hashes, create_auth_digest
+    Rule, create_vfile_hashes
 
 from jtcmake.rule.file import File, VFile, IFile
+
+from jtcmake.rule.memo import IMemo, PickleMemo
 
 
 _args = (object(),)
@@ -34,13 +36,14 @@ def touch(*paths, t=None):
         os.utime(p, (t,t))
 
 
-def test_metadata_fname():
+def test_metadata_fname(mocker):
     """Rule.metadata_fname is decided based on the name of the first
     output file (p) as follows:
         metadata_fname := p.parent / '.jtcmake' / p.name
     """
     y1, y2 = File(Path('a/b.c')), File(Path('d/e.f'))
-    r = Rule([y1, y2], [], [], _method, _args, _kwargs, {}, b'key')
+    memo = mocker.MagicMock()
+    r = Rule([y1, y2], [], [], _method, _args, _kwargs, memo)
     assert os.path.abspath(r.metadata_fname) == \
         os.path.abspath('a/.jtcmake/b.c')
 
@@ -68,13 +71,16 @@ def test_create_vfile_hashes(mocker):
 def test_update_memo(tmp_path, mocker):
     import pickle
 
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.memo = 0
+
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     x1, x2 = (File(tmp_path / f'x{i}') for i in (1,2))
     k1, k2 = ('k1',), ('k2',)
     ys = [y1, y2]
     xs = [(k1,y1), (k2,y2)]
 
-    r = Rule(ys, xs, [], _method, _args, _kwargs, ['xyz'], b'key')
+    r = Rule(ys, xs, [], _method, _args, _kwargs, mock_memo)
 
     m = mocker.patch('jtcmake.rule.rule.save_memo')
     r.update_memo()
@@ -83,11 +89,7 @@ def test_update_memo(tmp_path, mocker):
     m.assert_called_once_with(
         r.metadata_fname,
         [(k2,y2)],
-        {
-            "type": "pickle",
-            "value": pickle_code.hex(),
-            "digest": create_auth_digest(pickle_code, b'key')
-        }
+        0
     )
     
 
@@ -115,6 +117,10 @@ def test_rule_should_update(tmp_path, mocker):
     q2 = mocker.MagicMock('Rule')
 
     #### multi-y, multi-x, fixed args cases ####
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.compare.return_value = True
+    mock_memo.memo = 0
+
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     x1, x2 = File(tmp_path / 'x1'), VFile(tmp_path / 'x2')
     k1, k2 = ('k1',), ('k2',)
@@ -122,7 +128,7 @@ def test_rule_should_update(tmp_path, mocker):
     ys = [y1, y2]
     xs = [(k1,x1), (k2,x2)]
 
-    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, {}, b'key')
+    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, mock_memo)
 
     # case 1
     touch(x1, x2, y1, y2)
@@ -187,9 +193,13 @@ def test_rule_should_update(tmp_path, mocker):
 
 
     #### no x, fixed args case ####
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.compare.return_value = True
+    mock_memo.memo = 0
+
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, {}, b'key')
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
 
     # case 3: y1 is missing
     rm(y1); touch(y2)
@@ -205,42 +215,39 @@ def test_rule_should_update(tmp_path, mocker):
 
 
     #### case 6. args updated ####
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.compare.return_value = True
+    mock_memo.memo = 0
+
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, ['a'], b'key')
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
 
-    r.update_memo()
     touch(y1, y2, x1, x2)
+    r.update_memo()
 
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, ['b'], b'key')
+    assert not r.should_update(set(), False)
+
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.compare.return_value = False
+
+    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
 
     assert r.should_update(set(), False)
 
 
-    ##### Authentication Error ####
-    y = File(tmp_path / 'out')
-    r = Rule([y], [], [q1, q2], _method, _args, _kwargs, [], b'key1')
-
-    r.update_memo()
-    touch(y)
-
-    r = Rule([y], [], [q1, q2], _method, _args, _kwargs, [], b'key2')
-
-    with pytest.raises(Exception):
-        r.should_update(set(), False)
-
-
-def test_preprocess(tmp_path):
+def test_preprocess(tmp_path, mocker):
     """Rule.preprocess(callaback) should make dirs for all its output files.
     """
+    mock_memo = mocker.MagicMock(IMemo)
     y = File(tmp_path / 'a')
-    r = Rule([y], [], [], _method, _args, _kwargs, {}, b'key')
+    r = Rule([y], [], [], _method, _args, _kwargs, mock_memo)
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.path.parent)
     assert os.path.isdir(y.path.parent)
 
 
-def test_postprocess(tmp_path):
+def test_postprocess(tmp_path, mocker):
     """Rule.postprocess(callback, successed:bool) should
     1. if successed,
         1. Create input VFile hash cache
@@ -248,13 +255,18 @@ def test_postprocess(tmp_path):
         1. Set mtime of all the existing output files to 0
         2. Delete input VFile hash cache
     """
+    mock_save_memo = mocker.patch('jtcmake.rule.rule.save_memo')
+    mock_memo = mocker.MagicMock(IMemo)
+
     y = File(tmp_path / 'y')
     x1 = File(tmp_path / 'x1')
     x2 = VFile(tmp_path / 'x2')
 
-    r = Rule([y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs, {}, b'key')
+    r = Rule([y], [('k1', x1), ('k2', x2)], [], _method, _args, _kwargs, mock_memo)
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)
+
+    mock_save_memo.assert_called_once()
 
     # TODO: test
