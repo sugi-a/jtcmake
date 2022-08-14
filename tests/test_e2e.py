@@ -47,8 +47,6 @@ def globfiles(dirname):
 def test_1(njobs, tmp_path):
     """basics"""
 
-    jtcmake.set_default_pickle_key('ABABAB')
-
     g = create_group(tmp_path)
 
     g.add('a', 'a.txt', add_text, None, 'a')
@@ -105,8 +103,6 @@ def test_1(njobs, tmp_path):
 
 
 def test_2(tmp_path):
-    jtcmake.set_default_pickle_key('ABABAB')
-
     # nested path and args
     g = create_group(tmp_path)
 
@@ -120,8 +116,6 @@ def test_2(tmp_path):
 
 
 def test_4(tmp_path):
-    jtcmake.set_default_pickle_key('ABABAB')
-
     # make failure
     g = create_group(tmp_path)
     
@@ -150,67 +144,61 @@ def test_4(tmp_path):
 
 
 def test_addvf(tmp_path):
-    jtcmake.set_default_pickle_key('ABABAB')
-
     from jtcmake import Atom
 
-    dummy = [1]
+    _cnt = 0
 
-    x, y = 'x0', 'y0'
-    g = create_group(tmp_path)
-    g.addvf('a', lambda p,_: p.write_text(x), Atom(dummy))
-    g.add('b', lambda p,_: p.write_text(y), g.a)
+    def _create_group(x, y):
+        nonlocal _cnt
+        _cnt += 1
 
+        g = create_group(tmp_path)
+        g.addvf('a', lambda p, _: p.write_text(x), _cnt)
+        g.add('b', lambda p, _: p.write_text(y), g.a)
+        return g
+        
+
+    g = _create_group('0', '0')
     g.make()
-    assert (tmp_path / 'b').read_text() == 'y0'
+    assert (tmp_path / 'b').read_text() == '0'
 
-    # when x was modified, y must be updated
+    # if x has been modified, y must be updated
     time.sleep(0.01)
-    x, y = 'x1', 'y1'
-    dummy[0] += 1
+    g = _create_group('1', '1')
     res = g.make()
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
-    assert (tmp_path / 'b').read_text() == 'y1'
+    assert (tmp_path / 'b').read_text() == '1'
 
     # when x was not modified, y must not be updated
     time.sleep(0.01)
-    y = 'y2'
-    dummy[0] += 1
+    g = _create_group('1', '2')
     res = g.make()
 
     assert res == MakeSummary(total=2, update=1, skip=1, fail=0, discard=0)
-    assert (tmp_path / 'b').read_text() == 'y1'
-
-    # regardless of x, if y's mtime is 0, y must be updated
-    os.utime(g.b.path, (0,0))
-    dummy[0] += 1
-    res = g.make()
-
-    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
-    assert (tmp_path / 'b').read_text() == 'y2'
+    assert (tmp_path / 'b').read_text() == '1'
 
 
-def test_memoization(tmp_path):
-    jtcmake.set_default_pickle_key('ABABAB')
-
-    from jtcmake.gen_pickle_key import gen_key
+@pytest.mark.parametrize(
+    "memo_kind,pickle_key",
+    [('str-hash', None), ('pickle', 'FFFF')]
+)
+def test_memoization_common(tmp_path, memo_kind, pickle_key):
+    """test memoization behavior that is common to 'pickle' and 'str-hash'"""
 
     def _write(p, t):
         p.write_text(repr(t))
 
-    pickle_key = gen_key()
-
     #### str case ('abc' -> 'def') ####
     before, after = 'abc', 'def'
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, before)
     g.make()
 
     assert g.a.path.read_text() == repr(before)
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, after)
     res = g.make()
 
@@ -220,13 +208,13 @@ def test_memoization(tmp_path):
     #### set case ({1, 2} -> {2, 3}) ####
     before, after = {1,2}, {2,3}
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, before)
     g.make()
 
     assert g.a.path.read_text() == repr(before)
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, after)
     res = g.make()
 
@@ -236,13 +224,13 @@ def test_memoization(tmp_path):
     #### PurePath/Path case (don't update) (PurePath -> Path) ####
     before, after = PurePath('a'), Path('a')
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, before)
     g.make()
 
     assert g.a.path.read_text() == repr(before)
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, after)
     res = g.make()
 
@@ -252,61 +240,61 @@ def test_memoization(tmp_path):
     #### ignore change using Atom(_, None) ({1, 2} -> {2, 3}) ####
     before, after = {1,2}, {2,3}
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, jtcmake.Atom(before, lambda _: None))
     g.make()
 
     assert g.a.path.read_text() == repr(before)
 
-    g = create_group(tmp_path, pickle_key=pickle_key)
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add('a', _write, jtcmake.Atom(before, lambda _: None))
     res = g.make()
 
     assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)
     assert g.a.path.read_text() == repr(before)  # not after
 
+
+    #### raise when given instances that are not value object ####
+    g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
+
+    with pytest.raises(Exception):
+        g.add('a', _write, lambda _: None)
+
+    with pytest.raises(Exception):
+        g.add('a', _write, object())
+
+
+def test_memoization(tmp_path):
+    def fn(*args): ...
+
+    # str-hash does not support functions, and classes
+    g = create_group(tmp_path)
+
+    with pytest.raises(Exception):
+        g.add('a', fn, print)
+
+    with pytest.raises(Exception):
+        g.add('a', fn, int)
+
+    # pickle supports top level funcs and classes
+    g = create_group(tmp_path, memo_kind='pickle', pickle_key='FF')
+    g.add('a', fn, print)
+    g.add('b', fn, int)
+
     
-def test_memoization_global_pickle_key(tmp_path):
+def test_pickle_memo_auth(tmp_path):
     def _write(p, t):
         p.write_text(repr(t))
 
-    # using the default key
-    KEY = b'abc'.hex()
-    jtcmake.set_default_pickle_key(KEY)
-    
-    g = create_group(tmp_path)  # use the default key b'abc'
-    g.add('1', _write, "a")
-    g.make()
-
-    g = create_group(tmp_path, pickle_key=KEY)  # explicitly give b'abc'
-    g.add('1', _write, "b")
-    res = g.make()
-
-    # no failure
-    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-
-    # passing key to create_group
+    KEY1 = b'abc'.hex()
     KEY2 = b'xyz'.hex()
-    g = create_group(tmp_path, pickle_key=KEY2)  # use non-default key b'xyz'
-    g.add('2', _write, "a")
+
+    g = create_group(tmp_path, memo_kind='pickle', pickle_key=KEY1)
+    g.add('a', _write, "a")
     g.make()
 
-    g = create_group(tmp_path, pickle_key=KEY2)
-    g.add('2', _write, "b")
-    res = g.make()
-
-    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-
-    # failing key validation
-    KEY3_1 = b'abc'.hex()
-    KEY3_2 = b'xyz'.hex()
-
-    g = create_group(tmp_path, pickle_key=KEY3_1)
-    g.add('3', _write, "a")
-    g.make()
-
-    g = create_group(tmp_path, pickle_key=KEY3_2)
-    g.add('3', _write, "b")
+    g = create_group(tmp_path, memo_kind='pickle', pickle_key=KEY2)
+    g.add('a', _write, "b")
     res = g.make()
 
     # fail (error on checking update)

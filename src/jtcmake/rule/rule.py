@@ -14,8 +14,7 @@ class Rule(IRule):
         method,
         args,
         kwargs,
-        kwargs_to_be_memoized,
-        pickle_key,
+        memo,
         name=None,
     ):
         self.yfiles = yfiles
@@ -25,12 +24,7 @@ class Rule(IRule):
         self._args = args
         self._kwargs = kwargs
         self.name = name
-
-        self.raw_memo_args = kwargs_to_be_memoized
-        self.pickle_key = pickle_key
-
-        self.encoded_memo_args = \
-            create_args_memo_pickle(kwargs_to_be_memoized, pickle_key)
+        self.memo = memo
 
 
     def should_update(
@@ -96,15 +90,13 @@ class Rule(IRule):
             if mtime != mtime_ and f.get_hash() != hash_:
                 return True
 
-        code = bytes.fromhex(arg_memo['value'])
-
-        if validate_digest(code, arg_memo['digest'], self.pickle_key):
-            if pickle.loads(code) != self.raw_memo_args:
+        try:
+            if not self.memo.compare(arg_memo):
                 return True
-        else:
+        except Exception:
             raise Exception(
-                'Authentication error: failed to authenticate '
-                f'the pickle code in {self.metadata_fname}.'
+                f'Failed to check memoized arguments '
+                f'loaded from {self.metadata_fname}'
             )
 
         return False
@@ -144,8 +136,7 @@ class Rule(IRule):
 
     def update_memo(self):
         xvfiles = [(k,v) for k,v in self.xfiles if isinstance(v, IVFile)]
-
-        save_memo(self.metadata_fname, xvfiles, self.encoded_memo_args)
+        save_memo(self.metadata_fname, xvfiles, self.memo.memo)
 
 
     @property
@@ -190,54 +181,6 @@ def load_vfile_hashes(metadata_fname):
 
     with open(metadata_fname) as f:
         return json.load(f)
-
-
-def pickle_obj(obj):
-    code = pickle.dumps(obj)
-
-    # check round-trip equiality
-    decoded = pickle.loads(code)
-    if obj != decoded:
-        raise ValueError(
-            'Arguments to be memoized include an object that changes'
-            'after pickled and unpickled. i.e. let x be the object. Then, '
-            'x != unpickle(pickle(x)).'
-        )
-
-    return code
-
-
-def create_auth_digest(data, key):
-    return hmac.new(key, data, 'sha256').hexdigest()
-
-
-def create_args_memo_pickle(kwargs, key):
-    try:
-        code = pickle_obj(kwargs)
-    except Exception as e:
-        raise Exception(
-            'Failed to pickle some arguments.\nEvery atom in the method '
-            'arguments must satisfy the following two conditions:\n\n'
-            '1. It must be picklable\n'
-            '2. It must be pickle-unpickle invariant, i.e.\n'
-            '      unpickle(pickle(atom)) == atom\n'
-            '   must hold.\n\n'
-            'For example, closures do not satisfy the first condition. '
-            'And instances of a class that does not implement a custom '
-            '__eq__ do not satisfy the condition 2.\n\n'
-            'To pass such an object to the method, wrap it by jtcmake.Atom '
-            'like\n'
-            '`g.add("rule.txt", func, jtcmake.Atom(lambda x: x*2, None)`'
-
-        ) from e
-        
-    digest = create_auth_digest(code, key)
-    return { "type": "pickle", "value": code.hex(), "digest": digest }
-
-
-def validate_digest(data, ref_digest, key):
-    digest = create_auth_digest(data, key)
-    return hmac.compare_digest(digest, ref_digest)
 
 
 def save_memo(metadata_fname, vfiles, args_memo):

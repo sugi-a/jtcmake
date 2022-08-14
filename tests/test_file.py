@@ -1,7 +1,7 @@
 import os, hashlib, base64
 import pytest
 
-from jtcmake.frontend.file import IFile, IVFile, File, VFile
+from jtcmake.rule.file import IFile, IVFile, File, VFile
 
 
 def test_file(tmp_path):
