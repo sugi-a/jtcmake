@@ -19,37 +19,12 @@ from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
     term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
 
+from .atom import Atom
+
 from ..utils.nest import \
     NestKey, map_structure, flatten, nest_get, \
     flatten_to_nest_keys, pack_sequence_as
 
-
-class Atom:
-    def __init__(self, value, memo_value=lambda x: x):
-        """Create Atom: special object that can be placed in args/kwargs
-        of Group.add. Atom is used to explicitly indicate an object being
-        atom.
-
-        Args:
-            value: argument value to be wrapped by Atom
-            memo_value: value used for memoization.
-                If callable, `memo_value(value)` will be used for memoization
-                of this argument. Otherwise, memo_value itself will be used
-                for memoization.
-
-        Note:
-            You can use it to exclude a lambda function from memoization:
-            `g.add('rule.txt', method, Atom(lambda x: x**2, None))`
-        """
-        self.value = value
-        if callable(memo_value):
-            self.memo_value = memo_value(value)
-        else:
-            self.memo_value = memo_value
-    
-    def __repr__(self):
-        v, m = repr(self.value), repr(self.memo_value)
-        return f'Atom(value={v}, memo_value={m})'
 
 
 class IFileNode:
