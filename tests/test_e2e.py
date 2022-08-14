@@ -32,10 +32,6 @@ def cp_n_to_1(dst, srcs):
     Path(dst).write_text(''.join(Path(s).read_text() for s in srcs))
 
 
-def fail(*args, **kwargs):
-    raise Exception('FAIL')
-
-
 def globfiles(dirname):
     ps = glob.iglob(f'{dirname}/**', recursive=True)
     ps = [os.path.relpath(p, dirname) for p in ps if os.path.isfile(p)]
@@ -116,6 +112,10 @@ def test_2(tmp_path):
 
 
 def test_4(tmp_path):
+    def fail(*args, **kwargs):
+        raise Exception('FAIL')
+
+
     # make failure
     g = create_group(tmp_path)
     
