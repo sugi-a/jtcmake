@@ -4,20 +4,22 @@ import itertools
 from collections import namedtuple
 from collections.abc import Mapping
 from pathlib import Path
+from logging import Logger
 
 from ..core.rule import IRule
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
 from .igroup import IGroup
 from ..rule.file import File, VFile, IFile, IVFile
-from . import events as group_events
-from .event_logger import create_event_callback
+from .event_logger import log_make_event
 from . import graphviz
 from ..core.make import make as _make, Event
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
-    term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
+    term_is_jupyter, TextFileWriterOpenOnDemand, \
+    HTMLFileWriterOpenOnDemand, LoggerWriter, WritersWrapper, \
+    RichStr
 
 from .atom import Atom
 
@@ -59,13 +61,18 @@ class FileNodeAtom(IFileNode):
             _t = time.time()
         open(self._file.path, 'w').close()
         os.utime(self._file.path, (_t, _t))
-        self._info.callback(group_events.Touch(self.path))
+        self._info.logwriter.info(
+            'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
+        )
+
 
     def clean(self):
         """Delete this file if exists"""
         try:
             os.remove(self._file.path)
-            self._info.callback(group_events.Clean(self.path))
+            self._info.logwriter.info(
+                'clean ', RichStr(str(self.path), link=str(self.path)), '\n'
+            )
         except:
             pass
 
@@ -220,7 +227,7 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters, memo_factory):
+    def __init__(self, logwriter, memo_factory):
         self.id2rule = []  # list<Rule>
         self.rule2id = {}  # dict<int, Rule>
         self.path_to_rule = {}  # dict<str, Rule>
@@ -228,7 +235,7 @@ class GroupTreeInfo:
         self.rule_to_name = {}
         self.memo_factory = memo_factory
 
-        self.callback = create_event_callback(logwriters, self.rule_to_name)
+        self.logwriter = logwriter
 
     
 class Group(IGroup):
@@ -964,12 +971,14 @@ def make(
 
     ids = [_info.rule2id[r] for r in rules]
 
+    def callback_(event):
+        log_make_event(_info.logwriter, _info.rule_to_name, event)
+
     if njobs is not None and njobs >= 2:
         return make_mp_spawn(
-            _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
+            _info.id2rule, ids, dry_run, keep_going, callback_, njobs)
     else:
-        return _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
-
+        return _make(_info.id2rule, ids, dry_run, keep_going, callback_)
 
 
 def create_group(
@@ -1024,10 +1033,12 @@ def create_group(
         assert isinstance(logfile, (str, os.PathLike))
         logfiles = [logfile]
 
-    logwriters = [_create_logwriter(f, loglevel) for f in logfiles]
+    _writers = [_create_logwriter(f, loglevel) for f in logfiles]
 
     if use_default_logger:
-        logwriters.append(_create_default_logwriter(loglevel))
+        _writers.append(_create_default_logwriter(loglevel))
+
+    logwriter = WritersWrapper(_writers)
 
     if memo_kind == 'pickle':
         if pickle_key is None:
@@ -1047,7 +1058,7 @@ def create_group(
             f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
 
     tree_info = GroupTreeInfo(
-        logwriters=logwriters,
+        logwriter=logwriter,
         memo_factory=memo_factory
     )
 
@@ -1070,6 +1081,8 @@ def _create_logwriter(f, loglevel):
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
             return TextFileWriterOpenOnDemand(loglevel, fname)
+    if isinstance(f, Logger):
+        return LoggerWriter(f)
     else:
         if not (hasattr(f, 'write') and callable(f.write)):
             raise TypeError(f'{f} is not a writable stream')

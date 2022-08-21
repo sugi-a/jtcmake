@@ -436,3 +436,4 @@ def test_select_sig2():
     assert g.select(['**', '*/*']) == [a, b]
     assert g.select(['x/y'], True) == [sub]
     assert g.select(['x/y', '*']) == [b]
+
