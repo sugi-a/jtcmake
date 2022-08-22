@@ -78,9 +78,6 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         if dep_cnt[i] == 0:
             job_q.append(i)
 
-    def stop_or_done():
-        return stop or (len(job_q) == 0 and nidles == njobs)
-
     def get_job():
         nonlocal nidles
 
@@ -130,9 +127,10 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             callback(*args, **kwargs)
                 
 
-    def event_q_handler():
+    def event_q_handler(workers):
+        # workers: list[Thread]
         while True:
-            if stop_or_done():
+            if all(not t.is_alive() for t in workers):
                 return
 
             try:
@@ -161,7 +159,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     for t in threads:
         t.start()
 
-    thread_event_q_handler = Thread(target=event_q_handler)
+    thread_event_q_handler = Thread(target=event_q_handler, args=(threads,))
     thread_event_q_handler.start()
 
     try:
