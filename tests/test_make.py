@@ -301,3 +301,26 @@ def test_postprocess_error(tmp_path):
         events.PostProcError(r1, e),
         events.StopOnFail()
     ])
+
+
+def test_keyboard_interrupt(tmp_path):
+    # raise KeyboardInterrupt while executing method
+    e = KeyboardInterrupt()
+
+    def _func():
+        raise e
+
+    r1 = MockRule([], (), {}, _func)
+    id2rule = [r1]
+    log.clear()
+
+    with pytest.raises(KeyboardInterrupt):
+        res = make(id2rule, [0], False, False, callback)
+
+    assert_same_log(log, [
+        ('should_update', r1, False, False),
+        events.Start(r1),
+        ('preprocess', r1),
+        # method
+        ('postprocess', r1, True),
+    ])

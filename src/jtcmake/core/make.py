@@ -157,6 +157,13 @@ def process_rule(
         traceback.print_exc()
         callback(events.ExecError(rule, e))
         succ = False
+    except KeyboardInterrupt as e:
+        try:
+            rule.postprocess(callback, succ)
+        except:
+            pass
+
+        raise KeyboardInterrupt()
 
     try:
         rule.postprocess(callback, succ)
