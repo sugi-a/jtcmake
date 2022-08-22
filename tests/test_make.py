@@ -3,6 +3,7 @@ import pytest
 
 from jtcmake.core.rule import Event, IRule
 from jtcmake.core.make import make, MakeSummary
+from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
 
 def fail(*args, exc=None, **kwargs):
@@ -79,7 +80,19 @@ class MockRule(IRule):
     def deplist(self): return self._deplist
 
 
-def test_basic():
+@pytest.mark.parametrize('mp', [False, True])
+def test_basic(mp):
+    """
+    * Two rules r1 and r2, where r2 depends on r1
+    * Single task mode and multi task mode must yield the same results
+    """
+
+    def make_(*args, **kwargs):
+        if mp:
+            return make_mp_spawn(*args, **kwargs, njobs=2)
+        else:
+            return make(*args, **kwargs)
+
     args, kwargs = (object(),), {'a': object()}
 
     def method(*args_, **kwargs_):
@@ -94,7 +107,7 @@ def test_basic():
 
     # pass both
     log.clear()
-    res = make(id2rule, [0, 1], False, False, callback)
+    res = make_(id2rule, [0, 1], False, False, callback)
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
@@ -115,7 +128,7 @@ def test_basic():
 
     # pass r1
     log.clear()
-    res = make(id2rule, [0], False, False, callback)
+    res = make_(id2rule, [0], False, False, callback)
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert_same_log(log, [
@@ -129,7 +142,7 @@ def test_basic():
 
     # pass r2
     log.clear()
-    res = make(id2rule, [1], False, False, callback)
+    res = make_(id2rule, [1], False, False, callback)
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
@@ -149,7 +162,18 @@ def test_basic():
     ])
 
 
-def test_skip():
+@pytest.mark.parametrize('mp', [False, True])
+def test_skip(mp):
+    """
+    * Two rules r1 and r2, where r2 depends on r1
+    * Single task mode and multi task mode must yield the same results
+    """
+    def make_(*args, **kwargs):
+        if mp:
+            return make_mp_spawn(*args, **kwargs, njobs=2)
+        else:
+            return make(*args, **kwargs)
+
     args, kwargs = (object(),), {'a': object()}
 
     def method(*args_, **kwargs_):
@@ -167,7 +191,7 @@ def test_skip():
     r1._should_update = False
     r2._should_update = False
 
-    res = make(id2rule, [2], False, False, callback)
+    res = make_(id2rule, [2], False, False, callback)
 
     assert res == MakeSummary(total=2, update=0, skip=2, fail=0, discard=0)
     assert_same_log(log, [
@@ -182,7 +206,7 @@ def test_skip():
     r1._should_update = False
     r2._should_update = True
 
-    res = make(id2rule, [2], False, False, callback)
+    res = make_(id2rule, [2], False, False, callback)
 
     assert res == MakeSummary(total=2, update=1, skip=1, fail=0, discard=0)
     assert_same_log(log, [
@@ -198,7 +222,18 @@ def test_skip():
     ])
 
 
-def test_dryrun():
+@pytest.mark.parametrize('mp', [False, True])
+def test_dryrun(mp):
+    """
+    * Two rules r1 and r2, where r2 depends on r1
+    * Single task mode and multi task mode must yield the same results
+    """
+    def make_(*args, **kwargs):
+        if mp:
+            return make_mp_spawn(*args, **kwargs, njobs=2)
+        else:
+            return make(*args, **kwargs)
+
     r1 = MockRule([], (), {}, lambda: None)
     r2 = MockRule([1], (), {}, lambda: None)
 
@@ -206,7 +241,7 @@ def test_dryrun():
 
     # dry-run r1
     log.clear()
-    res = make(id2rule, [1], True, False, callback)
+    res = make_(id2rule, [1], True, False, callback)
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert_same_log(log, [
@@ -215,7 +250,7 @@ def test_dryrun():
 
     # dry-run r2
     log.clear()
-    res = make(id2rule, [2], True, False, callback)
+    res = make_(id2rule, [2], True, False, callback)
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert_same_log(log, [
@@ -301,3 +336,27 @@ def test_postprocess_error(tmp_path):
         events.PostProcError(r1, e),
         events.StopOnFail()
     ])
+
+
+def test_keyboard_interrupt(tmp_path):
+    # raise KeyboardInterrupt while executing method
+    e = KeyboardInterrupt()
+
+    def _func():
+        raise e
+
+    r1 = MockRule([], (), {}, _func)
+    id2rule = [r1]
+    log.clear()
+
+    with pytest.raises(KeyboardInterrupt):
+        res = make(id2rule, [0], False, False, callback)
+
+    assert_same_log(log, [
+        ('should_update', r1, False, False),
+        events.Start(r1),
+        ('preprocess', r1),
+        # method
+        ('postprocess', r1, True),
+    ])
+

@@ -17,8 +17,7 @@ class PickleMemo(IMemo):
     def compare(self, memo):
         if memo['type'] != _TYPE:
             raise Exception(
-                f'Type of the given memo is {memo["type"]} where '
-                f'{_TYPE} was expected'
+                f'{_TYPE} memo was expected. Given {memo["type"]} memo.'
             )
 
         code = bytes.fromhex(memo['code'])

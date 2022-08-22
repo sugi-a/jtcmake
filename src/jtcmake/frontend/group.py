@@ -35,7 +35,7 @@ class IFileNode:
     def path(self): ...
 
     @abstractmethod
-    def touch(self, _t): ...
+    def touch(self, create, _t): ...
 
     @abstractmethod
     def clean(self): ...
@@ -55,15 +55,23 @@ class FileNodeAtom(IFileNode):
     def abspath(self):
         return self._file.abspath
 
-    def touch(self, _t=None):
-        """Touch this file"""
+    def touch(self, create=False, _t=None):
+        """Touch this file
+
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
-        open(self._file.path, 'w').close()
-        os.utime(self._file.path, (_t, _t))
-        self._info.logwriter.info(
-            'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
-        )
+        if create or os.path.exists(self._file.path):
+            open(self._file.path, 'w').close()
+            os.utime(self._file.path, (_t, _t))
+            self._info.logwriter.info(
+                'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
+            )
 
 
     def clean(self):
@@ -94,11 +102,18 @@ class FileNodeTuple(tuple, IFileNode):
     def abspath(self):
         return tuple(x.abspath for x in self)
 
-    def touch(self, _t=None):
-        """Touch files in this tuple"""
+    def touch(self, create=False, _t=None):
+        """Touch files in this tuple
+
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
-        for x in self: x.touch(_t)
+        for x in self: x.touch(create, _t)
 
     def clean(self):
         """Delete files in this tuple"""
@@ -120,12 +135,18 @@ class FileNodeDict(Mapping, IFileNode):
     def abspath(self):
         return {k: v.abspath for k,v in self._dic.items()}
 
-    def touch(self, _t=None):
-        """Touch files in this dict"""
+    def touch(self, create=False, _t=None):
+        """Touch files in this dict
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
-            v.touch(_t)
+            v.touch(create, _t)
 
     def clean(self):
         """Delete files in this dict"""
@@ -719,12 +740,18 @@ class Group(IGroup):
         for c in self._children.values():
             c.clean()
 
-    def touch(self, _t=None):
-        """Touch (set the mtime to now) files under this Group"""
+    def touch(self, create=False, _t=None):
+        """Touch files under this Group
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         for c in self._children.values():
-            c.touch(_t)
+            c.touch(create, _t)
 
 
     def _get_children_names(self, dst, group, rule):
@@ -999,9 +1026,14 @@ def create_group(
             log level. Defaults to "info"
         use_default_logger (bool): If True, logs will be printed to terminal.
             Defaults to True.
-        logfile (str|os.PathLike|tuple[str|os.PathLike]|None):
-            If specified, logs are printed to the file(s).
-            If the file extension is .html, logs are printed in HTML format.
+        logfile (
+            None, str | os.PathLike | logging.Logger | writable-stream
+            Sequence[str | os.PathLike | logging.Logger | writable-stream] |
+            ):
+            If specified, logs are printed to the file(s), stream(s), or
+            logger(s). str values are considered to be file names,
+            and if the file extension is .html, logs will be printed in
+            HTML format.
         pickle_key (bytes|str||None): key used to authenticate pickle data.
             If str, it must be a hexadecimal str, and will be converted to
             bytes by `bytes.fromhex(pickle_key)`.
@@ -1030,7 +1062,6 @@ def create_group(
     elif isinstance(logfile, (list, tuple)):
         logfiles = logfile
     else:
-        assert isinstance(logfile, (str, os.PathLike))
         logfiles = [logfile]
 
     _writers = [_create_logwriter(f, loglevel) for f in logfiles]
@@ -1081,12 +1112,11 @@ def _create_logwriter(f, loglevel):
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
             return TextFileWriterOpenOnDemand(loglevel, fname)
+
     if isinstance(f, Logger):
         return LoggerWriter(f)
-    else:
-        if not (hasattr(f, 'write') and callable(f.write)):
-            raise TypeError(f'{f} is not a writable stream')
 
+    if hasattr(f, 'write') and callable(f.write):
         try:
             if f.isatty():
                 return ColorTextWriter(f, loglevel)
@@ -1094,6 +1124,12 @@ def _create_logwriter(f, loglevel):
             pass
 
         return TextWriter(f, loglevel)
+
+    raise TypeError(
+        'Logging target must be either str (file name), os.PathLike, '
+        'logging.Logger, or and object with `write` method. '
+        f'Given {f}'
+    )
 
 
 def _unwrap_IFile_and_Atom(x):

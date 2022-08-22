@@ -275,13 +275,19 @@ def test_rule_touch(tmp_path):
     r = create_group(tmp_path).add('a', ['a1', 'a2'], fn)
 
     # both
-    r.touch()
+    r.touch(True)
     assert os.path.getmtime(r[0].path) == os.path.getmtime(r[1].path)
 
     # a1 only
     r.clean()
-    r[0].touch()
+    r[0].touch(True)
     assert os.path.exists(r[0].path)
+    assert not os.path.exists(r[1].path)
+
+    # touch with create=False
+    os.utime(r[0].path, (0, 0))
+    r.touch()
+    assert os.path.getmtime(r[0].path) > 0
     assert not os.path.exists(r[1].path)
 
 
@@ -291,7 +297,7 @@ def test_rule_clean(tmp_path):
     # don't raise if file does not exist
     r.clean()
 
-    r.touch()
+    r.touch(create=True)
     r[1].clean()
     assert os.path.exists(r[0].path)
     assert not os.path.exists(r[1].path)
