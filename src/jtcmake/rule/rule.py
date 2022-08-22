@@ -46,7 +46,7 @@ class Rule(IRule):
                     raise Exception(
                         f'Input file {f.path} has mtime of 0. '
                         f'Input files with mtime of 0 are considered to be '
-                        f'invalid for reducing operational error.'
+                        f'invalid.'
                     )
 
         if dry_run and par_updated:
@@ -160,20 +160,6 @@ def create_vfile_hashes(vfiles):
     res = json.loads(json.dumps(res)) # round trip JSON conversion
     return res
     
-
-def save_vfile_hashes(metadata_fname, vfiles):
-    hashes = create_vfile_hashes(vfiles)
-    os.makedirs(Path(metadata_fname).parent, exist_ok=True)
-    with open(metadata_fname, 'w') as f:
-        try:
-            json.dump(hashes, f)
-        except Exception as e:
-            raise ValueError(
-                f'Failed to save IVFile hashes as JSON to {metadata_fname}.'
-                f'This may be because some dictionary keys in the arguments'
-                f' to specify the IVFile objects are not JSON convertible.'
-            ) from e
-
 
 def load_vfile_hashes(metadata_fname):
     if not os.path.exists(metadata_fname):
