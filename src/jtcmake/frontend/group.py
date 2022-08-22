@@ -1026,9 +1026,14 @@ def create_group(
             log level. Defaults to "info"
         use_default_logger (bool): If True, logs will be printed to terminal.
             Defaults to True.
-        logfile (str|os.PathLike|tuple[str|os.PathLike]|None):
-            If specified, logs are printed to the file(s).
-            If the file extension is .html, logs are printed in HTML format.
+        logfile (
+            None, str | os.PathLike | logging.Logger | writable-stream
+            Sequence[str | os.PathLike | logging.Logger | writable-stream] |
+            ):
+            If specified, logs are printed to the file(s), stream(s), or
+            logger(s). str values are considered to be file names,
+            and if the file extension is .html, logs will be printed in
+            HTML format.
         pickle_key (bytes|str||None): key used to authenticate pickle data.
             If str, it must be a hexadecimal str, and will be converted to
             bytes by `bytes.fromhex(pickle_key)`.
@@ -1057,7 +1062,6 @@ def create_group(
     elif isinstance(logfile, (list, tuple)):
         logfiles = logfile
     else:
-        assert isinstance(logfile, (str, os.PathLike))
         logfiles = [logfile]
 
     _writers = [_create_logwriter(f, loglevel) for f in logfiles]
@@ -1108,12 +1112,11 @@ def _create_logwriter(f, loglevel):
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
             return TextFileWriterOpenOnDemand(loglevel, fname)
+
     if isinstance(f, Logger):
         return LoggerWriter(f)
-    else:
-        if not (hasattr(f, 'write') and callable(f.write)):
-            raise TypeError(f'{f} is not a writable stream')
 
+    if hasattr(f, 'write') and callable(f.write):
         try:
             if f.isatty():
                 return ColorTextWriter(f, loglevel)
@@ -1121,6 +1124,12 @@ def _create_logwriter(f, loglevel):
             pass
 
         return TextWriter(f, loglevel)
+
+    raise TypeError(
+        'Logging target must be either str (file name), os.PathLike, '
+        'logging.Logger, or and object with `write` method. '
+        f'Given {f}'
+    )
 
 
 def _unwrap_IFile_and_Atom(x):
