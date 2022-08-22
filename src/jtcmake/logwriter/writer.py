@@ -1,4 +1,5 @@
 import sys, html, abc, os
+from logging import Logger
 from pathlib import Path
 
 def update_with_non_none(target, **kvs):
@@ -83,6 +84,18 @@ class IWriter:
     def error(self, *args):
         self.write(*args, level='error')
 
+
+class WritersWrapper(IWriter):
+    def __init__(self, writers, loglevel=None):
+        super().__init__(loglevel or 'debug')
+        assert all(isinstance(w, IWriter) for w in writers)
+        self.writers = writers
+
+    def _write(self, *args, level):
+        for writer in self.writers:
+            writer.write(*args, level=level)
+    
+
 class TextWriter(IWriter):
     def __init__(self, writable, loglevel):
         super().__init__(loglevel)
@@ -116,6 +129,27 @@ class ColorTextWriter(IWriter):
 
         args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
         self.writable.write(create_color_str(args))
+
+
+class LoggerWriter(IWriter):
+    def __init__(self, logger):
+        if not isinstance(logger, Logger):
+            raise TypeError('logger must be logging.Logger')
+
+        super().__init__('debug')
+        self.logger = logger
+
+    def _write(self, *args, level):
+        msg = ''.join(map(str, args))
+
+        if level == 'debug':
+            self.logger.debug(msg)
+        elif level == 'info':
+            self.logger.info(msg)
+        elif level == 'warning':
+            self.logger.warning(msg)
+        elif level == 'error':
+            self.logger.error(msg)
 
 
 class TextFileWriterOpenOnDemand(IWriter):

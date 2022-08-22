@@ -4,18 +4,9 @@ from pathlib import Path
 
 from ..logwriter.writer import IWriter, RichStr
 from ..core import events
-from . import events as group_events
 
 
-def create_event_callback(writers, rule_to_name):
-    def callback(e):
-        for w in writers:
-            event_callback(w, rule_to_name, e)
-
-    return callback
-
-
-def event_callback(w, rule_to_name, e):
+def log_make_event(w, rule_to_name, e):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
         err = e.err
@@ -93,10 +84,6 @@ def event_callback(w, rule_to_name, e):
         return
     elif isinstance(e, events.StopOnFail):
         w.warning(f'Execution aborted due to an error\n')
-    elif isinstance(e, group_events.Clean):
-        w.info('clean ', RichStr(str(e.path) + '\n', link=str(e.path)))
-    elif isinstance(e, group_events.Touch):
-        w.info('touch ', RichStr(str(e.path) + '\n', link=str(e.path)))
     else:
         w.warning(f'Unhandled event {e}\n')
 

@@ -4,52 +4,29 @@ import itertools
 from collections import namedtuple
 from collections.abc import Mapping
 from pathlib import Path
+from logging import Logger
 
 from ..core.rule import IRule
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
 from .igroup import IGroup
 from ..rule.file import File, VFile, IFile, IVFile
-from . import events as group_events
-from .event_logger import create_event_callback
+from .event_logger import log_make_event
 from . import graphviz
 from ..core.make import make as _make, Event
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \
-    term_is_jupyter, TextFileWriterOpenOnDemand, HTMLFileWriterOpenOnDemand
+    term_is_jupyter, TextFileWriterOpenOnDemand, \
+    HTMLFileWriterOpenOnDemand, LoggerWriter, WritersWrapper, \
+    RichStr
+
+from .atom import Atom
 
 from ..utils.nest import \
     NestKey, map_structure, flatten, nest_get, \
     flatten_to_nest_keys, pack_sequence_as
 
-
-class Atom:
-    def __init__(self, value, memo_value=lambda x: x):
-        """Create Atom: special object that can be placed in args/kwargs
-        of Group.add. Atom is used to explicitly indicate an object being
-        atom.
-
-        Args:
-            value: argument value to be wrapped by Atom
-            memo_value: value used for memoization.
-                If callable, `memo_value(value)` will be used for memoization
-                of this argument. Otherwise, memo_value itself will be used
-                for memoization.
-
-        Note:
-            You can use it to exclude a lambda function from memoization:
-            `g.add('rule.txt', method, Atom(lambda x: x**2, None))`
-        """
-        self.value = value
-        if callable(memo_value):
-            self.memo_value = memo_value(value)
-        else:
-            self.memo_value = memo_value
-    
-    def __repr__(self):
-        v, m = repr(self.value), repr(self.memo_value)
-        return f'Atom(value={v}, memo_value={m})'
 
 
 class IFileNode:
@@ -84,13 +61,18 @@ class FileNodeAtom(IFileNode):
             _t = time.time()
         open(self._file.path, 'w').close()
         os.utime(self._file.path, (_t, _t))
-        self._info.callback(group_events.Touch(self.path))
+        self._info.logwriter.info(
+            'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
+        )
+
 
     def clean(self):
         """Delete this file if exists"""
         try:
             os.remove(self._file.path)
-            self._info.callback(group_events.Clean(self.path))
+            self._info.logwriter.info(
+                'clean ', RichStr(str(self.path), link=str(self.path)), '\n'
+            )
         except:
             pass
 
@@ -245,7 +227,7 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriters, memo_factory):
+    def __init__(self, logwriter, memo_factory):
         self.id2rule = []  # list<Rule>
         self.rule2id = {}  # dict<int, Rule>
         self.path_to_rule = {}  # dict<str, Rule>
@@ -253,7 +235,7 @@ class GroupTreeInfo:
         self.rule_to_name = {}
         self.memo_factory = memo_factory
 
-        self.callback = create_event_callback(logwriters, self.rule_to_name)
+        self.logwriter = logwriter
 
     
 class Group(IGroup):
@@ -989,18 +971,20 @@ def make(
 
     ids = [_info.rule2id[r] for r in rules]
 
+    def callback_(event):
+        log_make_event(_info.logwriter, _info.rule_to_name, event)
+
     if njobs is not None and njobs >= 2:
         return make_mp_spawn(
-            _info.id2rule, ids, dry_run, keep_going, _info.callback, njobs)
+            _info.id2rule, ids, dry_run, keep_going, callback_, njobs)
     else:
-        return _make(_info.id2rule, ids, dry_run, keep_going, _info.callback)
-
+        return _make(_info.id2rule, ids, dry_run, keep_going, callback_)
 
 
 def create_group(
     dirname=None, prefix=None, *,
     loglevel=None, use_default_logger=True, logfile=None,
-    memo_kind='str-hash',
+    memo_kind='str_hash',
     pickle_key=None,
 ):
     """Create a root Group node.
@@ -1049,10 +1033,12 @@ def create_group(
         assert isinstance(logfile, (str, os.PathLike))
         logfiles = [logfile]
 
-    logwriters = [_create_logwriter(f, loglevel) for f in logfiles]
+    _writers = [_create_logwriter(f, loglevel) for f in logfiles]
 
     if use_default_logger:
-        logwriters.append(_create_default_logwriter(loglevel))
+        _writers.append(_create_default_logwriter(loglevel))
+
+    logwriter = WritersWrapper(_writers)
 
     if memo_kind == 'pickle':
         if pickle_key is None:
@@ -1060,19 +1046,19 @@ def create_group(
                 'pickle_key must be specified when memo_kind is "pickle"')
 
         memo_factory = _get_memo_factory_pickle(pickle_key)
-    elif memo_kind == 'str-hash':
+    elif memo_kind == 'str_hash':
         if pickle_key is not None:
             raise TypeError(
                 'pickle_key must not be specified for '
-                'str-hash memoization method'
+                'str_hash memoization method'
             )
         memo_factory = _memo_factory_str_hash
     else:
         raise ValueError(
-            f'memo_kind must be "str-hash" or "pickle", given {memo_kind}')
+            f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
 
     tree_info = GroupTreeInfo(
-        logwriters=logwriters,
+        logwriter=logwriter,
         memo_factory=memo_factory
     )
 
@@ -1095,6 +1081,8 @@ def _create_logwriter(f, loglevel):
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
             return TextFileWriterOpenOnDemand(loglevel, fname)
+    if isinstance(f, Logger):
+        return LoggerWriter(f)
     else:
         if not (hasattr(f, 'write') and callable(f.write)):
             raise TypeError(f'{f} is not a writable stream')

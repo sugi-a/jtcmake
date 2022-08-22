@@ -23,13 +23,13 @@ def test_create_group():
     with pytest.raises(TypeError):
         g = create_group()
 
-    # memo_kind neither "str-hash" or "pickle"
+    # memo_kind neither "str_hash" or "pickle"
     with pytest.raises(ValueError):
         g = create_group('root', memo_kind="aa")
 
-    # memo_kind="str-hash" and non-null pickle_key
+    # memo_kind="str_hash" and non-null pickle_key
     with pytest.raises(TypeError):
-        g = create_group('root', memo_kind='str-hash', pickle_key='AA')
+        g = create_group('root', memo_kind='str_hash', pickle_key='AA')
 
     # memo_kind="pickle" and pickle_key=None
     with pytest.raises(TypeError):
@@ -436,3 +436,4 @@ def test_select_sig2():
     assert g.select(['**', '*/*']) == [a, b]
     assert g.select(['x/y'], True) == [sub]
     assert g.select(['x/y', '*']) == [b]
+
