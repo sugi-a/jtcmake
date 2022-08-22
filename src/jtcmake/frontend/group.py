@@ -35,7 +35,7 @@ class IFileNode:
     def path(self): ...
 
     @abstractmethod
-    def touch(self, _t): ...
+    def touch(self, create, _t): ...
 
     @abstractmethod
     def clean(self): ...
@@ -55,15 +55,16 @@ class FileNodeAtom(IFileNode):
     def abspath(self):
         return self._file.abspath
 
-    def touch(self, _t=None):
+    def touch(self, create=False, _t=None):
         """Touch this file"""
         if _t is None:
             _t = time.time()
-        open(self._file.path, 'w').close()
-        os.utime(self._file.path, (_t, _t))
-        self._info.logwriter.info(
-            'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
-        )
+        if create or os.path.exists(self._file.path):
+            open(self._file.path, 'w').close()
+            os.utime(self._file.path, (_t, _t))
+            self._info.logwriter.info(
+                'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
+            )
 
 
     def clean(self):
@@ -94,11 +95,11 @@ class FileNodeTuple(tuple, IFileNode):
     def abspath(self):
         return tuple(x.abspath for x in self)
 
-    def touch(self, _t=None):
+    def touch(self, create=False, _t=None):
         """Touch files in this tuple"""
         if _t is None:
             _t = time.time()
-        for x in self: x.touch(_t)
+        for x in self: x.touch(create, _t)
 
     def clean(self):
         """Delete files in this tuple"""
@@ -120,12 +121,12 @@ class FileNodeDict(Mapping, IFileNode):
     def abspath(self):
         return {k: v.abspath for k,v in self._dic.items()}
 
-    def touch(self, _t=None):
+    def touch(self, create=False, _t=None):
         """Touch files in this dict"""
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
-            v.touch(_t)
+            v.touch(create, _t)
 
     def clean(self):
         """Delete files in this dict"""
@@ -719,12 +720,12 @@ class Group(IGroup):
         for c in self._children.values():
             c.clean()
 
-    def touch(self, _t=None):
+    def touch(self, create=False, _t=None):
         """Touch (set the mtime to now) files under this Group"""
         if _t is None:
             _t = time.time()
         for c in self._children.values():
-            c.touch(_t)
+            c.touch(create, _t)
 
 
     def _get_children_names(self, dst, group, rule):
