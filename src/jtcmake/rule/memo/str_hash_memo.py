@@ -17,8 +17,7 @@ class StrHashMemo(IMemo):
         sys.stderr.write(f'{memo}, {self._memo}\n')
         if memo['type'] != _TYPE:
             raise Exception(
-                f'Type of the given memo is {memo["type"]} where '
-                f'{_TYPE} was expected'
+                f'Expected {_TYPE} memo. Given {memo["type"]} memo. '
             )
 
         return memo['code'] == self._memo['code']
@@ -89,11 +88,15 @@ def stringify(nest):
         elif isinstance(nest, _AUTO_STRINGIFIED_BASE_TYPES):
             sl.append(str(nest))
         else:
-            ts = (Complex, *_AUTO_STRINGIFIED_BASE_TYPES)
+            ts = (Complex, str, *_AUTO_STRINGIFIED_BASE_TYPES)
             ts = ', '.join(t.__name__ for t in ts)
             raise TypeError(
-                f'Every atom in memoization values '
-                f'must be {ts}. Given {nest}'
+                f'Every atom element in the memoization values '
+                f'must be either {ts}. Given {nest}. \n'
+                f'Consider wrapping it using `jtcmake.Atom`. Specifically, '
+                f'if stringifying is enough to serialize its state, wrap it '
+                f'using `jtcmake.Memstr`, or if you do not need to memoize '
+                f'it, consider wrapping it in `jtcmake.Nomem`'
             )
 
     rec(nest)
