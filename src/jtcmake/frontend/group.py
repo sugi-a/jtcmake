@@ -56,7 +56,14 @@ class FileNodeAtom(IFileNode):
         return self._file.abspath
 
     def touch(self, create=False, _t=None):
-        """Touch this file"""
+        """Touch this file
+
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         if create or os.path.exists(self._file.path):
@@ -96,7 +103,14 @@ class FileNodeTuple(tuple, IFileNode):
         return tuple(x.abspath for x in self)
 
     def touch(self, create=False, _t=None):
-        """Touch files in this tuple"""
+        """Touch files in this tuple
+
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         for x in self: x.touch(create, _t)
@@ -122,7 +136,13 @@ class FileNodeDict(Mapping, IFileNode):
         return {k: v.abspath for k,v in self._dic.items()}
 
     def touch(self, create=False, _t=None):
-        """Touch files in this dict"""
+        """Touch files in this dict
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         for k,v in self._dic.items():
@@ -721,7 +741,13 @@ class Group(IGroup):
             c.clean()
 
     def touch(self, create=False, _t=None):
-        """Touch (set the mtime to now) files under this Group"""
+        """Touch files under this Group
+        Args:
+            create (bool):
+                if False (default), skip the file if it does not exist.
+            _t (float): 
+                set mtime to `_t` after touching
+        """
         if _t is None:
             _t = time.time()
         for c in self._children.values():
