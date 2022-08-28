@@ -13,7 +13,6 @@ def touch(*dst):
 
 
 def add_text(dst, src, text=None, t=0):
-    print('add text', dst, src, text)
     src = '' if src is None else Path(src).read_text()
     text = '' if text is None else text
 

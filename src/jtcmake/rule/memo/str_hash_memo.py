@@ -13,8 +13,6 @@ class StrHashMemo(IMemo):
 
 
     def compare(self, memo):
-        import sys
-        sys.stderr.write(f'{memo}, {self._memo}\n')
         if memo['type'] != _TYPE:
             raise Exception(
                 f'Expected {_TYPE} memo. Given {memo["type"]} memo. '
