@@ -128,7 +128,7 @@ def process_rule(
             callback(events.DryRun(rule))
             return Result.Update
         else:
-            callback(events.Skip(rule))
+            callback(events.Skip(rule, is_main))
             return Result.Skip
 
     try:
