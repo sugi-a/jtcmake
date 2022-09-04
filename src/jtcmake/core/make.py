@@ -168,6 +168,7 @@ def process_rule(
     try:
         rule.postprocess(callback, succ)
     except Exception as e:
+        traceback.print_exc()
         callback(events.PostProcError(rule, e))
         return Result.Fail
 
