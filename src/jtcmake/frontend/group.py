@@ -652,18 +652,10 @@ class Group(IGroup):
 
         xfiles = [
             (k,f) for k,f in zip(arg_keys, args_)
-            if isinstance(f, IFile) and f.path not in ypaths
+            if isinstance(f, IFile) and f.path not in ypaths and \
+                (not isinstance(f, IVFile))
         ]
 
-        # check if keys for IVFiles are str/int/float
-        for nest_key, f in xfiles:
-            if isinstance(f, IVFile):
-                for k in nest_key:
-                    if not isinstance(k, (str, int, float)):
-                        raise TypeError(
-                            'keys of dicts in args/kwargs must be either'
-                            f'str, int, or float. Given {k}'
-                        )
 
         # create method args
         def _unwrap_IFile_Atom(x):
@@ -1132,14 +1124,6 @@ def _create_logwriter(f, loglevel):
     )
 
 
-def _unwrap_IFile_and_Atom(x):
-    if isinstance(x, IFile):
-        return ''
-    elif isinstance(x, Atom):
-        return x.memo_value
-    else:
-        return x
-
 def _get_memo_factory_pickle(pickle_key):
     if type(pickle_key) == str:
         try:
@@ -1152,14 +1136,13 @@ def _get_memo_factory_pickle(pickle_key):
         raise TypeError('pickle_key must be bytes or hexadecimal str')
 
     def _memo_factory_pickle(args):
-        args = map_structure(_unwrap_IFile_and_Atom, args)
         return PickleMemo(args, pickle_key)
 
     return _memo_factory_pickle
 
 
 def _memo_factory_str_hash(args):
-    return StrHashMemo(map_structure(_unwrap_IFile_and_Atom, args))
+    return StrHashMemo(args)
 
 
 SELF = NestKey(())

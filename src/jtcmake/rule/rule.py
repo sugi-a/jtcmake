@@ -60,38 +60,17 @@ class Rule(IRule):
         if oldest_y <= 0:
             return True
 
-        xvfiles = [] # input VFiles that are updated
-
         for k,f in self.xfiles:
             if os.path.getmtime(f.path) > oldest_y:
-                if isinstance(f, IVFile):
-                    xvfiles.append((k,f))
-                else:
-                    return True
+                return True
 
         memo = load_memo(self.metadata_fname)
-
+        
         if memo is None:
             return True
 
-        vfile_hashes, arg_memo = memo
-
-        hash_dic = {tuple(k): (h,t) for k,h,t in vfile_hashes}
-            
-        for k,f in xvfiles:
-            if k not in hash_dic:
-                return True
-
-            mtime = os.path.getmtime(f.path)
-            hash_, mtime_ = hash_dic[k]
-
-            # Optimization: skip computing hash if the current mtime
-            # is equal to the one in the cache
-            if mtime != mtime_ and f.get_hash() != hash_:
-                return True
-
         try:
-            if not self.memo.compare(arg_memo):
+            if not self.memo.compare(memo):
                 return True
         except Exception:
             raise Exception(
@@ -135,8 +114,7 @@ class Rule(IRule):
 
 
     def update_memo(self):
-        xvfiles = [(k,v) for k,v in self.xfiles if isinstance(v, IVFile)]
-        save_memo(self.metadata_fname, xvfiles, self.memo.memo)
+        save_memo(self.metadata_fname, self.memo.memo)
 
 
     @property
@@ -169,12 +147,10 @@ def load_vfile_hashes(metadata_fname):
         return json.load(f)
 
 
-def save_memo(metadata_fname, vfiles, args_memo):
-    vfile_hashes = create_vfile_hashes(vfiles)
-    data = { "vfiles": vfile_hashes, "args": args_memo }
+def save_memo(metadata_fname, args_memo):
     os.makedirs(Path(metadata_fname).parent, exist_ok=True)
     with open(metadata_fname, 'w') as f:
-        json.dump(data, f)
+        json.dump(args_memo, f)
 
 
 def load_memo(metadata_fname):
@@ -184,8 +160,5 @@ def load_memo(metadata_fname):
     with open(metadata_fname) as f:
         data = json.load(f)
 
-    vfile_hashes = data['vfiles']
-    args = data['args']
-
-    return vfile_hashes, args
+    return data  # TODO: validation
     

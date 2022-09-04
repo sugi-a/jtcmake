@@ -3,8 +3,9 @@ import os, time, hashlib, base64
 from pathlib import PurePath, Path
 
 from ..core.rule import IRule
+from .memo.abc import IMemoAtom, ILazyMemoValue
 
-class IFile(ABC):
+class IFile(IMemoAtom):
     @property
     @abstractmethod
     def path(self): ...
@@ -14,7 +15,7 @@ class IFile(ABC):
     def abspath(self): ...
 
 
-class IVFile(IFile):
+class IVFile(IMemoAtom):
     @abstractmethod
     def get_hash(self): ...
 
@@ -41,8 +42,20 @@ class File(IFile):
     def __repr__(self):
         return f'{type(self).__name__}(path={repr(self.path)})'
 
+    @property
+    def memo_value(self):
+        return None
+
 
 class VFile(IVFile, File):
+    class _ContentHash(ILazyMemoValue):
+        def __init__(self, path):
+            self.path = path
+
+        def __call__(self):
+            return get_hash(self.path)
+
+
     def _clean(self):
         try:
             os.remove(self._path)
@@ -52,6 +65,11 @@ class VFile(IVFile, File):
 
     def get_hash(self):
         return get_hash(self.path)
+
+
+    @property
+    def memo_value(self):
+        return VFile._ContentHash(self.path)
         
 
 _hash_cache = {}

@@ -1,4 +1,7 @@
-class Atom:
+from abc import abstractmethod
+from ..rule.memo.abc import IMemoAtom
+
+class Atom(IMemoAtom):
     def __init__(self, value, memo_value):
         """Create Atom: special object that can be included in args/kwargs
         of Group.add. Atom is used to:
@@ -41,12 +44,18 @@ class Atom:
         """
         self.value = value
         if callable(memo_value):
-            self.memo_value = memo_value(value)
+            self._memo_value = memo_value(value)
         else:
-            self.memo_value = memo_value
+            self._memo_value = memo_value
+    
+
+    @property
+    def memo_value(self):
+        return self._memo_value
+
     
     def __repr__(self):
-        v, m = repr(self.value), repr(self.memo_value)
+        v, m = repr(self.value), repr(self._memo_value)
         return f'Atom(value={v}, memo_value={m})'
 
 

@@ -255,13 +255,6 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group('r').add('a', ['a1', 'a2'], fn, SELF[0])
     
-    # nest_key for IVFiles not str/int/float
-    with pytest.raises(Exception):
-        create_group('r').add('a', fn, {object(): VFile('b')})
-
-    with pytest.raises(Exception):
-        create_group('r').add('a', fn, {(1,2): VFile('b')})
-
     # args contain an object that lacks pickle-unpickle invariance
     with pytest.raises(Exception):
         create_group('r').add('a', fn, object())

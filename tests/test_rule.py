@@ -9,7 +9,7 @@ from jtcmake.rule.rule import \
 
 from jtcmake.rule.file import File, VFile, IFile
 
-from jtcmake.rule.memo import IMemo, PickleMemo
+from jtcmake.rule.memo import IMemo, PickleMemo, StrHashMemo
 
 
 _args = (object(),)
@@ -88,7 +88,6 @@ def test_update_memo(tmp_path, mocker):
     pickle_code = pickle.dumps(['xyz'])
     m.assert_called_once_with(
         r.metadata_fname,
-        [(k2,y2)],
         0
     )
     
@@ -117,18 +116,19 @@ def test_rule_should_update(tmp_path, mocker):
     q2 = mocker.MagicMock('Rule')
 
     #### multi-y, multi-x, fixed args cases ####
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare.return_value = True
-    mock_memo.memo = 0
+    #mock_memo = mocker.MagicMock(IMemo)
+    #mock_memo.compare.return_value = True
+    #mock_memo.memo = 0
 
     y1, y2 = File(tmp_path / 'f1'), VFile(tmp_path / 'f2')
     x1, x2 = File(tmp_path / 'x1'), VFile(tmp_path / 'x2')
     k1, k2 = ('k1',), ('k2',)
 
     ys = [y1, y2]
-    xs = [(k1,x1), (k2,x2)]
+    xs = [(k1,x1)]
+    memo = StrHashMemo((x2,))
 
-    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, mock_memo)
+    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, memo)
 
     # case 1
     touch(x1, x2, y1, y2)
@@ -173,6 +173,7 @@ def test_rule_should_update(tmp_path, mocker):
     assert r.should_update(set(), False)
 
     # case 7
+    r.update_memo()
     # simple
     touch(y1, y2); touch(x1, x2, t=time.time()-1)
     assert not r.should_update(set(), False)

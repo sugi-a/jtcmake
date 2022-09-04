@@ -1,35 +1,59 @@
 import sys, os, hashlib, json, pickle, hashlib, hmac
 
-from .imemo import IMemo
+from ...utils.nest import ordered_map_structure
+from .abc import IMemo
+from .str_hash_memo import unwrap_atom
 
 
 _TYPE = 'pickle'
 
 class PickleMemo(IMemo):
     def __init__(self, args, key):
+        args, lazy_values = unwrap_atom(args)
+
         code, digest = pickle_encode(args, key)
-        self._memo = {
-            'type': _TYPE, 'code': code.hex(), 'digest': digest.hex()
-        }
+
+        self.code = { 'value': code.hex(), 'digest': digest.hex() }
         self.key = key
+        self.lazy_values = lazy_values
 
 
-    def compare(self, memo):
-        if memo['type'] != _TYPE:
-            raise Exception(
-                f'{_TYPE} memo was expected. Given {memo["type"]} memo.'
-            )
-
-        code = bytes.fromhex(memo['code'])
-        digest = bytes.fromhex(memo['digest'])
-        old_args = pickle_decode(code, digest, self.key)
-
-        return old_args == pickle.loads(bytes.fromhex(self.memo['code']))
+    def compare(self, other_memo):
+        assert_type_pickle(other_memo['type'])
+        return compare_memo(self.memo, other_memo, self.key)
 
 
     @property
     def memo(self):
-        return self._memo
+        lcode, ldigest = pickle_encode(
+            [v() for v in self.lazy_values], self.key)
+
+        return {
+            'type': _TYPE,
+            'code': self.code,
+            'lazy': { 'value': lcode.hex(), 'digest': ldigest.hex() }
+        }
+
+
+def assert_type_pickle(type_):
+    if type_ != _TYPE:
+        raise Exception(
+            f'{_TYPE} memo was expected. Given {memo["type"]} memo.'
+        )
+
+
+def compare_memo(a, b, key):
+    return \
+        compare_code(a['code'], b['code'], key) and \
+        compare_code(a['lazy'], b['lazy'], key)
+
+
+def compare_code(a, b, key):
+    fromhex = bytes.fromhex
+    a = pickle_decode(fromhex(a['value']), fromhex(a['digest']), key)
+    b = pickle_decode(fromhex(b['value']), fromhex(b['digest']), key)
+
+    return a == b
 
 
 _encode_error_message = (
