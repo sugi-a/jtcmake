@@ -3,7 +3,8 @@ from threading import Condition, Thread
 from collections import defaultdict, deque, namedtuple
 
 from . import events
-from .rule import Event, IRule
+from .abc import IRule
+
 
 class Result(enum.Enum):
     Update = 1
@@ -12,14 +13,14 @@ class Result(enum.Enum):
 
 
 MakeSummary = namedtuple(
-    'MakeSummary',
+    "MakeSummary",
     [
-        'total',   # planned to be update
-        'update',  # actually updated (method called)
-        'skip',    # "nothing to do with ..."
-        'fail',    # failed ones
-        'discard'  # not checked because of abort
-    ]
+        "total",  # planned to be update
+        "update",  # actually updated (method called)
+        "skip",  # "nothing to do with ..."
+        "fail",  # failed ones
+        "discard",  # not checked because of abort
+    ],
 )
 
 
@@ -43,14 +44,14 @@ def _toplogical_sort(id2rule, seed_ids):
 
     return res
 
-    
+
 def make(
     id2rule,
     ids,
     dry_run,
     keep_going,
     callback,
-    ):
+):
     if len(ids) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
@@ -73,9 +74,7 @@ def make(
         par_updated = any(dep in updated_ids for dep in r.deplist)
 
         try:
-            result = process_rule(
-                r, dry_run, par_updated, i in main_ids, callback
-            )
+            result = process_rule(r, dry_run, par_updated, i in main_ids, callback)
         except Exception as e:
             traceback.print_exc()
             try:
@@ -105,17 +104,11 @@ def make(
         update=len(updated_ids),
         skip=nskips,
         fail=nfails,
-        discard=len(taskq) - (len(updated_ids) + nskips + nfails)
+        discard=len(taskq) - (len(updated_ids) + nskips + nfails),
     )
-        
 
-def process_rule(
-    rule,
-    dry_run,
-    par_updated,
-    is_main,
-    callback
-    ):
+
+def process_rule(rule, dry_run, par_updated, is_main, callback):
     if dry_run:
         try:
             should_update = rule.should_update(par_updated, True)
@@ -128,7 +121,7 @@ def process_rule(
             callback(events.DryRun(rule))
             return Result.Update
         else:
-            callback(events.Skip(rule))
+            callback(events.Skip(rule, is_main))
             return Result.Skip
 
     try:
@@ -168,6 +161,7 @@ def process_rule(
     try:
         rule.postprocess(callback, succ)
     except Exception as e:
+        traceback.print_exc()
         callback(events.PostProcError(rule, e))
         return Result.Fail
 
@@ -176,4 +170,3 @@ def process_rule(
         return Result.Update
     else:
         return Result.Fail
-

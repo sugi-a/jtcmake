@@ -1,4 +1,8 @@
-class Atom:
+from abc import abstractmethod
+from ..rule.memo.abc import IMemoAtom
+
+
+class Atom(IMemoAtom):
     def __init__(self, value, memo_value):
         """Create Atom: special object that can be included in args/kwargs
         of Group.add. Atom is used to:
@@ -9,8 +13,6 @@ class Atom:
         Args:
             value: object to be wrapped.
             memo_value: value used for memoization instead of `value`.
-                If callable, `memo_value(value)` will be used for memoization .
-                Otherwise, memo_value itself will be used.
 
         Example1:
 
@@ -23,7 +25,7 @@ class Atom:
             ```
 
             `func(Path("root/rule.txt"), lambda x: x ** 2)` will be executed.
-            The lambda function will not be memoized (instead, `None` will)
+            The lambda function will not be memoized (instead, `None` will be)
 
 
         Example2:
@@ -31,8 +33,9 @@ class Atom:
             Wrap a numpy array.
 
             ```
+            array = np.array([1,2,3])
             g = create_group('root')
-            g.add('rule.txt', method, Atom(np.array([1,2,3]), str)
+            g.add('rule.txt', method, Atom(array, str(array))
             g.make()
             ```
 
@@ -40,23 +43,24 @@ class Atom:
             Instead of the ndarray object, "[1, 2, 3]" will be memoized.
         """
         self.value = value
-        if callable(memo_value):
-            self.memo_value = memo_value(value)
-        else:
-            self.memo_value = memo_value
-    
+        self._memo_value = memo_value
+
+    @property
+    def memo_value(self):
+        return self._memo_value
+
     def __repr__(self):
-        v, m = repr(self.value), repr(self.memo_value)
-        return f'Atom(value={v}, memo_value={m})'
+        v, m = repr(self.value), repr(self._memo_value)
+        return f"Atom(value={v}, memo_value={m})"
 
 
 def Memstr(arg):
     """
-    Alias for `Atom(arg, str)`.
+    Alias for `Atom(arg, str(arg))`.
     Use str(arg) as the value for memoization of arg
     """
-    return Atom(arg, str)
-    
+    return Atom(arg, str(arg))
+
 
 def Nomem(arg):
     """

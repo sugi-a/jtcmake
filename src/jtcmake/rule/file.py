@@ -2,21 +2,45 @@ from abc import ABC, abstractmethod
 import os, time, hashlib, base64
 from pathlib import PurePath, Path
 
-from ..core.rule import IRule
+from .memo.abc import IMemoAtom, ILazyMemoValue
 
-class IFile(ABC):
+
+class IFileBase(IMemoAtom):
     @property
     @abstractmethod
-    def path(self): ...
+    def path(self):
+        ...
 
+    @abstractmethod
+    def copy_with(self, path):
+        ...
+
+    # mixins
     @property
-    @abstractmethod
-    def abspath(self): ...
+    def abspath(self):
+        return Path(os.path.abspath(self.path))
+
+    def __hash__(self):
+        return hash(self.path)
+
+    def __eq__(self, other):
+        return type(other) == type(self) and self.path == other.path
+
+    def __repr__(self):
+        return f"{type(self).__name__}(path={repr(self.path)})"
 
 
-class IVFile(IFile):
-    @abstractmethod
-    def get_hash(self): ...
+class IFile(IFileBase):
+    # Marker interface for (referencial) files
+    # memo_value must be constant (must not be further overridden)
+    @property
+    def memo_value(self):
+        return None
+
+
+class IVFile(IFileBase):
+    # Marker interface for value files
+    ...
 
 
 class File(IFile):
@@ -28,33 +52,38 @@ class File(IFile):
     def path(self):
         return self._path
 
-    @property
-    def abspath(self):
-        return Path(os.path.abspath(self._path))
-
-    def __hash__(self):
-        return hash(self._path)
-
-    def __eq__(self, other):
-        return type(other) == type(self) and self._path == other._path
-
-    def __repr__(self):
-        return f'{type(self).__name__}(path={repr(self.path)})'
+    def copy_with(self, path):
+        return File(path)
 
 
-class VFile(IVFile, File):
-    def _clean(self):
-        try:
-            os.remove(self._path)
-            os.remove(self.metadata_fname)
-        except:
-            pass
+class _ContentHash(ILazyMemoValue):
+    def __init__(self, path):
+        self.path = path
 
-    def get_hash(self):
+    def __call__(self):
         return get_hash(self.path)
-        
+
+
+class VFile(IVFile):
+    def __init__(self, path):
+        assert isinstance(path, (str, os.PathLike))
+        self._path = Path(path)
+        self._memo_value = _ContentHash(path)
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def memo_value(self):
+        return self._memo_value
+
+    def copy_with(self, path):
+        return VFile(path)
+
 
 _hash_cache = {}
+
 
 def get_hash(fname):
     fname = os.path.realpath(fname)
@@ -65,7 +94,7 @@ def get_hash(fname):
 
     mtime = os.path.getmtime(fname)
 
-    with open(fname, 'rb') as f:
+    with open(fname, "rb") as f:
         res = base64.b64encode(hashlib.md5(f.read()).digest()).decode()
 
     _hash_cache[fname] = (mtime, res)

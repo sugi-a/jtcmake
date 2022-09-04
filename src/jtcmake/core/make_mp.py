@@ -5,13 +5,13 @@ from threading import Thread, Condition, Lock
 from collections import defaultdict
 
 from . import events
-from .rule import Event, IRule
+from .abc import IRule
 from .make import process_rule, Result, MakeSummary
 
 
 def _collect_rules(id2rule, seed_ids):
     """collect rules on which seed rules depend"""
-    ids = set()           # set<ID>
+    ids = set()  # set<ID>
     b2a = defaultdict(set)  # dict<ID, ID> before to after
 
     def find_deps(i):
@@ -26,9 +26,9 @@ def _collect_rules(id2rule, seed_ids):
 
     for i in seed_ids:
         find_deps(i)
-    
+
     return list(ids), b2a
-        
+
 
 def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     if len(ids) == 0:
@@ -37,7 +37,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     assert njobs >= 2
 
     # Use the process starting method 'spawn' regardless of OS
-    ctx = get_context('spawn')
+    ctx = get_context("spawn")
 
     # Not very confident but this useless Pool seems necessary for later
     # use of Pool in threads to work reliably.
@@ -48,13 +48,13 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     main_ids = ids
     ids, b2a = _collect_rules(id2rule, main_ids)
 
-    dep_cnt = { i: len(id2rule[i].deplist) for i in ids }
+    dep_cnt = {i: len(id2rule[i].deplist) for i in ids}
 
     # Check inter-process transferability
     rules = [id2rule[i] for i in ids]
     sendable = _test_interproc_portabability(rules, ctx)
     _log_sendable_stats(sendable)
-    sendable = { ids[j]: sendable[j] for j in range(len(ids)) }
+    sendable = {ids[j]: sendable[j] for j in range(len(ids))}
 
     # state vars
     updated_ids = set()  # rules processed and not skipped
@@ -125,7 +125,6 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     def callback_(*args, **kwargs):
         with cb_lock:
             callback(*args, **kwargs)
-                
 
     def event_q_handler(workers):
         # workers: list[Thread]
@@ -139,7 +138,6 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
                 pass
             except Exception:
                 traceback.print_exc()
-        
 
     args = (
         ctx,
@@ -151,7 +149,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         main_ids,
         sendable,
         dry_run,
-        callback_
+        callback_,
     )
 
     threads = [Thread(target=worker, args=(*args, i)) for i in range(njobs)]
@@ -166,7 +164,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         for t in threads:
             t.join()
 
-        #thread_event_q_handler.join()
+        # thread_event_q_handler.join()
     except Exception:
         pass
     finally:
@@ -179,7 +177,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         update=len(updated_ids),
         skip=nskips,
         fail=nfails,
-        discard=len(ids) - (len(updated_ids) + nskips + nfails)
+        discard=len(ids) - (len(updated_ids) + nskips + nfails),
     )
 
 
@@ -196,7 +194,7 @@ def worker(
     callback,
     name,
 ):
-    name = f'worker{name}'
+    name = f"worker{name}"
     with ctx.Pool(1, _init_event_q, (event_q,)) as pool:
         while True:
             i = get_job()
@@ -228,6 +226,7 @@ def worker(
 
 _event_q = None  # used by worker Processes
 
+
 def _init_event_q(q):
     global _event_q
     assert _event_q is None
@@ -247,7 +246,7 @@ def _test_interproc_portabability(objs, ctx):
 
     codes = [None] * n
 
-    sys.stderr.write('Checking picklability\n')
+    sys.stderr.write("Checking picklability\n")
 
     for i in range(n):
         try:
@@ -255,7 +254,7 @@ def _test_interproc_portabability(objs, ctx):
         except:
             picklable[i] = False
 
-    sys.stderr.write('Checking inter-process portability\n')
+    sys.stderr.write("Checking inter-process portability\n")
 
     par, child = ctx.Pipe()
 
@@ -272,14 +271,13 @@ def _test_interproc_portabability(objs, ctx):
 def _test_unpicklable(codes, conn):
     res = [True] * len(codes)
 
-    for i,c in enumerate(codes):
+    for i, c in enumerate(codes):
         try:
             pickle.loads(c)
         except:
             res[i] = False
-    
+
     conn.send(res)
-    
 
 
 def _log_sendable_stats(sendables):
@@ -289,9 +287,8 @@ def _log_sendable_stats(sendables):
 
     if ng > 0:
         sys.stderr.write(
-            f'{ng} of {n} Rules will be executed using threads in the main '
-            'process instad of using multi-processing. This is because '
-            'their method/args/kwargs contain some objects that cannot be '
-            'transfered to child processes.\n'
+            f"{ng} of {n} Rules will be executed using threads in the main "
+            "process instad of using multi-processing. This is because "
+            "their method/args/kwargs contain some objects that cannot be "
+            "transfered to child processes.\n"
         )
-
