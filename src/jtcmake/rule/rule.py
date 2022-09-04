@@ -130,23 +130,6 @@ class Rule(IRule):
     def deplist(self): return self._deplist
 
 
-def create_vfile_hashes(vfiles):
-    """
-    list of (NestKey, file name, mtime)
-    """
-    res = [(k, f.get_hash(), os.path.getmtime(f.path)) for k,f in vfiles]
-    res = json.loads(json.dumps(res)) # round trip JSON conversion
-    return res
-    
-
-def load_vfile_hashes(metadata_fname):
-    if not os.path.exists(metadata_fname):
-        return []
-
-    with open(metadata_fname) as f:
-        return json.load(f)
-
-
 def save_memo(metadata_fname, args_memo):
     os.makedirs(Path(metadata_fname).parent, exist_ok=True)
     with open(metadata_fname, 'w') as f:

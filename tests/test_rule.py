@@ -4,12 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from jtcmake.rule.rule import \
-    Rule, create_vfile_hashes
+from jtcmake.rule.rule import Rule
 
 from jtcmake.rule.file import File, VFile, IFile
 
-from jtcmake.rule.memo import IMemo, PickleMemo, StrHashMemo
+from jtcmake.rule.memo import IMemo, StrHashMemo
 
 
 _args = (object(),)
@@ -46,26 +45,6 @@ def test_metadata_fname(mocker):
     r = Rule([y1, y2], [], [], _method, _args, _kwargs, memo)
     assert os.path.abspath(r.metadata_fname) == \
         os.path.abspath('a/.jtcmake/b.c')
-
-
-def test_create_vfile_hashes(mocker):
-    """create_vfile_hashes(vfile_list)
-    creates a list where each element corresponds to
-    a VFile and is a triple (key, hash code, mtime).
-    `key` is the NestKey for the VFile, hash code is the hash of the VFile,
-    and mtime is the time at which the hash was computed.
-    """
-    f1, f2 = (mocker.MagicMock(VFile) for _ in range(2))
-    f1.get_hash = mocker.MagicMock(return_value='a')
-    f2.get_hash = mocker.MagicMock(return_value='b')
-
-    mocker.patch(
-        'jtcmake.rule.file.os.path.getmtime',
-        side_effect=lambda p: 1 if p == f1.path else 2
-    )
-
-    res = create_vfile_hashes([('k1', f1), ('k2', f2)])
-    assert res == [['k1', 'a', 1], ['k2', 'b', 2]]
 
 
 def test_update_memo(tmp_path, mocker):
