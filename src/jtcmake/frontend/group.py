@@ -84,6 +84,7 @@ class FileNodeAtom(IFileNode):
         except:
             pass
 
+
     def __repr__(self):
         return f'FileNodeAtom("{self.path}")'
 
@@ -210,6 +211,10 @@ class RuleNodeBase:
     @property
     def name(self):
         return self._name
+
+
+    def touch_memo(self):
+        self._rule.update_memo()
 
 
 class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
