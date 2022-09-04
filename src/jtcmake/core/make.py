@@ -3,7 +3,7 @@ from threading import Condition, Thread
 from collections import defaultdict, deque, namedtuple
 
 from . import events
-from .rule import Event, IRule
+from .abc import IRule
 
 class Result(enum.Enum):
     Update = 1

@@ -1,8 +1,7 @@
-from .rule import Event, IRule
+from .abc import IEvent, IRule
 
-class RuleEvent(Event):
+class RuleEvent(IEvent):
     def __init__(self, rule):
-        super().__init__()
         self._rule = rule
 
     @property
@@ -39,7 +38,7 @@ class Done(RuleEvent): ...
 
 class DryRun(RuleEvent): ...
 
-class StopOnFail(Event): ...
+class StopOnFail(IEvent): ...
 
 class UpdateCheckError(ErrorRuleEvent): ...
 

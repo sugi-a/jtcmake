@@ -1,5 +1,4 @@
 import sys, os
-from ..core.rule import IRule
 from ..logwriter.writer import term_is_jupyter, create_html, create_color_str
 from .event_logger import tostrs_func_call
 

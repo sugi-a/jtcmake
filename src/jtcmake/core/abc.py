@@ -1,8 +1,6 @@
 import abc
 
-class Event:
-    def __init__(self, msg=None):
-        self.msg = msg
+class IEvent: ...
 
 
 class IRule(abc.ABC):

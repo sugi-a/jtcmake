@@ -6,14 +6,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from logging import Logger
 
-from ..core.rule import IRule
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
 from .igroup import IGroup
-from ..rule.file import File, VFile, IFile, IVFile, IFileBase
+from ..rule.file import File, VFile, IFile, IFileBase
 from .event_logger import log_make_event
-from . import graphviz
-from ..core.make import make as _make, Event
+from ..core.make import make as _make
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import \
     TextWriter, ColorTextWriter, HTMLJupyterWriter, \

@@ -1,7 +1,7 @@
 import sys, os, shutil
 import pytest
 
-from jtcmake.core.rule import Event, IRule
+from jtcmake.core.abc import IEvent, IRule
 from jtcmake.core.make import make, MakeSummary
 from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
@@ -18,12 +18,12 @@ def assert_same_event(e1, e2):
 
 
 def assert_same_log_item(x1, x2):
-    if isinstance(x1, Event):
+    if isinstance(x1, IEvent):
         assert_same_event(x1, x2)
     else:
         assert len(x1) == len(x2)
         for u,v in zip(x1, x2):
-            if isinstance(u, Event):
+            if isinstance(u, IEvent):
                 assert_same_event(u, v)
             else:
                 assert u == v

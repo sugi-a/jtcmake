@@ -2,7 +2,7 @@ import sys, os, hashlib, json, pickle, hashlib, hmac
 from pathlib import Path, PurePath
 from collections import namedtuple
 
-from ..core.rule import Event, IRule
+from ..core.abc import IRule
 from .file import IFile, IVFile
 
 class Rule(IRule):

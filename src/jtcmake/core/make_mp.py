@@ -5,7 +5,7 @@ from threading import Thread, Condition, Lock
 from collections import defaultdict
 
 from . import events
-from .rule import Event, IRule
+from .abc import IRule
 from .make import process_rule, Result, MakeSummary
 
 

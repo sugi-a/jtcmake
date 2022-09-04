@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import os, time, hashlib, base64
 from pathlib import PurePath, Path
 
-from ..core.rule import IRule
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
 class IFileBase(IMemoAtom):
