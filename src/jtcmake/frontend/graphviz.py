@@ -3,7 +3,7 @@ from html import escape
 from pathlib import Path
 
 from ..logwriter.writer import term_is_jupyter
-from .igroup import IGroup
+from .abc import IGroup
 
 
 def print_graphviz(group, output_file=None):

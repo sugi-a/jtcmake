@@ -2,9 +2,24 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 
 
+class IFileNode(ABC):
+    @property
+    @abstractmethod
+    def path(self):
+        ...
+
+    @abstractmethod
+    def touch(self, create, _t):
+        ...
+
+    @abstractmethod
+    def clean(self):
+        ...
+
+
 class IGroup(ABC):
     @abstractmethod
-    def add_group(self, name, dirname, *, prefix):
+    def add_group(self, name, dirname=None, *, prefix=None):
         ...
 
     @abstractmethod
@@ -16,7 +31,7 @@ class IGroup(ABC):
         ...
 
     @abstractmethod
-    def make(self, dry_run=False, keep_going=False, *, nthreads=1):
+    def make(self, dry_run=False, keep_going=False, *, njobs=1):
         ...
 
     @abstractmethod
@@ -24,11 +39,11 @@ class IGroup(ABC):
         ...
 
     @abstractmethod
-    def touch(self, _t=None):
+    def touch(self, create=False, _t=None):
         ...
 
     @abstractmethod
-    def select(self, pattern):
+    def select(self, pattern, group=False):
         ...
 
     @abstractmethod

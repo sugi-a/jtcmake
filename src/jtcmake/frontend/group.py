@@ -1,5 +1,4 @@
-from abc import abstractmethod
-import sys, os, pathlib, re, abc, contextlib, collections, time, json, inspect, warnings
+import sys, os, pathlib, re, contextlib, time, json, inspect
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -8,7 +7,7 @@ from logging import Logger
 
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
-from .igroup import IGroup
+from .abc import IGroup, IFileNode
 from ..rule.file import File, VFile, IFile, IFileBase
 from .event_logger import log_make_event
 from ..core.make import make as _make
@@ -35,21 +34,6 @@ from ..utils.nest import (
     flatten_to_nest_keys,
     pack_sequence_as,
 )
-
-
-class IFileNode:
-    @property
-    @abstractmethod
-    def path(self):
-        ...
-
-    @abstractmethod
-    def touch(self, create, _t):
-        ...
-
-    @abstractmethod
-    def clean(self):
-        ...
 
 
 class FileNodeAtom(IFileNode):
