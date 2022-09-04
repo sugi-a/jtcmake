@@ -237,13 +237,13 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
     before, after = {1, 2}, {2, 3}
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
-    g.add("a", _write, jtcmake.Atom(before, lambda _: None))
+    g.add("a", _write, jtcmake.Atom(before, None))
     g.make()
 
     assert g.a.path.read_text() == repr(before)
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
-    g.add("a", _write, jtcmake.Atom(before, lambda _: None))
+    g.add("a", _write, jtcmake.Atom(before, None))
     res = g.make()
 
     assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)

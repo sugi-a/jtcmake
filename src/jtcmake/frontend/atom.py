@@ -13,8 +13,6 @@ class Atom(IMemoAtom):
         Args:
             value: object to be wrapped.
             memo_value: value used for memoization instead of `value`.
-                If callable, `memo_value(value)` will be used for memoization .
-                Otherwise, memo_value itself will be used.
 
         Example1:
 
@@ -27,7 +25,7 @@ class Atom(IMemoAtom):
             ```
 
             `func(Path("root/rule.txt"), lambda x: x ** 2)` will be executed.
-            The lambda function will not be memoized (instead, `None` will)
+            The lambda function will not be memoized (instead, `None` will be)
 
 
         Example2:
@@ -35,8 +33,9 @@ class Atom(IMemoAtom):
             Wrap a numpy array.
 
             ```
+            array = np.array([1,2,3])
             g = create_group('root')
-            g.add('rule.txt', method, Atom(np.array([1,2,3]), str)
+            g.add('rule.txt', method, Atom(array, str(array))
             g.make()
             ```
 
@@ -44,10 +43,7 @@ class Atom(IMemoAtom):
             Instead of the ndarray object, "[1, 2, 3]" will be memoized.
         """
         self.value = value
-        if callable(memo_value):
-            self._memo_value = memo_value(value)
-        else:
-            self._memo_value = memo_value
+        self._memo_value = memo_value
 
     @property
     def memo_value(self):
@@ -60,10 +56,10 @@ class Atom(IMemoAtom):
 
 def Memstr(arg):
     """
-    Alias for `Atom(arg, str)`.
+    Alias for `Atom(arg, str(arg))`.
     Use str(arg) as the value for memoization of arg
     """
-    return Atom(arg, str)
+    return Atom(arg, str(arg))
 
 
 def Nomem(arg):
