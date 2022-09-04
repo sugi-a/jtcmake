@@ -1,6 +1,21 @@
 import sys, os, html, re
 
-_VOIDTAG = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'}
+_VOIDTAG = {
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "source",
+    "track",
+    "wbr",
+}
+
 
 class Element:
     def __init__(self, tag, children, **kwargs):
@@ -18,7 +33,6 @@ class EmptyElement(Element):
 
     def __call__(self, *args):
         return Element(self.tag, args, **self.kwargs)
-        
 
 
 def to_html_str(obj):
@@ -32,14 +46,14 @@ def to_html_str(obj):
             lst.append(html.escape(obj))
         elif isinstance(obj, Element):
             kv2prop = lambda kv: f' {kv[0]}="{html.escape(str(kv[1]))}"'
-            prop = ''.join(map(kv2prop, obj.kwargs.items()))
+            prop = "".join(map(kv2prop, obj.kwargs.items()))
 
             if obj.tag in _VOIDTAG:
-                lst.append(f'<{obj.tag}{prop}/>')
+                lst.append(f"<{obj.tag}{prop}/>")
             else:
-                lst.append(f'<{obj.tag}{prop}>')
+                lst.append(f"<{obj.tag}{prop}>")
                 rec(obj.children)
-                lst.append(f'</{obj.tag}>')
+                lst.append(f"</{obj.tag}>")
         elif obj is None:
             pass
         else:
@@ -47,5 +61,4 @@ def to_html_str(obj):
 
     rec(obj)
 
-    return ''.join(lst)
-    
+    return "".join(lst)

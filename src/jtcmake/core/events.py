@@ -1,5 +1,6 @@
 from .abc import IEvent, IRule
 
+
 class RuleEvent(IEvent):
     def __init__(self, rule):
         self._rule = rule
@@ -8,9 +9,8 @@ class RuleEvent(IEvent):
     def rule(self):
         return self._rule
 
-
     def __repr__(self):
-        return f'{type(self).__name__}({self.rule})'
+        return f"{type(self).__name__}({self.rule})"
 
 
 class ErrorRuleEvent(RuleEvent):
@@ -22,9 +22,8 @@ class ErrorRuleEvent(RuleEvent):
     def err(self):
         return self._error
 
-
     def __repr__(self):
-        return f'{type(self).__name__}(rule={self.rule}, err={self.err})'
+        return f"{type(self).__name__}(rule={self.rule}, err={self.err})"
 
 
 class Skip(RuleEvent):
@@ -32,21 +31,38 @@ class Skip(RuleEvent):
         super().__init__(rule)
         self.is_direct_target = is_direct_target
 
-class Start(RuleEvent): ...
 
-class Done(RuleEvent): ...
+class Start(RuleEvent):
+    ...
 
-class DryRun(RuleEvent): ...
 
-class StopOnFail(IEvent): ...
+class Done(RuleEvent):
+    ...
 
-class UpdateCheckError(ErrorRuleEvent): ...
 
-class PreProcError(ErrorRuleEvent): ...
+class DryRun(RuleEvent):
+    ...
 
-class ExecError(ErrorRuleEvent): ...
 
-class PostProcError(ErrorRuleEvent): ...
+class StopOnFail(IEvent):
+    ...
 
-class FatalError(ErrorRuleEvent): ...
 
+class UpdateCheckError(ErrorRuleEvent):
+    ...
+
+
+class PreProcError(ErrorRuleEvent):
+    ...
+
+
+class ExecError(ErrorRuleEvent):
+    ...
+
+
+class PostProcError(ErrorRuleEvent):
+    ...
+
+
+class FatalError(ErrorRuleEvent):
+    ...

@@ -4,13 +4,16 @@ from pathlib import PurePath, Path
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
+
 class IFileBase(IMemoAtom):
     @property
     @abstractmethod
-    def path(self): ...
+    def path(self):
+        ...
 
     @abstractmethod
-    def copy_with(self, path): ...
+    def copy_with(self, path):
+        ...
 
     # mixins
     @property
@@ -24,8 +27,7 @@ class IFileBase(IMemoAtom):
         return type(other) == type(self) and self.path == other.path
 
     def __repr__(self):
-        return f'{type(self).__name__}(path={repr(self.path)})'
-
+        return f"{type(self).__name__}(path={repr(self.path)})"
 
 
 class IFile(IFileBase):
@@ -75,12 +77,13 @@ class VFile(IVFile):
     @property
     def memo_value(self):
         return self._memo_value
-        
+
     def copy_with(self, path):
         return VFile(path)
 
 
 _hash_cache = {}
+
 
 def get_hash(fname):
     fname = os.path.realpath(fname)
@@ -91,7 +94,7 @@ def get_hash(fname):
 
     mtime = os.path.getmtime(fname)
 
-    with open(fname, 'rb') as f:
+    with open(fname, "rb") as f:
         res = base64.b64encode(hashlib.md5(f.read()).digest()).decode()
 
     _hash_cache[fname] = (mtime, res)

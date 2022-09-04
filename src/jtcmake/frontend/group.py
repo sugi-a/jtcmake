@@ -13,30 +13,43 @@ from ..rule.file import File, VFile, IFile, IFileBase
 from .event_logger import log_make_event
 from ..core.make import make as _make
 from ..core.make_mp import make_mp_spawn
-from ..logwriter.writer import \
-    TextWriter, ColorTextWriter, HTMLJupyterWriter, \
-    term_is_jupyter, TextFileWriterOpenOnDemand, \
-    HTMLFileWriterOpenOnDemand, LoggerWriter, WritersWrapper, \
-    RichStr
+from ..logwriter.writer import (
+    TextWriter,
+    ColorTextWriter,
+    HTMLJupyterWriter,
+    term_is_jupyter,
+    TextFileWriterOpenOnDemand,
+    HTMLFileWriterOpenOnDemand,
+    LoggerWriter,
+    WritersWrapper,
+    RichStr,
+)
 
 from .atom import Atom
 
-from ..utils.nest import \
-    NestKey, map_structure, flatten, nest_get, \
-    flatten_to_nest_keys, pack_sequence_as
-
+from ..utils.nest import (
+    NestKey,
+    map_structure,
+    flatten,
+    nest_get,
+    flatten_to_nest_keys,
+    pack_sequence_as,
+)
 
 
 class IFileNode:
     @property
     @abstractmethod
-    def path(self): ...
+    def path(self):
+        ...
 
     @abstractmethod
-    def touch(self, create, _t): ...
+    def touch(self, create, _t):
+        ...
 
     @abstractmethod
-    def clean(self): ...
+    def clean(self):
+        ...
 
 
 class FileNodeAtom(IFileNode):
@@ -59,29 +72,27 @@ class FileNodeAtom(IFileNode):
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
-            _t (float): 
+            _t (float):
                 set mtime to `_t` after touching
         """
         if _t is None:
             _t = time.time()
         if create or os.path.exists(self._file.path):
-            open(self._file.path, 'w').close()
+            open(self._file.path, "w").close()
             os.utime(self._file.path, (_t, _t))
             self._info.logwriter.info(
-                'touch ', RichStr(str(self.path), link=str(self.path)), '\n'
+                "touch ", RichStr(str(self.path), link=str(self.path)), "\n"
             )
-
 
     def clean(self):
         """Delete this file if exists"""
         try:
             os.remove(self._file.path)
             self._info.logwriter.info(
-                'clean ', RichStr(str(self.path), link=str(self.path)), '\n'
+                "clean ", RichStr(str(self.path), link=str(self.path)), "\n"
             )
         except:
             pass
-
 
     def __repr__(self):
         return f'FileNodeAtom("{self.path}")'
@@ -91,7 +102,8 @@ class FileNodeTuple(tuple, IFileNode):
     def __new__(cls, lst):
         return super().__new__(cls, lst)
 
-    def __init__(self, lst): ...
+    def __init__(self, lst):
+        ...
 
     @property
     def path(self):
@@ -107,19 +119,21 @@ class FileNodeTuple(tuple, IFileNode):
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
-            _t (float): 
+            _t (float):
                 set mtime to `_t` after touching
         """
         if _t is None:
             _t = time.time()
-        for x in self: x.touch(create, _t)
+        for x in self:
+            x.touch(create, _t)
 
     def clean(self):
         """Delete files in this tuple"""
-        for x in self: x.clean()
+        for x in self:
+            x.clean()
 
     def __repr__(self):
-        return f'FileNodeTuple{super().__repr__()}'
+        return f"FileNodeTuple{super().__repr__()}"
 
 
 class FileNodeDict(Mapping, IFileNode):
@@ -128,28 +142,29 @@ class FileNodeDict(Mapping, IFileNode):
 
     @property
     def path(self):
-        return {k: v.path for k,v in self._dic.items()}
+        return {k: v.path for k, v in self._dic.items()}
 
     @property
     def abspath(self):
-        return {k: v.abspath for k,v in self._dic.items()}
+        return {k: v.abspath for k, v in self._dic.items()}
 
     def touch(self, create=False, _t=None):
         """Touch files in this dict
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
-            _t (float): 
+            _t (float):
                 set mtime to `_t` after touching
         """
         if _t is None:
             _t = time.time()
-        for k,v in self._dic.items():
+        for k, v in self._dic.items():
             v.touch(create, _t)
 
     def clean(self):
         """Delete files in this dict"""
-        for k,v in self._dic.items(): v.clean()
+        for k, v in self._dic.items():
+            v.clean()
 
     def __getitem__(self, k):
         return self._dic[k]
@@ -167,7 +182,7 @@ class FileNodeDict(Mapping, IFileNode):
         return hash(id(self))
 
     def __repr__(self):
-        return f'FileNodeDict{dict(self)}'
+        return f"FileNodeDict{dict(self)}"
 
 
 class RuleNodeBase:
@@ -210,7 +225,6 @@ class RuleNodeBase:
     def name(self):
         return self._name
 
-
     def touch_memo(self):
         self._rule.update_memo()
 
@@ -219,7 +233,6 @@ class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
     def __init__(self, name, rule, group_tree_info, file):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeAtom.__init__(self, group_tree_info, file)
-
 
     def __repr__(self):
         return f'RuleNodeAtom(path="{self.path}")'
@@ -233,9 +246,8 @@ class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeTuple.__init__(self, lst)
 
-
     def __repr__(self):
-        return f'RuleNodeTuple{tuple(self)}'
+        return f"RuleNodeTuple{tuple(self)}"
 
 
 class RuleNodeDict(RuleNodeBase, FileNodeDict):
@@ -245,9 +257,9 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
     def __init__(self, name, rule, group_tree_info, dic):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
         FileNodeDict.__init__(self, dic)
-        
+
     def __repr__(self):
-        return f'RuleNodeDict{dict(self)}'
+        return f"RuleNodeDict{dict(self)}"
 
 
 class GroupTreeInfo:
@@ -261,19 +273,18 @@ class GroupTreeInfo:
 
         self.logwriter = logwriter
 
-    
+
 class Group(IGroup):
     def __init__(self, info, prefix, name):
         if not isinstance(prefix, str):
-            raise TypeError('prefix must be str')
+            raise TypeError("prefix must be str")
 
         self._info = info
         self._prefix = prefix
         self._name = name
         self._children = {}
 
-
-    def add_group(self, name, dirname = None, *, prefix = None):
+    def add_group(self, name, dirname=None, *, prefix=None):
         """Add a child Group node
         Args:
             name: name of the node. (str|os.PathLike)
@@ -292,19 +303,19 @@ class Group(IGroup):
         if isinstance(name, os.PathLike):
             name = name.__fspath__()
         elif not isinstance(name, str):
-            raise TypeError('name must be str or os.PathLike')
+            raise TypeError("name must be str or os.PathLike")
 
         if name in self._children:
-            raise KeyError(f'name {repr(name)} already exists in this Group')
+            raise KeyError(f"name {repr(name)} already exists in this Group")
 
         if not _is_valid_node_name(name):
             raise ValueError(f'name "{name}" contains some illegal characters')
 
-        if name == '':
+        if name == "":
             raise ValueError(f'name must not be ""')
 
         if dirname is not None and prefix is not None:
-            raise TypeError('Either dirname or prefix can be specified')
+            raise TypeError("Either dirname or prefix can be specified")
 
         if dirname is None and prefix is None:
             dirname = name
@@ -315,7 +326,7 @@ class Group(IGroup):
 
         assert isinstance(prefix, (str, os.PathLike))
 
-        if os.name == 'posix':
+        if os.name == "posix":
             prefix = os.path.expanduser(prefix)
 
         if isinstance(prefix, os.PathLike):
@@ -325,14 +336,13 @@ class Group(IGroup):
             prefix = self._prefix + prefix
 
         g = Group(self._info, prefix, (*self._name, name))
-        
+
         self._children[name] = g
 
         if _ismembername(name):
             self.__dict__[name] = g
 
         return g
-
 
     def make(
         self,
@@ -364,7 +374,6 @@ class Group(IGroup):
             njobs=njobs,
         )
 
-
     # APIs
     def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -386,7 +395,7 @@ class Group(IGroup):
 
         Returns (2):
             A function (method: Callable) -> RuleNode.
-        
+
         Call signature (2) is for decorator-style adding.
             The following two are equivalent:
             `Group.add(name, output_files, None, *args, **kwargs)(method)`
@@ -399,30 +408,29 @@ class Group(IGroup):
             - Group.addvf wraps them by VFile.
         """
         if not isinstance(name, str):
-            raise ValueError(f'name must be str')
+            raise ValueError(f"name must be str")
 
         if len(args) == 0:
-            raise TypeError('method must be specified')
+            raise TypeError("method must be specified")
 
         if callable(args[0]) or args[0] is None:
             path = str(name)
             method, *args = args
         else:
             if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError('method must be specified')
+                raise TypeError("method must be specified")
 
             path, method, *args = args
 
         if method is None:
+
             def adder(method):
                 self._add(name, path, method, *args, **kwargs)
                 return method
-            
+
             return adder
 
-        return self._add(
-            name, path, method, *args, **kwargs)
-
+        return self._add(name, path, method, *args, **kwargs)
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -444,7 +452,7 @@ class Group(IGroup):
 
         Returns (2):
             A function (method: Callable) -> RuleNode.
-        
+
         Call signature (2) is for decorator-style adding.
             The following two are equivalent:
             `Group.add(name, output_files, None, *args, **kwargs)(method)`
@@ -457,26 +465,27 @@ class Group(IGroup):
             - Group.addvf wraps them by VFile.
         """
         if not isinstance(name, str):
-            raise ValueError(f'name must be str')
+            raise ValueError(f"name must be str")
 
         if len(args) == 0:
-            raise TypeError('method must be specified')
+            raise TypeError("method must be specified")
 
         if callable(args[0]) or args[0] is None:
             path = str(name)
             method, *args = args
         else:
             if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError('method must be specified')
+                raise TypeError("method must be specified")
 
             path, method, *args = args
 
         if method is None:
+
             def adder(method):
                 assert callable(method)
                 self.add_vf(name, path, method, *args, **kwargs)
                 return method
-            
+
             return adder
 
         def wrap_by_VFile(p):
@@ -486,15 +495,10 @@ class Group(IGroup):
                 return p
 
         path = map_structure(wrap_by_VFile, path)
-            
-        return self._add(
-            name, path, method, *args, **kwargs)
 
+        return self._add(name, path, method, *args, **kwargs)
 
-    def _add(
-        self, name, files,
-        method, *args, **kwargs
-    ):
+    def _add(self, name, files, method, *args, **kwargs):
         assert isinstance(name, str)
         assert callable(method)
 
@@ -504,9 +508,9 @@ class Group(IGroup):
         if not _is_valid_node_name(name):
             raise ValueError(f'name "{name}" contains some illegal characters')
         if name in self._children:
-            raise KeyError(f'name `{name}` already exists')
+            raise KeyError(f"name `{name}` already exists")
 
-        if name == '':
+        if name == "":
             raise ValueError(f'name must not be ""')
 
         # wrap str/os.PathLike in yfiles by File
@@ -519,9 +523,9 @@ class Group(IGroup):
 
         files = map_structure(wrap_by_File, files)
 
-        # add prefix to paths of yfiles if necessary 
+        # add prefix to paths of yfiles if necessary
         def add_pfx(f):
-            if os.name == 'posix':
+            if os.name == "posix":
                 p = os.path.expanduser(f.path)
             else:
                 p = f.path
@@ -536,6 +540,7 @@ class Group(IGroup):
 
         # expand SELFs in args
         _expanded = False
+
         def expand_self(arg):
             nonlocal _expanded
             if isinstance(arg, NestKey):
@@ -543,7 +548,7 @@ class Group(IGroup):
                 try:
                     return nest_get(files, arg)
                 except:
-                    raise ValueError(f'Invalid keys for SELF')
+                    raise ValueError(f"Invalid keys for SELF")
             else:
                 return arg
 
@@ -556,30 +561,30 @@ class Group(IGroup):
         try:
             inspect.signature(method).bind(*args, **kwargs)
         except Exception as e:
-            raise Exception(f'Method signature and args/kwargs do not match') from e
+            raise Exception(f"Method signature and args/kwargs do not match") from e
 
         # flatten yfiles and args (for convenience)
         try:
             files_ = flatten(files)
         except Exception as e:
             raise Exception(
-                f'Failed to flatten the input file structure. '
-                f'This error occurs when the structure contains a dict '
-                f'whose keys are not sortable.'
+                f"Failed to flatten the input file structure. "
+                f"This error occurs when the structure contains a dict "
+                f"whose keys are not sortable."
             ) from e
 
         try:
             args_ = flatten((args, kwargs))
         except Exception as e:
             raise Exception(
-                f'Failed to flatten the structure of the args/kwargs. '
-                f'This error occurs when it contain a dict '
-                f'whose keys are not sortable.'
+                f"Failed to flatten the structure of the args/kwargs. "
+                f"This error occurs when it contain a dict "
+                f"whose keys are not sortable."
             ) from e
-        
+
         if len(files_) == 0:
-            raise ValueError('at least 1 output file must be specified')
-                
+            raise ValueError("at least 1 output file must be specified")
+
         # Unwrap FileNodeAtom
         args_ = [x._file if isinstance(x, FileNodeAtom) else x for x in args_]
 
@@ -587,15 +592,18 @@ class Group(IGroup):
         def _shorter_path(p):
             cwd = os.getcwd()
             try:
-                if os.name == 'posix':
+                if os.name == "posix":
                     p = os.path.expanduser(p)
                 rel = Path(os.path.relpath(p, cwd))
                 return rel if len(str(rel)) < len(str(p)) else p
             except:
                 return p
 
-        _norm = lambda f: f.copy_with(_shorter_path(f.path)) \
-            if isinstance(f, IFileBase) else f
+        _norm = (
+            lambda f: f.copy_with(_shorter_path(f.path))
+            if isinstance(f, IFileBase)
+            else f
+        )
         files_ = list(map(_norm, files_))
         args_ = list(map(_norm, args_))
 
@@ -603,15 +611,12 @@ class Group(IGroup):
         p2f = {}
         for x in args_:
             if isinstance(x, IFileBase):
-                if \
-                    (x.path in p2f and p2f[x.path] != x) or \
-                    (
-                        x.abspath in path_to_file and
-                        path_to_file[x.abspath] != x
-                    ):
+                if (x.path in p2f and p2f[x.path] != x) or (
+                    x.abspath in path_to_file and path_to_file[x.abspath] != x
+                ):
                     raise TypeError(
-                        f'Inconsistency in IFileBases of path {x.path}: '
-                        f'One is {x} and the other is {p2f[x.path]}'
+                        f"Inconsistency in IFileBases of path {x.path}: "
+                        f"One is {x} and the other is {p2f[x.path]}"
                     )
                 else:
                     p2f[x.path] = x
@@ -620,24 +625,22 @@ class Group(IGroup):
         for f in files_:
             if f.abspath in path_to_rule:
                 raise ValueError(
-                    f'path {f.path} is already used by another rule: '
-                    f'{path_to_rule[f.abspath]}'
+                    f"path {f.path} is already used by another rule: "
+                    f"{path_to_rule[f.abspath]}"
                 )
 
         # check if all the y files are included in the arguments
         unused = set(files_) - {f for f in args_ if isinstance(f, IFileBase)}
         if len(unused) != 0:
             raise ValueError(
-                f'Some files are not passed to the method: '
-                f'{list(unused)}'
+                f"Some files are not passed to the method: " f"{list(unused)}"
             )
-        
+
         # create deplist
         deplist = []
         _added = set()
         for f in args_:
-            if isinstance(f, IFileBase) and \
-                path_to_rule.get(f.abspath) is not None:
+            if isinstance(f, IFileBase) and path_to_rule.get(f.abspath) is not None:
                 dep = self._info.rule2id[path_to_rule[f.abspath]]
                 if dep not in _added:
                     deplist.append(dep)
@@ -649,16 +652,16 @@ class Group(IGroup):
             arg_keys = flatten_to_nest_keys(args)
         except Exception as e:
             raise Exception(
-                f'Failed to flatten keyword arguments. '
-                f'This error occurs when args/kwargs contain a dict '
-                f'whose keys are not sortable.'
+                f"Failed to flatten keyword arguments. "
+                f"This error occurs when args/kwargs contain a dict "
+                f"whose keys are not sortable."
             ) from e
 
         xfiles = [
-            (k,f) for k,f in zip(arg_keys, args_)
+            (k, f)
+            for k, f in zip(arg_keys, args_)
             if isinstance(f, IFile) and f.path not in ypaths
         ]
-
 
         # create method args
         def _unwrap_IFileBase_Atom(x):
@@ -678,10 +681,14 @@ class Group(IGroup):
 
         # create Rule
         r = Rule(
-            files_, xfiles, deplist,
-            method, method_args, method_kwargs,
+            files_,
+            xfiles,
+            deplist,
+            method,
+            method_args,
+            method_kwargs,
             memo=memo,
-            name=(*self._name, name)
+            name=(*self._name, name),
         )
 
         # create RuleNode
@@ -690,11 +697,12 @@ class Group(IGroup):
         def conv_to_atom(x):
             assert isinstance(x, IFileBase)
             return FileNodeAtom(self._info, x)
-            
+
         file_node_root = map_structure(
-            conv_to_atom, files,
+            conv_to_atom,
+            files,
             seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
-            map_factory={dict: FileNodeDict, Mapping: FileNodeDict}
+            map_factory={dict: FileNodeDict, Mapping: FileNodeDict},
         )
 
         fullname = (*self._name, name)
@@ -714,7 +722,7 @@ class Group(IGroup):
         for f in files_:
             path_to_rule[f.abspath] = r
 
-        for _k,f in xfiles:
+        for _k, f in xfiles:
             if f.abspath not in path_to_rule:
                 path_to_rule[f.abspath] = None
 
@@ -725,10 +733,9 @@ class Group(IGroup):
         self._info.rule2id[r] = len(self._info.rule2id)
         assert len(self._info.id2rule) == len(self._info.rule2id)
 
-        self._info.rule_to_name[r] = '/'.join((*self._name, name))
+        self._info.rule_to_name[r] = "/".join((*self._name, name))
 
         return rc
-
 
     def clean(self):
         """Delete files under this Group"""
@@ -740,7 +747,7 @@ class Group(IGroup):
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
-            _t (float): 
+            _t (float):
                 set mtime to `_t` after touching
         """
         if _t is None:
@@ -748,9 +755,8 @@ class Group(IGroup):
         for c in self._children.values():
             c.touch(create, _t)
 
-
     def _get_children_names(self, dst, group, rule):
-        for k,c in self._children.items():
+        for k, c in self._children.items():
             if isinstance(c, Group):
                 if group:
                     dst.append(c._name)
@@ -759,8 +765,6 @@ class Group(IGroup):
             else:
                 if rule:
                     dst.append((*self._name, k))
-
-
 
     def select(self, pattern, group=False):
         """Obtain child groups or rules of this group.
@@ -836,55 +840,56 @@ class Group(IGroup):
             if len(pattern) == 0:
                 raise ValueError(f'Invalid pattern "{pattern}"')
 
-            group = pattern[-1] == '/'
-            pattern = pattern.strip('/')
-            parts = re.split('/+', pattern)
+            group = pattern[-1] == "/"
+            pattern = pattern.strip("/")
+            parts = re.split("/+", pattern)
         elif isinstance(pattern, (tuple, list)):
             if not all(isinstance(v, str) for v in pattern):
-                raise TypeError('Pattern sequence items must be str')
+                raise TypeError("Pattern sequence items must be str")
 
             parts = pattern
         else:
-            raise TypeError('Pattern must be str or sequence of str')
+            raise TypeError("Pattern must be str or sequence of str")
 
-        SEP = ';'
+        SEP = ";"
         regex = []
         for p in parts:
             assert len(p) > 0
 
-            if p.find('**') != -1 and p != '**':
+            if p.find("**") != -1 and p != "**":
                 raise ValueError(
                     'Invalid pattern: "**" can only be an entire component'
                 )
-            if p == '**':
-                regex.append(f'({SEP}[^{SEP}]+)*')
+            if p == "**":
+                regex.append(f"({SEP}[^{SEP}]+)*")
             else:
-                if p == '*':
+                if p == "*":
                     # single * does not match an empty str
-                    regex.append(f'{SEP}[^{SEP}]+')
+                    regex.append(f"{SEP}[^{SEP}]+")
                 else:
+
                     def _repl(x):
                         x = x.group()
-                        return f'[^{SEP}]*' if x == '*' else re.escape(x)
-                    p = re.sub( r'\*|[^*]+', _repl, p)
-                    regex.append(f'{SEP}{p}')
+                        return f"[^{SEP}]*" if x == "*" else re.escape(x)
 
-        regex = re.compile('^' + ''.join(regex) + '$')
+                    p = re.sub(r"\*|[^*]+", _repl, p)
+                    regex.append(f"{SEP}{p}")
+
+        regex = re.compile("^" + "".join(regex) + "$")
         chnames = [self._name] if group else []
         self._get_children_names(chnames, group, not group)
 
         res = []
         for name in chnames:
-            name = name[len(self._name):]
-            if regex.match(''.join(SEP + n for n in name)):
+            name = name[len(self._name) :]
+            if regex.match("".join(SEP + n for n in name)):
                 res.append(nest_get(self, name))
-        
-        return res
 
+        return res
 
     def __repr__(self):
         name = repr_group_name(self._name)
-        return f'<Group name={repr(name)} prefix={repr(self._prefix)}>'
+        return f"<Group name={repr(name)} prefix={repr(self._prefix)}>"
 
     def __getitem__(self, k):
         return self._children[k]
@@ -900,16 +905,15 @@ class Group(IGroup):
 
 
 def repr_group_name(group_name):
-    return '/' + '/'.join(map(str, group_name))
+    return "/" + "/".join(map(str, group_name))
+
 
 def repr_rule_name(trg_name):
-    return repr_group_name(trg_name[:-1]) + ':' + str(trg_name[-1])
+    return repr_group_name(trg_name[:-1]) + ":" + str(trg_name[-1])
+
 
 def _ismembername(name):
-    return \
-        isinstance(name, str) and \
-        name.isidentifier() and \
-        name[0] != '_'
+    return isinstance(name, str) and name.isidentifier() and name[0] != "_"
 
 
 def _is_valid_node_name(name):
@@ -917,12 +921,7 @@ def _is_valid_node_name(name):
     return not re.search('[;*?"<>|]', name)
 
 
-def make(
-    *rule_or_groups,
-    dry_run=False,
-    keep_going=False,
-    njobs=None
-):
+def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
     """make rules
 
     Args:
@@ -974,14 +973,14 @@ def make(
 
     while stack:
         node = stack.pop()
-        
+
         if _info is None:
             _info = node._info
         else:
             if _info is not node._info:
                 raise ValueError(
-                    f'All Groups/Rules must belong to the same Group tree. '
-                    f'This rule is to prevent potentially erroneous operations'
+                    f"All Groups/Rules must belong to the same Group tree. "
+                    f"This rule is to prevent potentially erroneous operations"
                 )
 
         if isinstance(node, RuleNodeBase):
@@ -997,16 +996,19 @@ def make(
         log_make_event(_info.logwriter, _info.rule_to_name, event)
 
     if njobs is not None and njobs >= 2:
-        return make_mp_spawn(
-            _info.id2rule, ids, dry_run, keep_going, callback_, njobs)
+        return make_mp_spawn(_info.id2rule, ids, dry_run, keep_going, callback_, njobs)
     else:
         return _make(_info.id2rule, ids, dry_run, keep_going, callback_)
 
 
 def create_group(
-    dirname=None, prefix=None, *,
-    loglevel=None, use_default_logger=True, logfile=None,
-    memo_kind='str_hash',
+    dirname=None,
+    prefix=None,
+    *,
+    loglevel=None,
+    use_default_logger=True,
+    logfile=None,
+    memo_kind="str_hash",
     pickle_key=None,
 ):
     """Create a root Group node.
@@ -1039,7 +1041,7 @@ def create_group(
         Group: Root group node
     """
     if (dirname is None) == (prefix is None):
-        raise TypeError('Either dirname or prefix must be specified')
+        raise TypeError("Either dirname or prefix must be specified")
 
     if dirname is not None:
         assert isinstance(dirname, (str, os.PathLike))
@@ -1047,10 +1049,10 @@ def create_group(
 
     assert isinstance(prefix, (str, os.PathLike))
 
-    if os.name == 'posix':
+    if os.name == "posix":
         prefix = os.path.expanduser(prefix)
 
-    loglevel = loglevel or 'info'
+    loglevel = loglevel or "info"
 
     if logfile is None:
         logfiles = []
@@ -1066,27 +1068,21 @@ def create_group(
 
     logwriter = WritersWrapper(_writers)
 
-    if memo_kind == 'pickle':
+    if memo_kind == "pickle":
         if pickle_key is None:
-            raise TypeError(
-                'pickle_key must be specified when memo_kind is "pickle"')
+            raise TypeError('pickle_key must be specified when memo_kind is "pickle"')
 
         memo_factory = _get_memo_factory_pickle(pickle_key)
-    elif memo_kind == 'str_hash':
+    elif memo_kind == "str_hash":
         if pickle_key is not None:
             raise TypeError(
-                'pickle_key must not be specified for '
-                'str_hash memoization method'
+                "pickle_key must not be specified for " "str_hash memoization method"
             )
         memo_factory = _memo_factory_str_hash
     else:
-        raise ValueError(
-            f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
+        raise ValueError(f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
 
-    tree_info = GroupTreeInfo(
-        logwriter=logwriter,
-        memo_factory=memo_factory
-    )
+    tree_info = GroupTreeInfo(logwriter=logwriter, memo_factory=memo_factory)
 
     return Group(tree_info, str(prefix), ())
 
@@ -1103,7 +1099,7 @@ def _create_default_logwriter(loglevel):
 def _create_logwriter(f, loglevel):
     if isinstance(f, (str, os.PathLike)):
         fname = str(Path(f))
-        if fname[-5:] == '.html':
+        if fname[-5:] == ".html":
             return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
             return TextFileWriterOpenOnDemand(loglevel, fname)
@@ -1111,7 +1107,7 @@ def _create_logwriter(f, loglevel):
     if isinstance(f, Logger):
         return LoggerWriter(f)
 
-    if hasattr(f, 'write') and callable(f.write):
+    if hasattr(f, "write") and callable(f.write):
         try:
             if f.isatty():
                 return ColorTextWriter(f, loglevel)
@@ -1121,9 +1117,9 @@ def _create_logwriter(f, loglevel):
         return TextWriter(f, loglevel)
 
     raise TypeError(
-        'Logging target must be either str (file name), os.PathLike, '
-        'logging.Logger, or and object with `write` method. '
-        f'Given {f}'
+        "Logging target must be either str (file name), os.PathLike, "
+        "logging.Logger, or and object with `write` method. "
+        f"Given {f}"
     )
 
 
@@ -1133,10 +1129,10 @@ def _get_memo_factory_pickle(pickle_key):
             pickle_key = bytes.fromhex(pickle_key)
         except ValueError as e:
             raise ValueError(
-                'If given as str, pickle_key must be a hexadecimal string'
+                "If given as str, pickle_key must be a hexadecimal string"
             ) from e
     elif type(pickle_key) != bytes:
-        raise TypeError('pickle_key must be bytes or hexadecimal str')
+        raise TypeError("pickle_key must be bytes or hexadecimal str")
 
     def _memo_factory_pickle(args):
         return PickleMemo(args, pickle_key)

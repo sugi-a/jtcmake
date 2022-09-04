@@ -7,7 +7,7 @@ class NestKey(tuple):
 
     def __getitem__(self, key):
         if not isinstance(key, (int, str)):
-            raise ValueError(f'Key must be int or str. Given {key}')
+            raise ValueError(f"Key must be int or str. Given {key}")
 
         return NestKey((*self, key))
 
@@ -15,7 +15,7 @@ class NestKey(tuple):
         return self[key]
 
     def __repr__(self):
-        return f'NestKey({super().__repr__()})'
+        return f"NestKey({super().__repr__()})"
 
 
 def nest_get(nest, nest_key):
@@ -26,9 +26,10 @@ def nest_get(nest, nest_key):
 
 
 def map_structure(
-    map_fn, nest,
+    map_fn,
+    nest,
     seq_factory={list: list, tuple: tuple},
-    map_factory={(dict, Mapping): dict}
+    map_factory={(dict, Mapping): dict},
 ):
     assert callable(map_fn)
 
@@ -50,9 +51,10 @@ def map_structure(
 
 
 def ordered_map_structure(
-    map_fn, nest,
+    map_fn,
+    nest,
     seq_factory={list: list, tuple: tuple},
-    map_factory={(dict, Mapping): dict}
+    map_factory={(dict, Mapping): dict},
 ):
     assert callable(map_fn)
 
@@ -72,7 +74,6 @@ def ordered_map_structure(
         return map_fn(nest)
 
     return rec(nest)
-
 
 
 def flatten(nest):
@@ -102,7 +103,7 @@ def flatten_to_nest_keys(nest):
         if isinstance(node, NestKey):
             res.append(nest_key)
         elif isinstance(node, (tuple, list)):
-            for i,v in enumerate(node):
+            for i, v in enumerate(node):
                 rec(v, (*nest_key, i))
         elif isinstance(node, (dict, Mapping)):
             keys = sorted(node.keys(), key=lambda x: (hash(x), x))
@@ -117,7 +118,7 @@ def flatten_to_nest_keys(nest):
 
 class NotEnoughElementError(Exception):
     def __init__(self, msg=None):
-        super().__init__(msg or 'not enough elements in flatten seq')
+        super().__init__(msg or "not enough elements in flatten seq")
 
 
 def pack_sequence_as(ref_struct, flatten_seq):
@@ -141,6 +142,6 @@ def pack_sequence_as(ref_struct, flatten_seq):
         raise err
 
     if i != len(flatten_seq):
-        raise TypeError('too many elements in flatten_seq')
+        raise TypeError("too many elements in flatten_seq")
 
     return res
