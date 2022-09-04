@@ -1,7 +1,7 @@
 import os, hashlib, base64
 import pytest
 
-from jtcmake.rule.file import IFile, IVFile, File, VFile
+from jtcmake.rule.file import File, VFile, get_hash
 
 
 def test_file(tmp_path):
@@ -11,11 +11,8 @@ def test_file(tmp_path):
     assert f.path == p
 
 
-def test_vfile(tmp_path):
+def test_vfile_hash(tmp_path):
     p = tmp_path / 'a'
-    f = VFile(p)
+    p.write_text('a')
 
-    f.path.write_text('a')
-
-    assert f.get_hash() == base64.b64encode(hashlib.md5(b'a').digest()).decode()
-    assert f.get_hash() == base64.b64encode(hashlib.md5(b'a').digest()).decode()
+    assert get_hash(p) == base64.b64encode(hashlib.md5(b'a').digest()).decode()

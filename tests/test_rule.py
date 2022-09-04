@@ -6,7 +6,7 @@ import pytest
 
 from jtcmake.rule.rule import Rule
 
-from jtcmake.rule.file import File, VFile, IFile
+from jtcmake.rule.file import File, VFile, IFile, IFileBase
 
 from jtcmake.rule.memo import IMemo, StrHashMemo
 
@@ -17,7 +17,7 @@ _method = lambda: None
 
 def rm(*paths):
     for p in paths:
-        if isinstance(p, IFile):
+        if isinstance(p, IFileBase):
             p = p.path
         try:
             os.remove(p)
@@ -29,7 +29,7 @@ def touch(*paths, t=None):
         t = time.time()
 
     for p in paths:
-        if isinstance(p, IFile):
+        if isinstance(p, IFileBase):
             p = p.path
         Path(p).touch()
         os.utime(p, (t,t))

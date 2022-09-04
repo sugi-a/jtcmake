@@ -10,7 +10,7 @@ from ..core.rule import IRule
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
 from .igroup import IGroup
-from ..rule.file import File, VFile, IFile, IVFile
+from ..rule.file import File, VFile, IFile, IVFile, IFileBase
 from .event_logger import log_make_event
 from . import graphviz
 from ..core.make import make as _make, Event
@@ -43,7 +43,7 @@ class IFileNode:
 
 class FileNodeAtom(IFileNode):
     def __init__(self, tree_info, file):
-        assert isinstance(file, IFile)
+        assert isinstance(file, IFileBase)
         self._info = tree_info
         self._file = file
 
@@ -375,7 +375,7 @@ class Group(IGroup):
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
-                or IFile (including File and VFile).
+                or IFileBase (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs) on update
 
         Returns (1):
@@ -390,8 +390,8 @@ class Group(IGroup):
             `Group.add(name, output_files, method, *args, **kwargs)`
 
         How Group.add differs from Group.addvf:
-            Default IFile type used to wrap the nodes in output_files whose
-            type is str or os.PathLike is different.
+            Default IFileBase type used to wrap the nodes in
+            output_files whose type is str or os.PathLike is different.
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
@@ -433,7 +433,7 @@ class Group(IGroup):
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
-                or IFile (including File and VFile).
+                or IFileBase (including File and VFile).
             method: Callable. Will be called as method(*args, **kwargs)
 
         Returns (1):
@@ -448,7 +448,7 @@ class Group(IGroup):
             `Group.add(name, output_files, method, *args, **kwargs)`
 
         How Group.add differs from Group.addvf:
-            Default IFile type used to wrap the nodes in output_files whose
+            Default IFileBase type used to wrap the nodes in output_files whose
             type is str or os.PathLike is different.
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
@@ -511,7 +511,7 @@ class Group(IGroup):
             if isinstance(p, (str, os.PathLike)):
                 return File(p)
             else:
-                assert isinstance(p, IFile)
+                assert isinstance(p, IFileBase)
                 return p
 
         files = map_structure(wrap_by_File, files)
@@ -591,15 +591,15 @@ class Group(IGroup):
             except:
                 return p
 
-        _norm = lambda f: \
-            f.__class__(_shorter_path(f.path)) if isinstance(f, IFile) else f
+        _norm = lambda f: f.copy_with(_shorter_path(f.path)) \
+            if isinstance(f, IFileBase) else f
         files_ = list(map(_norm, files_))
         args_ = list(map(_norm, args_))
 
-        # check IFile consistency
+        # check IFileBase consistency
         p2f = {}
         for x in args_:
-            if isinstance(x, IFile):
+            if isinstance(x, IFileBase):
                 if \
                     (x.path in p2f and p2f[x.path] != x) or \
                     (
@@ -607,7 +607,7 @@ class Group(IGroup):
                         path_to_file[x.abspath] != x
                     ):
                     raise TypeError(
-                        f'Inconsistency in IFiles of path {x.path}: '
+                        f'Inconsistency in IFileBases of path {x.path}: '
                         f'One is {x} and the other is {p2f[x.path]}'
                     )
                 else:
@@ -622,7 +622,7 @@ class Group(IGroup):
                 )
 
         # check if all the y files are included in the arguments
-        unused = set(files_) - {f for f in args_ if isinstance(f, IFile)}
+        unused = set(files_) - {f for f in args_ if isinstance(f, IFileBase)}
         if len(unused) != 0:
             raise ValueError(
                 f'Some files are not passed to the method: '
@@ -633,7 +633,8 @@ class Group(IGroup):
         deplist = []
         _added = set()
         for f in args_:
-            if isinstance(f, IFile) and path_to_rule.get(f.abspath) is not None:
+            if isinstance(f, IFileBase) and \
+                path_to_rule.get(f.abspath) is not None:
                 dep = self._info.rule2id[path_to_rule[f.abspath]]
                 if dep not in _added:
                     deplist.append(dep)
@@ -652,14 +653,13 @@ class Group(IGroup):
 
         xfiles = [
             (k,f) for k,f in zip(arg_keys, args_)
-            if isinstance(f, IFile) and f.path not in ypaths and \
-                (not isinstance(f, IVFile))
+            if isinstance(f, IFile) and f.path not in ypaths
         ]
 
 
         # create method args
-        def _unwrap_IFile_Atom(x):
-            if isinstance(x, IFile):
+        def _unwrap_IFileBase_Atom(x):
+            if isinstance(x, IFileBase):
                 return x.path
             elif isinstance(x, Atom):
                 return x.value
@@ -667,7 +667,7 @@ class Group(IGroup):
                 return x
 
         method_args = pack_sequence_as((args, kwargs), args_)
-        method_args = map_structure(_unwrap_IFile_Atom, method_args)
+        method_args = map_structure(_unwrap_IFileBase_Atom, method_args)
         method_args, method_kwargs = method_args
 
         memo_args = pack_sequence_as((args, kwargs), args_)
@@ -685,7 +685,7 @@ class Group(IGroup):
         files = pack_sequence_as(files, files_)
 
         def conv_to_atom(x):
-            assert isinstance(x, IFile)
+            assert isinstance(x, IFileBase)
             return FileNodeAtom(self._info, x)
             
         file_node_root = map_structure(
