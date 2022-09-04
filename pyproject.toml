@@ -2,4 +2,5 @@
 requires = ["setuptools>=42"]
 build-backend = "setuptools.build_meta"
 
-
+[tool.black]
+include = '(src|tests)/.+\.pyi?$'
