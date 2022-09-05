@@ -29,7 +29,7 @@ def map_structure(
     map_fn,
     nest,
     seq_factory={list: list, tuple: tuple},
-    map_factory={(dict, Mapping): dict},
+    map_factory={dict: dict},
 ):
     assert callable(map_fn)
 

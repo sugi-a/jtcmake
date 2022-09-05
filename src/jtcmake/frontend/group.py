@@ -546,7 +546,9 @@ class Group(IGroup):
             else:
                 return arg
 
-        args, kwargs = map_structure(expand_self, (args, kwargs))
+        args, kwargs = map_structure(
+            expand_self, (args, kwargs), map_factory={(dict, FileNodeDict): dict}
+        )
 
         if not _expanded:
             args = (files, *args)
@@ -696,7 +698,7 @@ class Group(IGroup):
             conv_to_atom,
             files,
             seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
-            map_factory={dict: FileNodeDict, Mapping: FileNodeDict},
+            map_factory={dict: FileNodeDict},
         )
 
         fullname = (*self._name, name)
