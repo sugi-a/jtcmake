@@ -259,6 +259,11 @@ class GroupTreeInfo:
 
 
 class Group(IGroup):
+    """
+    __init__() for this class is private.
+    Use create_group() instead to instanciate it.
+    """
+
     def __init__(self, info, prefix, name):
         if not isinstance(prefix, str):
             raise TypeError("prefix must be str")
@@ -270,10 +275,12 @@ class Group(IGroup):
 
     def add_group(self, name, dirname=None, *, prefix=None):
         """Add a child Group node
+
         Args:
-            name: name of the node. (str|os.PathLike)
-            dirname: directory for the node (str|os.PathLike)
-            prefix: path prefix for the node (str|os.PathLike)
+            name (str|os.PathLike): name of the node.
+            dirname (str|os.PathLike): directory for the node.
+            prefix (str|os.PathLike): path prefix for the node.
+
                 - At most one of dirname and prefix can be specified
                 - If both dirname and prefix are None, then name will be used
                   as dirname
@@ -336,15 +343,16 @@ class Group(IGroup):
         njobs=None,
     ):
         """Make rules in this group and their dependencies
+
         Args:
-            dry_run:
+            dry_run (bool):
                 instead of actually excuting the methods,
                 print expected execution logs.
-            keep_going:
+            keep_going (bool):
                 If False (default), stop everything when a rule fails.
                 If True, when a rule fails, keep executing other rules
                 except the ones depend on the failed rule.
-            njobs:
+            njobs (int):
                 Maximum number of rules that can be made concurrently.
                 Defaults to 1 (single process, single thread).
 
@@ -361,24 +369,24 @@ class Group(IGroup):
     # APIs
     def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
-        Call signatures:
-            (1) add(name, [output_files], method, *args, **kwargs)
-            (2) add(name, [output_files], None, *args, **kwargs)
 
+        Call signatures:
+
+            1. `add(name, [output_files], method, *args, **kwargs)`
+            2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name: str. Name for the Rule
+            name (str): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFileBase (including File and VFile).
-            method: Callable. Will be called as method(*args, **kwargs) on update
+            method (Callable):
+                Will be called as `method(*args, **kwargs)` on update
 
-        Returns (1):
-            Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
-
-        Returns (2):
-            A function (method: Callable) -> RuleNode.
+        Returns:
+            RuleNodeLike
+            RuleNodeAtom|RuleNodeTuple|RuleNodeDict|Callable[Callable, RuleNodeAtom|RuleNodeTuple|RuleNodeDict]: aaa `Group`
 
         Call signature (2) is for decorator-style adding.
             The following two are equivalent:
@@ -418,21 +426,23 @@ class Group(IGroup):
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
-        Call signatures:
-            (1) add(name, [output_files], method, *args, **kwargs)
-            (2) add(name, [output_files], None, *args, **kwargs)
 
+        Call signatures:
+
+            1. `add(name, [output_files], method, *args, **kwargs)`
+            2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name: str. Name for the Rule
+            name (str): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFileBase (including File and VFile).
-            method: Callable. Will be called as method(*args, **kwargs)
+            method (Callable):
+                Will be called as `method(*args, **kwargs)` on update
 
         Returns (1):
-            Rule node
+            Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
 
         Returns (2):
             A function (method: Callable) -> RuleNode.
@@ -443,8 +453,8 @@ class Group(IGroup):
             `Group.add(name, output_files, method, *args, **kwargs)`
 
         How Group.add differs from Group.addvf:
-            Default IFileBase type used to wrap the nodes in output_files whose
-            type is str or os.PathLike is different.
+            Default IFileBase type used to wrap the nodes in
+            output_files whose type is str or os.PathLike is different.
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
@@ -728,6 +738,7 @@ class Group(IGroup):
 
     def touch(self, create=False, _t=None):
         """Touch files under this Group
+
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
@@ -753,12 +764,12 @@ class Group(IGroup):
     def select(self, pattern, group=False):
         """Obtain child groups or rules of this group.
 
-        Signature-1:
-            select(group_tree_pattern: str)
-        Signature-2:
-            select(group_tree_pattern: list[str]|tuple[str], group=False)
+        Signatures:
 
-        Args for Signature-1:
+            1. `select(group_tree_pattern: str)`
+            2. `select(group_tree_pattern: Sequence[str], group:bool=False)`
+
+        Args for Signature 1:
             group_tree_pattern (str):
                 Pattern of the relative name of child nodes of this group.
                 Pattern consists of names concatenated with the delimiter '/'.
@@ -772,14 +783,16 @@ class Group(IGroup):
                 Otherwise, it matches rules only.
 
                 For example, calling g.select(pattern) with a pattern
-                * "a/b"  matches a rule `g.a.b`
+
+                * `"a/b"  matches a rule `g.a.b`
                 * "a/b/" matches a group `g.a.b`
                 * "a*"   matches rules `g.a`, `g.a1`, `g.a2`, etc
                 * "a*/"  matches groups `g.a`, `g.a1`, `g.a2`, etc
-                * "**"   matches all the offspring rules of `g`
-                * "**/"  matches all the offspring groups of `g`
-                * "a/**" matches all the offspring rules of the group `g.a`
-                * "**/b" matches all the offspring rules of `g` with a name "b"
+                * `"**"`   matches all the offspring rules of `g`
+                * `"**/"`  matches all the offspring groups of `g`
+                * `"a/**"` matches all the offspring rules of the group `g.a`
+                * `"**/b"` matches all the offspring rules of `g` with a name "b"
+
             group: ignored
 
         Args for Signature-2:
@@ -801,24 +814,21 @@ class Group(IGroup):
                 if True, select groups only.
 
         Returns:
-            List of rules if
+            list[RuleNodeLike]|list[Group]: rule nodes or group nodes.
 
             * called with Signature-1 and pattern[-1] != '/' or
             * called with Signature-2 and group is False
 
-            List of groups Otherwise.
-
         Note:
             Cases where Signature-2 is absolutely necessary is when you need
             to select a node whose name contains "/".
-            For example,
-            ```
-            g = create_group('group')
-            rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+            For example, ::
 
-            g.select(['dir/a.txt']) == [rule]  # OK
-            g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
-            ```
+                g = create_group('group')
+                rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+
+                g.select(['dir/a.txt']) == [rule]  # OK
+                g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
         """
         if isinstance(pattern, str):
             if len(pattern) == 0:
@@ -996,21 +1006,23 @@ def create_group(
     pickle_key=None,
 ):
     """Create a root Group node.
+
     Args:
         dirname (str|os.PathLike): directory name for this Group node.
         prefix (str|os.PathLike): path prefix for this Group node.
-            - Either (but not both) dirname or prefix must be specified.
-            - The following two are equivalent:
-                1. `create_group(dirname='dir')`
-                2. `create_group(prefix='dir/')`
-        loglevel ("debug"|"info"|"warning"|"error"|None):
-            log level. Defaults to "info"
+            Either (but not both) dirname or prefix must be specified.
+            The following two are equivalent:
+
+            1. `create_group(dirname='dir')`
+            2. `create_group(prefix='dir/')`
+
+        loglevel (str|None):
+            log level. Defaults to "info".
+            Choices are "debug", "info", "warning", "error".
+
         use_default_logger (bool): If True, logs will be printed to terminal.
             Defaults to True.
-        logfile (
-            None, str | os.PathLike | logging.Logger | writable-stream
-            Sequence[str | os.PathLike | logging.Logger | writable-stream] |
-            ):
+        logfile (None, str | os.PathLike | logging.Logger | writable-stream Sequence[str | os.PathLike | logging.Logger | writable-stream]):
             If specified, logs are printed to the file(s), stream(s), or
             logger(s). str values are considered to be file names,
             and if the file extension is .html, logs will be printed in
