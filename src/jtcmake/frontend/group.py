@@ -736,7 +736,7 @@ class Group(IGroup):
         for f in itertools.chain(yfiles_, xfiles):
             path_to_file[f.abspath] = f
 
-        self._info.idx2xpaths[rule_idx] = [f.abspath for f in xfiles]
+        self._info.idx2xpaths.append([f.abspath for f in xfiles])
 
         return rc
 

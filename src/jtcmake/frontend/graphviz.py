@@ -129,7 +129,7 @@ def gen_dot_code(group, basedir=None):
     rec_group(group, "  ", "")
 
     for r, i in rid.items():
-        for _k, xf in r.xfiles:
+        for xf in r.xfiles:
             if xf not in fid:
                 fid[xf] = len(fid)
                 res.append(
