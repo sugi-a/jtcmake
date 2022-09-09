@@ -134,7 +134,9 @@ def test_group_add():
     assert a.abspath == (APath("r/a1"), APath("r/a1"))
 
     a = create_group("r").add(
-        "d", [{"x": "d1.txt", "y": ["d2.txt"]}, ("d3.txt", "d4.txt")], lambda _: None
+        "d",
+        [{"x": "d1.txt", "y": ["d2.txt"]}, ("d3.txt", "d4.txt")],
+        lambda _: None,
     )
     assert a.abspath == (
         {"x": APath("r/d1.txt"), "y": (APath("r/d2.txt"),)},
@@ -179,7 +181,11 @@ def test_group_add():
     g = create_group("r")
     g.add("a", ["a1", "a2"], fn)
     g.add("b", ["b1", "b2"], fn, g.a[0], SELF[0], SELF[1], a=SELF)
-    assert _to_abs(g.b._rule.args) == (g.a[0].abspath, g.b[0].abspath, g.b[1].abspath)
+    assert _to_abs(g.b._rule.args) == (
+        g.a[0].abspath,
+        g.b[0].abspath,
+        g.b[1].abspath,
+    )
     assert _to_abs(g.b._rule.kwargs) == {"a": list(g.b.abspath)}
 
     g = create_group("r")

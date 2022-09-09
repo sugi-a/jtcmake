@@ -9,7 +9,12 @@ class IGroup(ABC, metaclass=abc.ABCMeta):
     @abstractmethod
     @overload
     def add(
-        self, name: str, method: Callable, *args, force_update: bool = False, **kwargs
+        self,
+        name: str,
+        method: Callable,
+        *args,
+        force_update: bool = False,
+        **kwargs
     ) -> Any: ...
     @abstractmethod
     @overload
@@ -25,7 +30,12 @@ class IGroup(ABC, metaclass=abc.ABCMeta):
     @abstractmethod
     @overload
     def add(
-        self, name: str, method: None, *args, force_update: bool = False, **kwargs
+        self,
+        name: str,
+        method: None,
+        *args,
+        force_update: bool = False,
+        **kwargs
     ) -> Callable[[Callable], Any]: ...
     @abstractmethod
     @overload
@@ -42,7 +52,11 @@ class IGroup(ABC, metaclass=abc.ABCMeta):
     def addvf(self, name: str, *args, **kwargs): ...
     @abstractmethod
     def make(
-        self, dry_run: bool = ..., keep_going: bool = ..., *, nthreads: int = ...
+        self,
+        dry_run: bool = ...,
+        keep_going: bool = ...,
+        *,
+        nthreads: int = ...
     ): ...
     @abstractmethod
     def clean(self): ...

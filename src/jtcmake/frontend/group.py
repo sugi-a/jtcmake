@@ -551,7 +551,9 @@ class Group(IGroup):
                 return arg
 
         args, kwargs = map_structure(
-            expand_self, (args, kwargs), map_factory={(dict, FileNodeDict): dict}
+            expand_self,
+            (args, kwargs),
+            map_factory={(dict, FileNodeDict): dict},
         )
 
         if not _expanded:
@@ -561,7 +563,9 @@ class Group(IGroup):
         try:
             inspect.signature(method).bind(*args, **kwargs)
         except Exception as e:
-            raise Exception(f"Method signature and args/kwargs do not match") from e
+            raise Exception(
+                f"Method signature and args/kwargs do not match"
+            ) from e
 
         # flatten yfiles and args (for convenience)
         try:
@@ -627,7 +631,9 @@ class Group(IGroup):
             if idx is None:
                 pass
             elif idx == -1:
-                raise ValueError(f"{f.path} is already used as an original file")
+                raise ValueError(
+                    f"{f.path} is already used as an original file"
+                )
             else:
                 raise ValueError(
                     f"{f.path} is already used by another rule: "
@@ -991,7 +997,9 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
         log_make_event(_info.logwriter, event)
 
     if njobs is not None and njobs >= 2:
-        return make_mp_spawn(_info.rules, ids, dry_run, keep_going, callback_, njobs)
+        return make_mp_spawn(
+            _info.rules, ids, dry_run, keep_going, callback_, njobs
+        )
     else:
         return _make(_info.rules, ids, dry_run, keep_going, callback_)
 
@@ -1067,17 +1075,22 @@ def create_group(
 
     if memo_kind == "pickle":
         if pickle_key is None:
-            raise TypeError('pickle_key must be specified when memo_kind is "pickle"')
+            raise TypeError(
+                'pickle_key must be specified when memo_kind is "pickle"'
+            )
 
         memo_factory = _get_memo_factory_pickle(pickle_key)
     elif memo_kind == "str_hash":
         if pickle_key is not None:
             raise TypeError(
-                "pickle_key must not be specified for " "str_hash memoization method"
+                "pickle_key must not be specified for "
+                "str_hash memoization method"
             )
         memo_factory = _memo_factory_str_hash
     else:
-        raise ValueError(f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
+        raise ValueError(
+            f'memo_kind must be "str_hash" or "pickle", given {memo_kind}'
+        )
 
     tree_info = GroupTreeInfo(logwriter=logwriter, memo_factory=memo_factory)
 

@@ -272,7 +272,9 @@ def test_dryrun(mp):
     res = make_(id2rule, [1], True, False, callback)
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-    assert_same_log(log, [("should_update", r1, False, True), events.DryRun(r1)])
+    assert_same_log(
+        log, [("should_update", r1, False, True), events.DryRun(r1)]
+    )
 
     # dry-run r2
     log.clear()

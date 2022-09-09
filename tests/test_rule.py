@@ -45,7 +45,9 @@ def test_metadata_fname(mocker):
     y1, y2 = File(Path("a/b.c")), File(Path("d/e.f"))
     memo = mocker.MagicMock()
     r = Rule([y1, y2], [], [], _method, _args, _kwargs, memo)
-    assert os.path.abspath(r.metadata_fname) == os.path.abspath("a/.jtcmake/b.c")
+    assert os.path.abspath(r.metadata_fname) == os.path.abspath(
+        "a/.jtcmake/b.c"
+    )
 
 
 def test_update_memo(tmp_path, mocker):

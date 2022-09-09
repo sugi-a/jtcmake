@@ -81,10 +81,17 @@ class Group(IGroup):
         njobs: None | int = None,
     ) -> MakeSummary: ...
     @overload
-    def add(self, name: str, method: Callable, *args, **kwargs) -> _RuleNode: ...
+    def add(
+        self, name: str, method: Callable, *args, **kwargs
+    ) -> _RuleNode: ...
     @overload
     def add(
-        self, name: str, output_file_struct: Any, method: Callable, *args, **kwargs
+        self,
+        name: str,
+        output_file_struct: Any,
+        method: Callable,
+        *args,
+        **kwargs,
     ) -> _RuleNode: ...
     @overload
     def add(
@@ -95,10 +102,17 @@ class Group(IGroup):
         self, name: str, output_file_struct: Any, method: None, *args, **kwargs
     ) -> Callable[[Callable], _RuleNode]: ...
     @overload
-    def addvf(self, name: str, method: Callable, *args, **kwargs) -> _RuleNode: ...
+    def addvf(
+        self, name: str, method: Callable, *args, **kwargs
+    ) -> _RuleNode: ...
     @overload
     def addvf(
-        self, name: str, output_file_struct: Any, method: Callable, *args, **kwargs
+        self,
+        name: str,
+        output_file_struct: Any,
+        method: Callable,
+        *args,
+        **kwargs,
     ) -> _RuleNode: ...
     @overload
     def addvf(
@@ -113,7 +127,9 @@ class Group(IGroup):
     @overload
     def select(self, pattern: str, group: bool = False) -> list[_RuleNode]: ...
     @overload
-    def select(self, pattern: list[str], group: bool = False) -> list[_RuleNode]: ...
+    def select(
+        self, pattern: list[str], group: bool = False
+    ) -> list[_RuleNode]: ...
     def __getitem__(self, k: str) -> Group | _RuleNode: ...
     def __iter__(self) -> Iterator[str]: ...
     def __len__(self) -> int: ...

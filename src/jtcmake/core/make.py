@@ -74,7 +74,9 @@ def make(
         par_updated = any(dep in updated_ids for dep in r.deplist)
 
         try:
-            result = process_rule(r, dry_run, par_updated, i in main_ids, callback)
+            result = process_rule(
+                r, dry_run, par_updated, i in main_ids, callback
+            )
         except Exception as e:
             traceback.print_exc()
             try:

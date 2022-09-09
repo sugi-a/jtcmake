@@ -79,7 +79,9 @@ def test_1(njobs, tmp_path):
     res = g.g1.ab.make(njobs=njobs)
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
-    assert globfiles(tmp_path) == sorted(str(Path(x)) for x in ["a.txt", "g1/ab.txt"])
+    assert globfiles(tmp_path) == sorted(
+        str(Path(x)) for x in ["a.txt", "g1/ab.txt"]
+    )
 
     # run rest
     mt = os.path.getmtime(g.a.path)
@@ -102,12 +104,16 @@ def test_2(tmp_path):
     g = create_group(tmp_path)
 
     g.add("a", "a.txt", add_text, None, "a")
-    g.add("b", ("b1.txt", {"x": "b2.txt"}), cp_1_to_n, [SELF[0], SELF[1].x], g.a)
+    g.add(
+        "b", ("b1.txt", {"x": "b2.txt"}), cp_1_to_n, [SELF[0], SELF[1].x], g.a
+    )
     g.add("c", "c.txt", add_text, g.b[0], "a")
 
     # run
     g.make()
-    assert globfiles(tmp_path) == sorted(["a.txt", "b1.txt", "b2.txt", "c.txt"])
+    assert globfiles(tmp_path) == sorted(
+        ["a.txt", "b1.txt", "b2.txt", "c.txt"]
+    )
 
 
 def test_4(tmp_path):
