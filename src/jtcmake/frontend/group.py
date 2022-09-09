@@ -2,7 +2,7 @@ import sys, os, pathlib, re, contextlib, time, json, inspect
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
-from pathlib import Path, PurePath
+from pathlib import Path
 from logging import Logger
 
 from ..rule.rule import Rule
@@ -377,7 +377,7 @@ class Group(IGroup):
             2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name (str): Name for the Rule
+            name (str|os.PathLike): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
@@ -400,10 +400,10 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if isinstance(name, PurePath):
+        if isinstance(name, os.PathLike):
             name = str(name)
         elif not isinstance(name, str):
-            raise ValueError(f"name must be PurePath|str")
+            raise ValueError(f"name must be str|os.PathLike")
 
         if len(args) == 0:
             raise TypeError("method must be specified")
@@ -436,7 +436,7 @@ class Group(IGroup):
             2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name (str): Name for the Rule
+            name (str|os.PathLike): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
@@ -461,10 +461,10 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if isinstance(name, PurePath):
+        if isinstance(name, os.PathLike):
             name = str(name)
         elif not isinstance(name, str):
-            raise ValueError(f"name must be PurePath|str")
+            raise ValueError(f"name must be str|os.PathLike")
 
 
         if len(args) == 0:
