@@ -248,9 +248,9 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 class GroupTreeInfo:
     def __init__(self, logwriter, memo_factory):
-        self.id2rule = []  # list<Rule>
-        self.rule2id = {}  # dict<int, Rule>
-        self.path_to_rule = {}  # dict<str, Rule>
+        self.rules = []  # list<Rule>
+        self.rule2idx = {}  # dict<int, int>
+        self.path2idx = {}  # dict<str, int>. idx can be -1
         self.path_to_file = {}
         self.rule_to_name = {}
         self.memo_factory = memo_factory
@@ -496,7 +496,7 @@ class Group(IGroup):
         assert isinstance(name, str)
         assert callable(method)
 
-        path_to_rule = self._info.path_to_rule
+        path2idx = self._info.path2idx
         path_to_file = self._info.path_to_file
 
         if not _is_valid_node_name(name):
@@ -619,10 +619,17 @@ class Group(IGroup):
 
         # check duplicate registration of output files
         for f in files_:
-            if f.abspath in path_to_rule:
+            idx = path2idx.get(f.abspath)
+            if idx is None:
+                pass
+            elif idx == -1:
                 raise ValueError(
-                    f"path {f.path} is already used by another rule: "
-                    f"{path_to_rule[f.abspath]}"
+                    f"{f.path} is already used as an original file"
+                )
+            else:
+                raise ValueError(
+                    f"{f.path} is already used by another rule: "
+                    f"{self._info.rules[path2idx[f.abspath]]}"
                 )
 
         # check if all the y files are included in the arguments
@@ -636,8 +643,8 @@ class Group(IGroup):
         deplist = []
         _added = set()
         for f in args_:
-            if isinstance(f, IFileBase) and path_to_rule.get(f.abspath) is not None:
-                dep = self._info.rule2id[path_to_rule[f.abspath]]
+            if isinstance(f, IFileBase) and path2idx.get(f.abspath, -1) != -1:
+                dep = path2idx[f.abspath]
                 if dep not in _added:
                     deplist.append(dep)
                     _added.add(dep)
@@ -715,19 +722,21 @@ class Group(IGroup):
         if _ismembername(name):
             self.__dict__[name] = rc
 
-        for f in files_:
-            path_to_rule[f.abspath] = r
+        rule_idx = len(self._info.rules)
+        self._info.rules.append(r)
+        self._info.rule2idx[r] = rule_idx
+        assert len(self._info.rules) == len(self._info.rule2idx)
 
+        for f in files_:
+            path2idx[f.abspath] = rule_idx
+
+        # TODO
         for _k, f in xfiles:
-            if f.abspath not in path_to_rule:
-                path_to_rule[f.abspath] = None
+            if f.abspath not in path2idx:
+                path2idx[f.abspath] = -1
 
         for f in itertools.chain(files_, (x[1] for x in xfiles)):
             path_to_file[f.abspath] = f
-
-        self._info.id2rule.append(r)
-        self._info.rule2id[r] = len(self._info.rule2id)
-        assert len(self._info.id2rule) == len(self._info.rule2id)
 
         self._info.rule_to_name[r] = "/".join((*self._name, name))
 
@@ -986,15 +995,15 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
-    ids = [_info.rule2id[r] for r in rules]
+    ids = [_info.rule2idx[r] for r in rules]
 
     def callback_(event):
         log_make_event(_info.logwriter, _info.rule_to_name, event)
 
     if njobs is not None and njobs >= 2:
-        return make_mp_spawn(_info.id2rule, ids, dry_run, keep_going, callback_, njobs)
+        return make_mp_spawn(_info.rules, ids, dry_run, keep_going, callback_, njobs)
     else:
-        return _make(_info.id2rule, ids, dry_run, keep_going, callback_)
+        return _make(_info.rules, ids, dry_run, keep_going, callback_)
 
 
 def create_group(
