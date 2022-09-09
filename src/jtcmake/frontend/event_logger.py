@@ -1,23 +1,22 @@
 from collections.abc import Mapping, Sequence
-import os, inspect
+import os, inspect, warnings
 from pathlib import Path
 
 from ..logwriter.writer import IWriter, RichStr
 from ..core import events
 
 
-def log_make_event(w, rule_to_name, e):
+def log_make_event(w, e):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
         err = e.err
-        name = rule_to_name.get(r)
 
-        if name is None and r.name is not None:
+        if r.name is not None:
             name = "/".join(r.name)
-
-        if name is None:
-            w.warning(f"An event of unknown Rule has been emitted.\n")
+        else:
             name = "<unknown>"
+            warnings.warn(
+                f"Internal Error: an event of unnamed Rule has been emitted.\n")
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
@@ -48,11 +47,13 @@ def log_make_event(w, rule_to_name, e):
         return
     elif isinstance(e, events.RuleEvent):
         r = e.rule
-        name = rule_to_name.get(r)
 
-        if name is None:
-            w.warning(f"An event of unknown Rule has been emitted.\n")
+        if r.name is not None:
+            name = "/".join(r.name)
+        else:
             name = "<unknown>"
+            warnings.warn(
+                f"Internal Error: an event of unnamed Rule has been emitted.\n")
 
         name = RichStr(name, c=(0, 0xCC, 0))
 

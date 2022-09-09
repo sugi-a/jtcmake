@@ -253,7 +253,6 @@ class GroupTreeInfo:
         self.path2idx = {}  # dict<str, int>. idx can be -1
         self.idx2outputs = []  # list<list<IFileBase>>
         self.path_to_file = {}
-        self.rule_to_name = {}
         self.memo_factory = memo_factory
 
         self.logwriter = logwriter
@@ -735,8 +734,6 @@ class Group(IGroup):
         for f in itertools.chain(files_, xfiles):
             path_to_file[f.abspath] = f
 
-        self._info.rule_to_name[r] = "/".join((*self._name, name))
-
         return rc
 
     def clean(self):
@@ -995,7 +992,7 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
     ids = [_info.rule2idx[r] for r in rules]
 
     def callback_(event):
-        log_make_event(_info.logwriter, _info.rule_to_name, event)
+        log_make_event(_info.logwriter, event)
 
     if njobs is not None and njobs >= 2:
         return make_mp_spawn(_info.rules, ids, dry_run, keep_going, callback_, njobs)
