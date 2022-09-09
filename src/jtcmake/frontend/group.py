@@ -2,7 +2,7 @@ import sys, os, pathlib, re, contextlib, time, json, inspect
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePath
 from logging import Logger
 
 from ..rule.rule import Rule
@@ -251,6 +251,7 @@ class GroupTreeInfo:
         self.rules = []  # list<Rule>
         self.rule2idx = {}  # dict<int, int>
         self.path2idx = {}  # dict<str, int>. idx can be -1
+        self.idx2outputs = []  # list<list<IFileBase>>
         self.path_to_file = {}
         self.rule_to_name = {}
         self.memo_factory = memo_factory
@@ -399,8 +400,10 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if not isinstance(name, str):
-            raise ValueError(f"name must be str")
+        if isinstance(name, PurePath):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise ValueError(f"name must be PurePath|str")
 
         if len(args) == 0:
             raise TypeError("method must be specified")
@@ -458,8 +461,11 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if not isinstance(name, str):
-            raise ValueError(f"name must be str")
+        if isinstance(name, PurePath):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise ValueError(f"name must be PurePath|str")
+
 
         if len(args) == 0:
             raise TypeError("method must be specified")
@@ -651,19 +657,10 @@ class Group(IGroup):
 
         # create xfiles
         ypaths = set(f.path for f in files_)
-        try:
-            arg_keys = flatten_to_nest_keys(args)
-        except Exception as e:
-            raise Exception(
-                f"Failed to flatten keyword arguments. "
-                f"This error occurs when args/kwargs contain a dict "
-                f"whose keys are not sortable."
-            ) from e
 
         xfiles = [
-            (k, f)
-            for k, f in zip(arg_keys, args_)
-            if isinstance(f, IFile) and f.path not in ypaths
+            f for f in args_
+            if isinstance(f, IFileBase) and f.path not in ypaths  # TODO
         ]
 
         # create method args
@@ -730,12 +727,12 @@ class Group(IGroup):
         for f in files_:
             path2idx[f.abspath] = rule_idx
 
-        # TODO
-        for _k, f in xfiles:
+        for f in xfiles:
             if f.abspath not in path2idx:
+                # Add as an original file
                 path2idx[f.abspath] = -1
 
-        for f in itertools.chain(files_, (x[1] for x in xfiles)):
+        for f in itertools.chain(files_, xfiles):
             path_to_file[f.abspath] = f
 
         self._info.rule_to_name[r] = "/".join((*self._name, name))

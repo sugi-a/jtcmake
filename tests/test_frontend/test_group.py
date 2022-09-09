@@ -232,6 +232,18 @@ def test_group_add():
     with pytest.raises(Exception):
         g.add("b", os.path.abspath("r/a1"), fn)
 
+    g = create_group("r")
+    _p = Path(".").resolve() / "x"
+    g.add("a", fn, File(_p))
+    with pytest.raises(Exception):
+        g.add(_p, fn)
+
+    g = create_group("r")
+    _p = Path(".").resolve() / "x"
+    g.add("a", fn, VFile(_p))
+    with pytest.raises(Exception):
+        g.add(_p, fn)
+
     # zero paths
     with pytest.raises(Exception):
         create_group("r").add("a", (), fn)

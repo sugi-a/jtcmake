@@ -28,7 +28,7 @@ class Rule(IRule):
         self.memo = memo
 
     def should_update(self, par_updated, dry_run):
-        for k, f in self.xfiles:
+        for f in self.xfiles:
             if not os.path.exists(f.path):
                 if dry_run:
                     return True
@@ -56,8 +56,8 @@ class Rule(IRule):
         if oldest_y <= 0:
             return True
 
-        for k, f in self.xfiles:
-            if os.path.getmtime(f.path) > oldest_y:
+        for f in self.xfiles:
+            if isinstance(f, IFile) and os.path.getmtime(f.path) > oldest_y:
                 return True
 
         memo = load_memo(self.metadata_fname)

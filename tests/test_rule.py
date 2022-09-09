@@ -56,9 +56,8 @@ def test_update_memo(tmp_path, mocker):
 
     y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
     x1, x2 = (File(tmp_path / f"x{i}") for i in (1, 2))
-    k1, k2 = ("k1",), ("k2",)
     ys = [y1, y2]
-    xs = [(k1, y1), (k2, y2)]
+    xs = [x1, x2]
 
     r = Rule(ys, xs, [], _method, _args, _kwargs, mock_memo)
 
@@ -67,6 +66,8 @@ def test_update_memo(tmp_path, mocker):
 
     pickle_code = pickle.dumps(["xyz"])
     m.assert_called_once_with(r.metadata_fname, 0)
+
+    # TODO
 
 
 def test_rule_should_update(tmp_path, mocker):
@@ -99,10 +100,9 @@ def test_rule_should_update(tmp_path, mocker):
 
     y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
     x1, x2 = File(tmp_path / "x1"), VFile(tmp_path / "x2")
-    k1, k2 = ("k1",), ("k2",)
 
     ys = [y1, y2]
-    xs = [(k1, x1)]
+    xs = [x1, x2]
     memo = StrHashMemo((x2,))
 
     r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, memo)
@@ -246,7 +246,7 @@ def test_postprocess(tmp_path, mocker):
     x1 = File(tmp_path / "x1")
     x2 = VFile(tmp_path / "x2")
 
-    r = Rule([y], [("k1", x1), ("k2", x2)], [], _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [x1, x2], [], _method, _args, _kwargs, mock_memo)
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)
