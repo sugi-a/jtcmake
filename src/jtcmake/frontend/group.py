@@ -465,7 +465,6 @@ class Group(IGroup):
         elif not isinstance(name, str):
             raise ValueError(f"name must be str|os.PathLike")
 
-
         if len(args) == 0:
             raise TypeError("method must be specified")
 
@@ -628,9 +627,7 @@ class Group(IGroup):
             if idx is None:
                 pass
             elif idx == -1:
-                raise ValueError(
-                    f"{f.path} is already used as an original file"
-                )
+                raise ValueError(f"{f.path} is already used as an original file")
             else:
                 raise ValueError(
                     f"{f.path} is already used by another rule: "
@@ -658,7 +655,8 @@ class Group(IGroup):
         ypaths = set(f.path for f in files_)
 
         xfiles = [
-            f for f in args_
+            f
+            for f in args_
             if isinstance(f, IFileBase) and f.path not in ypaths  # TODO
         ]
 

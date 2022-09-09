@@ -16,7 +16,8 @@ def log_make_event(w, e):
         else:
             name = "<unknown>"
             warnings.warn(
-                f"Internal Error: an event of unnamed Rule has been emitted.\n")
+                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+            )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
@@ -53,7 +54,8 @@ def log_make_event(w, e):
         else:
             name = "<unknown>"
             warnings.warn(
-                f"Internal Error: an event of unnamed Rule has been emitted.\n")
+                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+            )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
