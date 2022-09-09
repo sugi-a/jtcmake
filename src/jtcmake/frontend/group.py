@@ -250,8 +250,8 @@ class GroupTreeInfo:
     def __init__(self, logwriter, memo_factory):
         self.rules = []  # list<Rule>
         self.rule2idx = {}  # dict<int, int>
-        self.path2idx = {}  # dict<str, int>. idx can be -1
-        self.idx2outputs = []  # list<list<IFileBase>>
+        self.path2idx = {}  # dict<Path, int>. idx can be -1
+        self.idx2xpaths = []  # list<list<Path>>
         self.path_to_file = {}
         self.memo_factory = memo_factory
 
@@ -735,6 +735,8 @@ class Group(IGroup):
 
         for f in itertools.chain(yfiles_, xfiles):
             path_to_file[f.abspath] = f
+
+        self._info.idx2xpaths[rule_idx] = [f.abspath for f in xfiles]
 
         return rc
 
