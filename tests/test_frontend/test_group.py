@@ -146,17 +146,6 @@ def test_group_add():
     b = create_group("r").add("a", {"b": "a2", "a": "a1"}, fn)
     assert a.abspath == b.abspath
 
-    #### decorator ####
-    g = create_group("r")
-
-    _fn = g.add("a", "a1", None)(fn)
-    assert g.a.abspath == APath("r/a1")
-    assert _fn == fn  # decorator should return the func as-is
-
-    _fn = g.add("b", None)(fn)
-    assert g.b.abspath == APath("r/b")
-    assert _fn == fn
-
     #### kind of IFile ####
     # add: default is File
     a = create_group("r").add("a", ["a1", VFile("a2")], fn)
@@ -271,6 +260,20 @@ def test_group_add():
     # unpicklable args
     with pytest.raises(Exception):
         create_group("r").add("a", fn, lambda: 0)
+
+
+def test_add_by_decorator():
+    for adder_name in ["add", "addvf"]:
+        g = create_group("r")
+        adder = getattr(g, adder_name)
+
+        _fn = adder("a", "a1", None)(fn)
+        assert g.a.abspath == Path("r/a1").resolve()
+        assert _fn == fn  # decorator should return the func as-is
+
+        _fn = adder("b", None)(fn)
+        assert g.b.abspath == Path("r/b").resolve()
+        assert _fn == fn
 
 
 def test_rule_touch(tmp_path):

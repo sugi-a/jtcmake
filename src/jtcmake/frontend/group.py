@@ -481,7 +481,7 @@ class Group(IGroup):
 
             def adder(method):
                 assert callable(method)
-                self.add_vf(name, path, method, *args, **kwargs)
+                self.addvf(name, path, method, *args, **kwargs)
                 return method
 
             return adder
