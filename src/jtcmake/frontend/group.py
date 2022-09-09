@@ -496,7 +496,7 @@ class Group(IGroup):
 
         return self._add(name, path, method, *args, **kwargs)
 
-    def _add(self, name, files, method, *args, **kwargs):
+    def _add(self, name, yfiles, method, *args, **kwargs):
         assert isinstance(name, str)
         assert callable(method)
 
@@ -519,7 +519,7 @@ class Group(IGroup):
                 assert isinstance(p, IFileBase)
                 return p
 
-        files = map_structure(wrap_by_File, files)
+        yfiles = map_structure(wrap_by_File, yfiles)
 
         # add prefix to paths of yfiles if necessary
         def add_pfx(f):
@@ -534,7 +534,7 @@ class Group(IGroup):
                 return f.__class__(self._prefix + str(p))
                 # TODO: __init__ of f's class may take args other than path
 
-        files = map_structure(add_pfx, files)
+        yfiles = map_structure(add_pfx, yfiles)
 
         # expand SELFs in args
         _expanded = False
@@ -544,7 +544,7 @@ class Group(IGroup):
             if isinstance(arg, NestKey):
                 _expanded = True
                 try:
-                    return nest_get(files, arg)
+                    return nest_get(yfiles, arg)
                 except:
                     raise ValueError(f"Invalid keys for SELF")
             else:
@@ -555,7 +555,7 @@ class Group(IGroup):
         )
 
         if not _expanded:
-            args = (files, *args)
+            args = (yfiles, *args)
 
         # validate method signature
         try:
@@ -565,7 +565,7 @@ class Group(IGroup):
 
         # flatten yfiles and args (for convenience)
         try:
-            files_ = flatten(files)
+            yfiles_ = flatten(yfiles)
         except Exception as e:
             raise Exception(
                 f"Failed to flatten the input file structure. "
@@ -582,7 +582,7 @@ class Group(IGroup):
                 f"whose keys are not sortable."
             ) from e
 
-        if len(files_) == 0:
+        if len(yfiles_) == 0:
             raise ValueError("at least 1 output file must be specified")
 
         # Unwrap FileNodeAtom
@@ -604,7 +604,7 @@ class Group(IGroup):
             if isinstance(f, IFileBase)
             else f
         )
-        files_ = list(map(_norm, files_))
+        yfiles_ = list(map(_norm, yfiles_))
         args_ = list(map(_norm, args_))
 
         # check IFileBase consistency
@@ -622,7 +622,7 @@ class Group(IGroup):
                     p2f[x.path] = x
 
         # check duplicate registration of output files
-        for f in files_:
+        for f in yfiles_:
             idx = path2idx.get(f.abspath)
             if idx is None:
                 pass
@@ -635,7 +635,7 @@ class Group(IGroup):
                 )
 
         # check if all the y files are included in the arguments
-        unused = set(files_) - {f for f in args_ if isinstance(f, IFileBase)}
+        unused = set(yfiles_) - {f for f in args_ if isinstance(f, IFileBase)}
         if len(unused) != 0:
             raise ValueError(
                 f"Some files are not passed to the method: " f"{list(unused)}"
@@ -652,12 +652,10 @@ class Group(IGroup):
                     _added.add(dep)
 
         # create xfiles
-        ypaths = set(f.path for f in files_)
+        yfile_set = set(yfiles_)
 
         xfiles = [
-            f
-            for f in args_
-            if isinstance(f, IFileBase) and f.path not in ypaths  # TODO
+            f for f in args_ if isinstance(f, IFileBase) and f not in yfile_set
         ]
 
         # create method args
@@ -678,7 +676,7 @@ class Group(IGroup):
 
         # create Rule
         r = Rule(
-            files_,
+            yfiles_,
             xfiles,
             deplist,
             method,
@@ -689,7 +687,7 @@ class Group(IGroup):
         )
 
         # create RuleNode
-        files = pack_sequence_as(files, files_)
+        yfiles = pack_sequence_as(yfiles, yfiles_)
 
         def conv_to_atom(x):
             assert isinstance(x, IFileBase)
@@ -697,7 +695,7 @@ class Group(IGroup):
 
         file_node_root = map_structure(
             conv_to_atom,
-            files,
+            yfiles,
             seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
             map_factory={dict: FileNodeDict},
         )
@@ -721,7 +719,7 @@ class Group(IGroup):
         self._info.rule2idx[r] = rule_idx
         assert len(self._info.rules) == len(self._info.rule2idx)
 
-        for f in files_:
+        for f in yfiles_:
             path2idx[f.abspath] = rule_idx
 
         for f in xfiles:
@@ -729,7 +727,7 @@ class Group(IGroup):
                 # Add as an original file
                 path2idx[f.abspath] = -1
 
-        for f in itertools.chain(files_, xfiles):
+        for f in itertools.chain(yfiles_, xfiles):
             path_to_file[f.abspath] = f
 
         return rc

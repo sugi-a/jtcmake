@@ -24,7 +24,7 @@ class IFileBase(IMemoAtom):
         return hash(self.path)
 
     def __eq__(self, other):
-        return type(other) == type(self) and self.path == other.path
+        return type(other) == type(self) and self.abspath == other.abspath
 
     def __repr__(self):
         return f"{type(self).__name__}(path={repr(self.path)})"
