@@ -45,6 +45,14 @@ class IVFile(IFileBase):
 
 class File(IFile):
     def __init__(self, path):
+        """
+        Create an object representing a file to be used as an input to
+        rules. Its modification time is checked when JTCMake determines
+        whether to update the rules.
+
+        Args:
+            path (str|os.PathLike): path of the file
+        """
         assert isinstance(path, (str, os.PathLike))
         self._path = Path(path)
 
@@ -66,6 +74,14 @@ class _ContentHash(ILazyMemoValue):
 
 class VFile(IVFile):
     def __init__(self, path):
+        """
+        Create an object representing a file to be used as an input to
+        rules. This is for a value file: its content is checked when
+        JTCMake determines whether to update the rules.
+
+        Args:
+            path (str|os.PathLike): path of the file
+        """
         assert isinstance(path, (str, os.PathLike))
         self._path = Path(path)
         self._memo_value = _ContentHash(path)
