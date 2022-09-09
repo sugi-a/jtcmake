@@ -23,14 +23,16 @@ def log_make_event(w, e):
 
         if isinstance(e, events.UpdateCheckError):
             w.error(
-                f"Failed to make {name}: "
-                f"An error occured while checking if update is necessary: "
+                f"Failed to make ",
+                name,
+                ": An error occured while checking if update is necessary: "
                 f"{err}\n"
             )
         elif isinstance(e, events.PreProcError):
             w.error(
-                f"Failed to make {name}: "
-                f"An error occured during preprocessing: {err}\n"
+                f"Failed to make ",
+                name,
+                f": An error occured during preprocessing: {err}\n"
             )
         elif isinstance(e, events.ExecError):
             w.error(f"Failed to make ", name, f": Method failed: {err}\n")
@@ -60,17 +62,14 @@ def log_make_event(w, e):
         name = RichStr(name, c=(0, 0xCC, 0))
 
         if isinstance(e, events.Skip):
-            msg = f"Skip {name}\n"
             if e.is_direct_target:
-                w.info(msg)
+                w.info("Skip ", name, "\n")
             else:
-                w.debug(msg)
+                w.debug("Skip ", name, "\n")
         elif isinstance(e, events.Start):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
-            # msg.insert(0, f'Make {name}\n')
-            # w.info(*msg)
             w.info("Make ", name, "\n", *msg)
         elif isinstance(e, events.Done):
             w.info(f"Done ", name, "\n")
@@ -78,8 +77,7 @@ def log_make_event(w, e):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
-            msg.insert(0, f"Make (dry) {name}\n")
-            w.info(*msg)
+            w.info("Make (dry) ", name, "\n", *msg)
         else:
             w.warning(f"Unhandled event for {r}\n")
         return
