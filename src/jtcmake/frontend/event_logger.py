@@ -9,7 +9,9 @@ from ..core import events
 def log_make_event(w, e):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
-        err = e.err
+
+        # Show stack trace and error message
+        w.warning(''.join(e.trace_exc.format()))
 
         if r.name is not None:
             name = "/".join(r.name)
@@ -25,28 +27,28 @@ def log_make_event(w, e):
             w.error(
                 f"Failed to make ",
                 name,
-                ": An error occured while checking if update is necessary: "
-                f"{err}\n"
+                ": An error occured while checking if update is necessary\n"
             )
         elif isinstance(e, events.PreProcError):
             w.error(
                 f"Failed to make ",
                 name,
-                f": An error occured during preprocessing: {err}\n"
+                f": An error occured during preprocessing\n"
             )
         elif isinstance(e, events.ExecError):
-            w.error(f"Failed to make ", name, f": Method failed: {err}\n")
+            w.error(f"Failed to make ", name, f": Method failed\n")
         elif isinstance(e, events.PostProcError):
             w.error(
                 f"Failed to make {name}: "
-                f"An error occured during post-processing: {err}. "
+                f"An error occured during post-processing. "
                 f"Make sure to remove the output files (if any) "
                 f"by yourself\n"
             )
         elif isinstance(e, events.FatalError):
             w.error("Fatal error\n")
         else:
-            w.warning(f"Unhandled error event for {r}: {err}\n")
+            w.warning(f"Unhandled error event for {r}\n")
+
         return
     elif isinstance(e, events.RuleEvent):
         r = e.rule

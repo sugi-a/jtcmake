@@ -78,7 +78,6 @@ def make(
                 r, dry_run, par_updated, i in main_ids, callback
             )
         except Exception as e:
-            traceback.print_exc()
             try:
                 callback(events.FatalError(r, e))
             except Exception:
@@ -115,7 +114,6 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
         try:
             should_update = rule.should_update(par_updated, True)
         except Exception as e:
-            traceback.print_exc()
             callback(events.UpdateCheckError(rule, e))
             return Result.Fail
 
@@ -129,7 +127,6 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
     try:
         should_update = rule.should_update(par_updated, False)
     except Exception as e:
-        traceback.print_exc()
         callback(events.UpdateCheckError(rule, e))
         return Result.Fail
 
@@ -149,7 +146,6 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
         rule.method(*rule.args, **rule.kwargs)
         succ = True
     except Exception as e:
-        traceback.print_exc()
         callback(events.ExecError(rule, e))
         succ = False
     except KeyboardInterrupt as e:
@@ -163,7 +159,6 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
     try:
         rule.postprocess(callback, succ)
     except Exception as e:
-        traceback.print_exc()
         callback(events.PostProcError(rule, e))
         return Result.Fail
 
