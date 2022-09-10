@@ -74,111 +74,107 @@ def test_update_memo(tmp_path, mocker):
 
 def test_rule_should_update(tmp_path, mocker):
     """
-    Assumption: the y-list has at least one item.
+    Prerequisite: the y-list has at least one item.
 
     Procedure:
     1. dry_run and any dependency was updated: True
-    2. Any x does not exist or has mtime of 0:
-        1. dry_run: True
-        2. !dry_run: raise
-    3. Any y is missing: True
-    4. Any y has a mtime of 0: True
-    5. Let Y := the oldest y,
-        1. Any x with non-IVFile type is newer than Y: True
-        2. Any x with IVFile type, whose location in the argument structure
-           is specified with keys K=(k_1, ..., k_n), is newer than Y and
-           the cached VFile hash for K is not equal to hash(x): True
-    6. Memoized values are updated: True
-    7. Otherwise: False
+    2. Any x does not exist or has mtime of 0: raise
+    3. Any y is missing or has a mtime of 0: True
+    4. Any x with IFile type is newer than the oldest y: True
+    5. Memoized values are updated: True
+    6. Otherwise: False
     """
 
     q1 = mocker.MagicMock("Rule")
     q2 = mocker.MagicMock("Rule")
 
     #### multi-y, multi-x, fixed args cases ####
-    # mock_memo = mocker.MagicMock(IMemo)
-    # mock_memo.compare.return_value = True
-    # mock_memo.memo = 0
 
     y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
     x1, x2 = File(tmp_path / "x1"), VFile(tmp_path / "x2")
 
     ys = [y1, y2]
     xs = [x1, x2]
-    memo = StrHashMemo((x2,))
 
-    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, memo)
+    mock_memo = mocker.MagicMock(IMemo)
+    mock_memo.compare.return_value = True
+    mock_memo.memo = 0
+
+    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, mock_memo)
 
     # case 1
     touch(x1, x2, y1, y2)
-    assert r.should_update({q1}, True)
+    assert r.should_update(True, True)
 
-    # case 2.1: x1 is missing
-    rm(x1)
-    touch(x2, y1, y2)
-    assert r.should_update(set(), True)
-
-    # case 2.1: x1's mtime is 0
-    touch(y1, y2, x2)
     touch(x1, t=0)
-    assert r.should_update(set(), True)
+    assert r.should_update(True, True)
 
-    # case 2.2: x1 is missing
-    rm(x1)
-    touch(x2, y1, y2)
-    with pytest.raises(Exception):
-        r.should_update(set(), False)
+    # case 2
+    for dry_run in (False, True):
+        # x1 is missing
+        rm(x1)
+        touch(x2, y1, y2)
+        with pytest.raises(Exception):
+            r.should_update(False, dry_run)
 
-    # case 2.2: x1's mtime is 0
-    touch(y1, y2, x2)
-    touch(x1, t=0)
-    with pytest.raises(Exception):
-        r.should_update(set(), False)
+        # x1's mtime is 0
+        touch(y1, y2, x2)
+        touch(x1, t=0)
+        with pytest.raises(Exception):
+            r.should_update(False, dry_run)
 
-    # case 3: y1 is missing
-    rm(y1)
-    touch(x1, x2, y2)
-    assert r.should_update(set(), False)
+    # case 3
+    for dry_run in (False, True):
+        # y1 is missing
+        rm(y1)
+        touch(x1, x2, y2)
+        assert r.should_update(False, dry_run)
 
-    # case 5.1
-    touch(y2, x1, x2)
-    touch(y1, t=time.time() - 1)
-    assert r.should_update(set(), False)
+        # y1 has mtime of 0
+        touch(y2)
+        touch(y1, t=0)
+        assert r.should_update(False, dry_run)
 
-    # case 5.2
-    touch(y1, y2, x1, t=time.time() - 1)
-    touch(x2)
+    # case 4
+    for dry_run in (False, True):
+        touch(x2, t=time.time() - 3)
+        touch(y2, t=time.time() - 2)
+        touch(x1, t=time.time() - 1)
+        touch(y1)
+        assert r.should_update(False, dry_run)
 
-    rm(r.metadata_fname)  # no cache
-    assert r.should_update(set(), False)
+    # case 5
+    for dry_run in (False, True):
+        # no cache case
+        touch(y1, y2, x1, x2)
+        rm(r.metadata_fname)
+        assert r.should_update(False, dry_run)
 
+        # cache differing case
+        r.update_memo()
+        touch(y1, y2, x1, x2)
+        mock_memo.compare.return_value = False
+        assert r.should_update(False, dry_run)
+        mock_memo.compare.return_value = True
+
+    # case 6
     r.update_memo()
-    time.sleep(0.01)  # ensure time elapse after touch(x2)
-    x2.path.write_text("a")  # hash differs
-    assert r.should_update(set(), False)
+    for dry_run in (False, True):
+        # simple
+        touch(x1, t=time.time() - 2)
+        touch(y1, y2, t=time.time() - 1)
+        touch(x2, t=time.time() - 0)
+        assert not r.should_update(False, dry_run)
 
-    # case 7
-    r.update_memo()
-    # simple
-    touch(y1, y2)
-    touch(x1, x2, t=time.time() - 1)
-    assert not r.should_update(set(), False)
-
-    # equal mtime
-    touch(y1, y2, x1, x2)
-    assert not r.should_update(set(), False)
-
-    # check VFile hash
-    touch(y1, y2, x1, x2, t=time.time() - 1)
-    r.update_memo()
-    touch(x2)
-    assert not r.should_update(set(), False)
+        # equal mtime
+        touch(y1, y2, x1, x2)
+        assert not r.should_update(False, dry_run)
 
     # pass case 1 with !dry_run
     touch(x1, x2, y1, y2)
-    assert not r.should_update({q1}, False)
+    assert not r.should_update(True, False)
 
-    #### no x, fixed args case ####
+    #### no x ####
     mock_memo = mocker.MagicMock(IMemo)
     mock_memo.compare.return_value = True
     mock_memo.memo = 0
@@ -187,40 +183,22 @@ def test_rule_should_update(tmp_path, mocker):
     ys = [y1, y2]
     r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
 
-    # case 3: y1 is missing
-    rm(y1)
-    touch(y2)
-    assert r.should_update(set(), False)
+    # case 3
+    for dry_run in (False, True):
+        # y1 is missing
+        rm(y1)
+        touch(y2)
+        assert r.should_update(False, dry_run)
 
-    # case 4: y1 is of mtime 0
-    touch(y2)
-    touch(y1, t=0)
-    assert r.should_update(set(), False)
+        # y1 is of mtime 0
+        touch(y2)
+        touch(y1, t=0)
+        assert r.should_update(False, dry_run)
 
-    # case 7.
-    touch(y1, y2)
-    assert not r.should_update(set(), False)
-
-    #### case 6. args updated ####
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare.return_value = True
-    mock_memo.memo = 0
-
-    y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
-    ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
-
-    touch(y1, y2, x1, x2)
-    r.update_memo()
-
-    assert not r.should_update(set(), False)
-
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare.return_value = False
-
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
-
-    assert r.should_update(set(), False)
+    # case 6.
+    for dry_run in (False, True):
+        touch(y1, y2)
+        assert not r.should_update(False, dry_run)
 
 
 def test_preprocess(tmp_path, mocker):

@@ -28,25 +28,18 @@ class Rule(IRule):
         self.memo = memo
 
     def should_update(self, par_updated, dry_run):
-        for f in self.xfiles:
-            if not os.path.exists(f.path):
-                if dry_run:
-                    return True
-                else:
-                    raise Exception(f"Input file {f.path} is missing")
-
-            if os.path.getmtime(f.path) == 0:
-                if dry_run:
-                    return True
-                else:
-                    raise Exception(
-                        f"Input file {f.path} has mtime of 0. "
-                        f"Input files with mtime of 0 are considered to be "
-                        f"invalid."
-                    )
-
         if dry_run and par_updated:
             return True
+
+        for f in self.xfiles:
+            if not os.path.exists(f.path):
+                raise Exception(f"Input file {f.path} is missing")
+
+            if os.path.getmtime(f.path) == 0:
+                raise Exception(
+                    f"Input file {f.path} has mtime of 0. Input files"
+                    " with mtime of 0 are considered to be invalid."
+                )
 
         if any(not os.path.exists(f.path) for f in self.yfiles):
             return True
@@ -68,11 +61,11 @@ class Rule(IRule):
         try:
             if not self.memo.compare(memo):
                 return True
-        except Exception:
+        except Exception as e:
             raise Exception(
                 f"Failed to check memoized arguments "
                 f"loaded from {self.metadata_fname}"
-            )
+            ) from e
 
         return False
 
