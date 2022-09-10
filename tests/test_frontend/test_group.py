@@ -134,7 +134,9 @@ def test_group_add():
     assert a.abspath == (APath("r/a1"), APath("r/a1"))
 
     a = create_group("r").add(
-        "d", [{"x": "d1.txt", "y": ["d2.txt"]}, ("d3.txt", "d4.txt")], lambda _: None
+        "d",
+        [{"x": "d1.txt", "y": ["d2.txt"]}, ("d3.txt", "d4.txt")],
+        lambda _: None,
     )
     assert a.abspath == (
         {"x": APath("r/d1.txt"), "y": (APath("r/d2.txt"),)},
@@ -145,17 +147,6 @@ def test_group_add():
     a = create_group("r").add("a", {"a": "a1", "b": "a2"}, fn)
     b = create_group("r").add("a", {"b": "a2", "a": "a1"}, fn)
     assert a.abspath == b.abspath
-
-    #### decorator ####
-    g = create_group("r")
-
-    _fn = g.add("a", "a1", None)(fn)
-    assert g.a.abspath == APath("r/a1")
-    assert _fn == fn  # decorator should return the func as-is
-
-    _fn = g.add("b", None)(fn)
-    assert g.b.abspath == APath("r/b")
-    assert _fn == fn
 
     #### kind of IFile ####
     # add: default is File
@@ -190,7 +181,11 @@ def test_group_add():
     g = create_group("r")
     g.add("a", ["a1", "a2"], fn)
     g.add("b", ["b1", "b2"], fn, g.a[0], SELF[0], SELF[1], a=SELF)
-    assert _to_abs(g.b._rule.args) == (g.a[0].abspath, g.b[0].abspath, g.b[1].abspath)
+    assert _to_abs(g.b._rule.args) == (
+        g.a[0].abspath,
+        g.b[0].abspath,
+        g.b[1].abspath,
+    )
     assert _to_abs(g.b._rule.kwargs) == {"a": list(g.b.abspath)}
 
     g = create_group("r")
@@ -232,6 +227,18 @@ def test_group_add():
     with pytest.raises(Exception):
         g.add("b", os.path.abspath("r/a1"), fn)
 
+    g = create_group("r")
+    _p = APath("x")
+    g.add("a", fn, File(_p))
+    with pytest.raises(Exception):
+        g.add(_p, fn)
+
+    g = create_group("r")
+    _p = APath("x")
+    g.add("a", fn, VFile(_p))
+    with pytest.raises(Exception):
+        g.add(_p, fn)
+
     # zero paths
     with pytest.raises(Exception):
         create_group("r").add("a", (), fn)
@@ -259,6 +266,20 @@ def test_group_add():
     # unpicklable args
     with pytest.raises(Exception):
         create_group("r").add("a", fn, lambda: 0)
+
+
+def test_add_by_decorator():
+    for adder_name in ["add", "addvf"]:
+        g = create_group("r")
+        adder = getattr(g, adder_name)
+
+        _fn = adder("a", "a1", None)(fn)
+        assert g.a.abspath == Path(os.path.abspath("r/a1"))
+        assert _fn == fn  # decorator should return the func as-is
+
+        _fn = adder("b", None)(fn)
+        assert g.b.abspath == Path(os.path.abspath("r/b"))
+        assert _fn == fn
 
 
 def test_rule_touch(tmp_path):

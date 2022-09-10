@@ -18,7 +18,9 @@ class StrHashMemo(IMemo):
 
     def compare(self, memo):
         if memo["type"] != _TYPE:
-            raise Exception(f'Expected {_TYPE} memo. Given {memo["type"]} memo. ')
+            raise Exception(
+                f'Expected {_TYPE} memo. Given {memo["type"]} memo. '
+            )
 
         return memo == self.memo
 

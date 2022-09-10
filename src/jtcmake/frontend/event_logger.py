@@ -1,73 +1,77 @@
 from collections.abc import Mapping, Sequence
-import os, inspect
+import os, inspect, warnings
 from pathlib import Path
 
 from ..logwriter.writer import IWriter, RichStr
 from ..core import events
 
 
-def log_make_event(w, rule_to_name, e):
+def log_make_event(w, e):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
-        err = e.err
-        name = rule_to_name.get(r)
 
-        if name is None and r.name is not None:
+        # Show stack trace and error message
+        w.warning("".join(e.trace_exc.format()))
+
+        if r.name is not None:
             name = "/".join(r.name)
-
-        if name is None:
-            w.warning(f"An event of unknown Rule has been emitted.\n")
+        else:
             name = "<unknown>"
+            warnings.warn(
+                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+            )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
         if isinstance(e, events.UpdateCheckError):
             w.error(
-                f"Failed to make {name}: "
-                f"An error occured while checking if update is necessary: "
-                f"{err}\n"
+                f"Failed to make ",
+                name,
+                ": An error occured while checking if update is necessary\n",
             )
         elif isinstance(e, events.PreProcError):
             w.error(
-                f"Failed to make {name}: "
-                f"An error occured during preprocessing: {err}\n"
+                f"Failed to make ",
+                name,
+                f": An error occured during preprocessing\n",
             )
         elif isinstance(e, events.ExecError):
-            w.error(f"Failed to make ", name, f": Method failed: {err}\n")
+            w.error(f"Failed to make ", name, f": Method failed\n")
         elif isinstance(e, events.PostProcError):
             w.error(
                 f"Failed to make {name}: "
-                f"An error occured during post-processing: {err}. "
+                f"An error occured during post-processing. "
                 f"Make sure to remove the output files (if any) "
                 f"by yourself\n"
             )
         elif isinstance(e, events.FatalError):
             w.error("Fatal error\n")
         else:
-            w.warning(f"Unhandled error event for {r}: {err}\n")
+            w.warning(f"Unhandled error event for {r}\n")
+
         return
     elif isinstance(e, events.RuleEvent):
         r = e.rule
-        name = rule_to_name.get(r)
 
-        if name is None:
-            w.warning(f"An event of unknown Rule has been emitted.\n")
+        if r.name is not None:
+            name = "/".join(r.name)
+        else:
             name = "<unknown>"
+            warnings.warn(
+                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+            )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
         if isinstance(e, events.Skip):
-            msg = f"Skip {name}\n"
             if e.is_direct_target:
-                w.info(msg)
+                w.info("Skip ", name, "\n")
             else:
-                w.debug(msg)
+                w.debug("Skip ", name, "\n")
         elif isinstance(e, events.Start):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
-            # msg.insert(0, f'Make {name}\n')
-            # w.info(*msg)
             w.info("Make ", name, "\n", *msg)
         elif isinstance(e, events.Done):
             w.info(f"Done ", name, "\n")
@@ -75,8 +79,7 @@ def log_make_event(w, rule_to_name, e):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
-            msg.insert(0, f"Make (dry) {name}\n")
-            w.info(*msg)
+            w.info("Make (dry) ", name, "\n", *msg)
         else:
             w.warning(f"Unhandled event for {r}\n")
         return

@@ -27,26 +27,19 @@ class Rule(IRule):
         self.name = name
         self.memo = memo
 
-    def should_update(self, par_updated, dry_run):
-        for k, f in self.xfiles:
-            if not os.path.exists(f.path):
-                if dry_run:
-                    return True
-                else:
-                    raise Exception(f"Input file {f.path} is missing")
-
-            if os.path.getmtime(f.path) == 0:
-                if dry_run:
-                    return True
-                else:
-                    raise Exception(
-                        f"Input file {f.path} has mtime of 0. "
-                        f"Input files with mtime of 0 are considered to be "
-                        f"invalid."
-                    )
-
+    def check_update(self, par_updated, dry_run):
         if dry_run and par_updated:
             return True
+
+        for f in self.xfiles:
+            if not os.path.exists(f.path):
+                raise Exception(f"Input file {f.path} is missing")
+
+            if os.path.getmtime(f.path) == 0:
+                raise Exception(
+                    f"Input file {f.path} has mtime of 0. Input files"
+                    " with mtime of 0 are considered to be invalid."
+                )
 
         if any(not os.path.exists(f.path) for f in self.yfiles):
             return True
@@ -56,23 +49,12 @@ class Rule(IRule):
         if oldest_y <= 0:
             return True
 
-        for k, f in self.xfiles:
-            if os.path.getmtime(f.path) > oldest_y:
+        for f in self.xfiles:
+            if isinstance(f, IFile) and os.path.getmtime(f.path) > oldest_y:
                 return True
 
-        memo = load_memo(self.metadata_fname)
-
-        if memo is None:
+        if not self.memo.compare_to_saved(self.metadata_fname):
             return True
-
-        try:
-            if not self.memo.compare(memo):
-                return True
-        except Exception:
-            raise Exception(
-                f"Failed to check memoized arguments "
-                f"loaded from {self.metadata_fname}"
-            )
 
         return False
 
@@ -106,7 +88,7 @@ class Rule(IRule):
         return p.parent / ".jtcmake" / p.name
 
     def update_memo(self):
-        save_memo(self.metadata_fname, self.memo.memo)
+        self.memo.save_memo(self.metadata_fname)
 
     @property
     def method(self):
@@ -123,19 +105,3 @@ class Rule(IRule):
     @property
     def deplist(self):
         return self._deplist
-
-
-def save_memo(metadata_fname, args_memo):
-    os.makedirs(Path(metadata_fname).parent, exist_ok=True)
-    with open(metadata_fname, "w") as f:
-        json.dump(args_memo, f)
-
-
-def load_memo(metadata_fname):
-    if not os.path.exists(metadata_fname):
-        return None
-
-    with open(metadata_fname) as f:
-        data = json.load(f)
-
-    return data  # TODO: validation

@@ -292,7 +292,9 @@ def _richstr_to_html(s, basedir):
         styles.append(f"color: rgb({s.c[0]}, {s.c[1]}, {s.c[2]});")
 
     if s.bg is not None:
-        styles.append(f"background-color: rgb({s.bg[0]}, {s.bg[1]}, {s.bg[2]});")
+        styles.append(
+            f"background-color: rgb({s.bg[0]}, {s.bg[1]}, {s.bg[2]});"
+        )
 
     if len(styles) != 0:
         style = "".join(styles)

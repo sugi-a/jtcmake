@@ -1,3 +1,4 @@
+from traceback import TracebackException
 from .abc import IEvent, IRule
 
 
@@ -14,16 +15,18 @@ class RuleEvent(IEvent):
 
 
 class ErrorRuleEvent(RuleEvent):
-    def __init__(self, rule, err: Exception):
+    def __init__(self, rule, err):
+        """
+        Args:
+            err (BaseException):
+                This will be immediately coverted to a lighter format which
+                does not have references to the stack frames.
+                The format is currently traceback.TracebackException,
+                which the implementor expect has no reference to stack frames.
+                Fix this class if the implementor's expectation is not true.
+        """
         super().__init__(rule)
-        self._error = err
-
-    @property
-    def err(self):
-        return self._error
-
-    def __repr__(self):
-        return f"{type(self).__name__}(rule={self.rule}, err={self.err})"
+        self.trace_exc = TracebackException.from_exception(err)
 
 
 class Skip(RuleEvent):

@@ -129,7 +129,7 @@ def gen_dot_code(group, basedir=None):
     rec_group(group, "  ", "")
 
     for r, i in rid.items():
-        for _k, xf in r.xfiles:
+        for xf in r.xfiles:
             if xf not in fid:
                 fid[xf] = len(fid)
                 res.append(
@@ -142,7 +142,8 @@ def gen_dot_code(group, basedir=None):
                 )
 
             res.append(
-                f"  f{fid[xf]} -> f{fid[r.yfiles[0]]} " f"[lhead=cluster_r_{rid[r]}];"
+                f"  f{fid[xf]} -> f{fid[r.yfiles[0]]} "
+                f"[lhead=cluster_r_{rid[r]}];"
             )
 
     res.append("}")
@@ -152,7 +153,9 @@ def gen_dot_code(group, basedir=None):
 
 def convert(dot_code, t="svg"):
     if shutil.which("dot") is None:
-        raise Exception("Graphviz is required. dot executable was not found in PATH.")
+        raise Exception(
+            "Graphviz is required. dot executable was not found in PATH."
+        )
 
     p = subprocess.run(
         ["dot", f"-T{t}"],
@@ -163,7 +166,9 @@ def convert(dot_code, t="svg"):
 
     if p.returncode != 0:
         sys.stderr.write(p.stderr.decode())
-        raise Exception(f"Failed to create graph. dot exit with code {p.returncode}")
+        raise Exception(
+            f"Failed to create graph. dot exit with code {p.returncode}"
+        )
 
     return p.stdout
 

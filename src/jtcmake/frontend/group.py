@@ -248,17 +248,22 @@ class RuleNodeDict(RuleNodeBase, FileNodeDict):
 
 class GroupTreeInfo:
     def __init__(self, logwriter, memo_factory):
-        self.id2rule = []  # list<Rule>
-        self.rule2id = {}  # dict<int, Rule>
-        self.path_to_rule = {}  # dict<str, Rule>
+        self.rules = []  # list<Rule>
+        self.rule2idx = {}  # dict<int, int>
+        self.path2idx = {}  # dict<Path, int>. idx can be -1
+        self.idx2xpaths = []  # list<list<Path>>
         self.path_to_file = {}
-        self.rule_to_name = {}
         self.memo_factory = memo_factory
 
         self.logwriter = logwriter
 
 
 class Group(IGroup):
+    """
+    __init__() for this class is private.
+    Use create_group() instead to instanciate it.
+    """
+
     def __init__(self, info, prefix, name):
         if not isinstance(prefix, str):
             raise TypeError("prefix must be str")
@@ -270,10 +275,12 @@ class Group(IGroup):
 
     def add_group(self, name, dirname=None, *, prefix=None):
         """Add a child Group node
+
         Args:
-            name: name of the node. (str|os.PathLike)
-            dirname: directory for the node (str|os.PathLike)
-            prefix: path prefix for the node (str|os.PathLike)
+            name (str|os.PathLike): name of the node.
+            dirname (str|os.PathLike): directory for the node.
+            prefix (str|os.PathLike): path prefix for the node.
+
                 - At most one of dirname and prefix can be specified
                 - If both dirname and prefix are None, then name will be used
                   as dirname
@@ -336,15 +343,16 @@ class Group(IGroup):
         njobs=None,
     ):
         """Make rules in this group and their dependencies
+
         Args:
-            dry_run:
+            dry_run (bool):
                 instead of actually excuting the methods,
                 print expected execution logs.
-            keep_going:
+            keep_going (bool):
                 If False (default), stop everything when a rule fails.
                 If True, when a rule fails, keep executing other rules
                 except the ones depend on the failed rule.
-            njobs:
+            njobs (int):
                 Maximum number of rules that can be made concurrently.
                 Defaults to 1 (single process, single thread).
 
@@ -361,24 +369,24 @@ class Group(IGroup):
     # APIs
     def add(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
-        Call signatures:
-            (1) add(name, [output_files], method, *args, **kwargs)
-            (2) add(name, [output_files], None, *args, **kwargs)
 
+        Call signatures:
+
+            1. `add(name, [output_files], method, *args, **kwargs)`
+            2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name: str. Name for the Rule
+            name (str|os.PathLike): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFileBase (including File and VFile).
-            method: Callable. Will be called as method(*args, **kwargs) on update
+            method (Callable):
+                Will be called as `method(*args, **kwargs)` on update
 
-        Returns (1):
-            Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
-
-        Returns (2):
-            A function (method: Callable) -> RuleNode.
+        Returns:
+            RuleNodeLike
+            RuleNodeAtom|RuleNodeTuple|RuleNodeDict|Callable[Callable, RuleNodeAtom|RuleNodeTuple|RuleNodeDict]: aaa `Group`
 
         Call signature (2) is for decorator-style adding.
             The following two are equivalent:
@@ -391,8 +399,10 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if not isinstance(name, str):
-            raise ValueError(f"name must be str")
+        if isinstance(name, os.PathLike):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise ValueError(f"name must be str|os.PathLike")
 
         if len(args) == 0:
             raise TypeError("method must be specified")
@@ -418,21 +428,23 @@ class Group(IGroup):
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
-        Call signatures:
-            (1) add(name, [output_files], method, *args, **kwargs)
-            (2) add(name, [output_files], None, *args, **kwargs)
 
+        Call signatures:
+
+            1. `add(name, [output_files], method, *args, **kwargs)`
+            2. `add(name, [output_files], None, *args, **kwargs)`
 
         Args:
-            name: str. Name for the Rule
+            name (str|os.PathLike): Name for the Rule
             output_files:
                 Nested structure representing the output files of the Rule.
                 A leaf node of the structure may be either str, os.PathLike,
                 or IFileBase (including File and VFile).
-            method: Callable. Will be called as method(*args, **kwargs)
+            method (Callable):
+                Will be called as `method(*args, **kwargs)` on update
 
         Returns (1):
-            Rule node
+            Rule node (Union[RuleNodeAtom, RuleNodeTuple, RuleNodeDict])
 
         Returns (2):
             A function (method: Callable) -> RuleNode.
@@ -443,13 +455,15 @@ class Group(IGroup):
             `Group.add(name, output_files, method, *args, **kwargs)`
 
         How Group.add differs from Group.addvf:
-            Default IFileBase type used to wrap the nodes in output_files whose
-            type is str or os.PathLike is different.
+            Default IFileBase type used to wrap the nodes in
+            output_files whose type is str or os.PathLike is different.
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if not isinstance(name, str):
-            raise ValueError(f"name must be str")
+        if isinstance(name, os.PathLike):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise ValueError(f"name must be str|os.PathLike")
 
         if len(args) == 0:
             raise TypeError("method must be specified")
@@ -467,7 +481,7 @@ class Group(IGroup):
 
             def adder(method):
                 assert callable(method)
-                self.add_vf(name, path, method, *args, **kwargs)
+                self.addvf(name, path, method, *args, **kwargs)
                 return method
 
             return adder
@@ -482,11 +496,11 @@ class Group(IGroup):
 
         return self._add(name, path, method, *args, **kwargs)
 
-    def _add(self, name, files, method, *args, **kwargs):
+    def _add(self, name, yfiles, method, *args, **kwargs):
         assert isinstance(name, str)
         assert callable(method)
 
-        path_to_rule = self._info.path_to_rule
+        path2idx = self._info.path2idx
         path_to_file = self._info.path_to_file
 
         if not _is_valid_node_name(name):
@@ -505,7 +519,7 @@ class Group(IGroup):
                 assert isinstance(p, IFileBase)
                 return p
 
-        files = map_structure(wrap_by_File, files)
+        yfiles = map_structure(wrap_by_File, yfiles)
 
         # add prefix to paths of yfiles if necessary
         def add_pfx(f):
@@ -515,12 +529,11 @@ class Group(IGroup):
                 p = f.path
 
             if os.path.isabs(p):
-                return f.__class__(p)
+                return f.copy_with(p)
             else:
-                return f.__class__(self._prefix + str(p))
-                # TODO: __init__ of f's class may take args other than path
+                return f.copy_with(self._prefix + str(p))
 
-        files = map_structure(add_pfx, files)
+        yfiles = map_structure(add_pfx, yfiles)
 
         # expand SELFs in args
         _expanded = False
@@ -530,26 +543,32 @@ class Group(IGroup):
             if isinstance(arg, NestKey):
                 _expanded = True
                 try:
-                    return nest_get(files, arg)
+                    return nest_get(yfiles, arg)
                 except:
                     raise ValueError(f"Invalid keys for SELF")
             else:
                 return arg
 
-        args, kwargs = map_structure(expand_self, (args, kwargs))
+        args, kwargs = map_structure(
+            expand_self,
+            (args, kwargs),
+            map_factory={(dict, FileNodeDict): dict},
+        )
 
         if not _expanded:
-            args = (files, *args)
+            args = (yfiles, *args)
 
         # validate method signature
         try:
             inspect.signature(method).bind(*args, **kwargs)
         except Exception as e:
-            raise Exception(f"Method signature and args/kwargs do not match") from e
+            raise Exception(
+                f"Method signature and args/kwargs do not match"
+            ) from e
 
         # flatten yfiles and args (for convenience)
         try:
-            files_ = flatten(files)
+            yfiles_ = flatten(yfiles)
         except Exception as e:
             raise Exception(
                 f"Failed to flatten the input file structure. "
@@ -566,7 +585,7 @@ class Group(IGroup):
                 f"whose keys are not sortable."
             ) from e
 
-        if len(files_) == 0:
+        if len(yfiles_) == 0:
             raise ValueError("at least 1 output file must be specified")
 
         # Unwrap FileNodeAtom
@@ -588,7 +607,7 @@ class Group(IGroup):
             if isinstance(f, IFileBase)
             else f
         )
-        files_ = list(map(_norm, files_))
+        yfiles_ = list(map(_norm, yfiles_))
         args_ = list(map(_norm, args_))
 
         # check IFileBase consistency
@@ -606,15 +625,22 @@ class Group(IGroup):
                     p2f[x.path] = x
 
         # check duplicate registration of output files
-        for f in files_:
-            if f.abspath in path_to_rule:
+        for f in yfiles_:
+            idx = path2idx.get(f.abspath)
+            if idx is None:
+                pass
+            elif idx == -1:
                 raise ValueError(
-                    f"path {f.path} is already used by another rule: "
-                    f"{path_to_rule[f.abspath]}"
+                    f"{f.path} is already used as an original file"
+                )
+            else:
+                raise ValueError(
+                    f"{f.path} is already used by another rule: "
+                    f"{self._info.rules[path2idx[f.abspath]]}"
                 )
 
         # check if all the y files are included in the arguments
-        unused = set(files_) - {f for f in args_ if isinstance(f, IFileBase)}
+        unused = set(yfiles_) - {f for f in args_ if isinstance(f, IFileBase)}
         if len(unused) != 0:
             raise ValueError(
                 f"Some files are not passed to the method: " f"{list(unused)}"
@@ -624,27 +650,17 @@ class Group(IGroup):
         deplist = []
         _added = set()
         for f in args_:
-            if isinstance(f, IFileBase) and path_to_rule.get(f.abspath) is not None:
-                dep = self._info.rule2id[path_to_rule[f.abspath]]
+            if isinstance(f, IFileBase) and path2idx.get(f.abspath, -1) != -1:
+                dep = path2idx[f.abspath]
                 if dep not in _added:
                     deplist.append(dep)
                     _added.add(dep)
 
         # create xfiles
-        ypaths = set(f.path for f in files_)
-        try:
-            arg_keys = flatten_to_nest_keys(args)
-        except Exception as e:
-            raise Exception(
-                f"Failed to flatten keyword arguments. "
-                f"This error occurs when args/kwargs contain a dict "
-                f"whose keys are not sortable."
-            ) from e
+        yfile_set = set(yfiles_)
 
         xfiles = [
-            (k, f)
-            for k, f in zip(arg_keys, args_)
-            if isinstance(f, IFile) and f.path not in ypaths
+            f for f in args_ if isinstance(f, IFileBase) and f not in yfile_set
         ]
 
         # create method args
@@ -665,7 +681,7 @@ class Group(IGroup):
 
         # create Rule
         r = Rule(
-            files_,
+            yfiles_,
             xfiles,
             deplist,
             method,
@@ -676,7 +692,7 @@ class Group(IGroup):
         )
 
         # create RuleNode
-        files = pack_sequence_as(files, files_)
+        yfiles = pack_sequence_as(yfiles, yfiles_)
 
         def conv_to_atom(x):
             assert isinstance(x, IFileBase)
@@ -684,9 +700,9 @@ class Group(IGroup):
 
         file_node_root = map_structure(
             conv_to_atom,
-            files,
+            yfiles,
             seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
-            map_factory={dict: FileNodeDict, Mapping: FileNodeDict},
+            map_factory={dict: FileNodeDict},
         )
 
         fullname = (*self._name, name)
@@ -703,21 +719,23 @@ class Group(IGroup):
         if _ismembername(name):
             self.__dict__[name] = rc
 
-        for f in files_:
-            path_to_rule[f.abspath] = r
+        rule_idx = len(self._info.rules)
+        self._info.rules.append(r)
+        self._info.rule2idx[r] = rule_idx
+        assert len(self._info.rules) == len(self._info.rule2idx)
 
-        for _k, f in xfiles:
-            if f.abspath not in path_to_rule:
-                path_to_rule[f.abspath] = None
+        for f in yfiles_:
+            path2idx[f.abspath] = rule_idx
 
-        for f in itertools.chain(files_, (x[1] for x in xfiles)):
+        for f in xfiles:
+            if f.abspath not in path2idx:
+                # Add as an original file
+                path2idx[f.abspath] = -1
+
+        for f in itertools.chain(yfiles_, xfiles):
             path_to_file[f.abspath] = f
 
-        self._info.id2rule.append(r)
-        self._info.rule2id[r] = len(self._info.rule2id)
-        assert len(self._info.id2rule) == len(self._info.rule2id)
-
-        self._info.rule_to_name[r] = "/".join((*self._name, name))
+        self._info.idx2xpaths.append([f.abspath for f in xfiles])
 
         return rc
 
@@ -728,6 +746,7 @@ class Group(IGroup):
 
     def touch(self, create=False, _t=None):
         """Touch files under this Group
+
         Args:
             create (bool):
                 if False (default), skip the file if it does not exist.
@@ -753,12 +772,12 @@ class Group(IGroup):
     def select(self, pattern, group=False):
         """Obtain child groups or rules of this group.
 
-        Signature-1:
-            select(group_tree_pattern: str)
-        Signature-2:
-            select(group_tree_pattern: list[str]|tuple[str], group=False)
+        Signatures:
 
-        Args for Signature-1:
+            1. `select(group_tree_pattern: str)`
+            2. `select(group_tree_pattern: Sequence[str], group:bool=False)`
+
+        Args for Signature 1:
             group_tree_pattern (str):
                 Pattern of the relative name of child nodes of this group.
                 Pattern consists of names concatenated with the delimiter '/'.
@@ -772,14 +791,16 @@ class Group(IGroup):
                 Otherwise, it matches rules only.
 
                 For example, calling g.select(pattern) with a pattern
-                * "a/b"  matches a rule `g.a.b`
+
+                * `"a/b"  matches a rule `g.a.b`
                 * "a/b/" matches a group `g.a.b`
                 * "a*"   matches rules `g.a`, `g.a1`, `g.a2`, etc
                 * "a*/"  matches groups `g.a`, `g.a1`, `g.a2`, etc
-                * "**"   matches all the offspring rules of `g`
-                * "**/"  matches all the offspring groups of `g`
-                * "a/**" matches all the offspring rules of the group `g.a`
-                * "**/b" matches all the offspring rules of `g` with a name "b"
+                * `"**"`   matches all the offspring rules of `g`
+                * `"**/"`  matches all the offspring groups of `g`
+                * `"a/**"` matches all the offspring rules of the group `g.a`
+                * `"**/b"` matches all the offspring rules of `g` with a name "b"
+
             group: ignored
 
         Args for Signature-2:
@@ -801,24 +822,21 @@ class Group(IGroup):
                 if True, select groups only.
 
         Returns:
-            List of rules if
+            list[RuleNodeLike]|list[Group]: rule nodes or group nodes.
 
             * called with Signature-1 and pattern[-1] != '/' or
             * called with Signature-2 and group is False
 
-            List of groups Otherwise.
-
         Note:
             Cases where Signature-2 is absolutely necessary is when you need
             to select a node whose name contains "/".
-            For example,
-            ```
-            g = create_group('group')
-            rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+            For example, ::
 
-            g.select(['dir/a.txt']) == [rule]  # OK
-            g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
-            ```
+                g = create_group('group')
+                rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+
+                g.select(['dir/a.txt']) == [rule]  # OK
+                g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
         """
         if isinstance(pattern, str):
             if len(pattern) == 0:
@@ -974,15 +992,17 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
             assert isinstance(node, Group)
             stack.extend(node._children.values())
 
-    ids = [_info.rule2id[r] for r in rules]
+    ids = [_info.rule2idx[r] for r in rules]
 
     def callback_(event):
-        log_make_event(_info.logwriter, _info.rule_to_name, event)
+        log_make_event(_info.logwriter, event)
 
     if njobs is not None and njobs >= 2:
-        return make_mp_spawn(_info.id2rule, ids, dry_run, keep_going, callback_, njobs)
+        return make_mp_spawn(
+            _info.rules, ids, dry_run, keep_going, callback_, njobs
+        )
     else:
-        return _make(_info.id2rule, ids, dry_run, keep_going, callback_)
+        return _make(_info.rules, ids, dry_run, keep_going, callback_)
 
 
 def create_group(
@@ -996,21 +1016,23 @@ def create_group(
     pickle_key=None,
 ):
     """Create a root Group node.
+
     Args:
         dirname (str|os.PathLike): directory name for this Group node.
         prefix (str|os.PathLike): path prefix for this Group node.
-            - Either (but not both) dirname or prefix must be specified.
-            - The following two are equivalent:
-                1. `create_group(dirname='dir')`
-                2. `create_group(prefix='dir/')`
-        loglevel ("debug"|"info"|"warning"|"error"|None):
-            log level. Defaults to "info"
+            Either (but not both) dirname or prefix must be specified.
+            The following two are equivalent:
+
+            1. `create_group(dirname='dir')`
+            2. `create_group(prefix='dir/')`
+
+        loglevel (str|None):
+            log level. Defaults to "info".
+            Choices are "debug", "info", "warning", "error".
+
         use_default_logger (bool): If True, logs will be printed to terminal.
             Defaults to True.
-        logfile (
-            None, str | os.PathLike | logging.Logger | writable-stream
-            Sequence[str | os.PathLike | logging.Logger | writable-stream] |
-            ):
+        logfile (None, str | os.PathLike | logging.Logger | writable-stream Sequence[str | os.PathLike | logging.Logger | writable-stream]):
             If specified, logs are printed to the file(s), stream(s), or
             logger(s). str values are considered to be file names,
             and if the file extension is .html, logs will be printed in
@@ -1054,17 +1076,22 @@ def create_group(
 
     if memo_kind == "pickle":
         if pickle_key is None:
-            raise TypeError('pickle_key must be specified when memo_kind is "pickle"')
+            raise TypeError(
+                'pickle_key must be specified when memo_kind is "pickle"'
+            )
 
         memo_factory = _get_memo_factory_pickle(pickle_key)
     elif memo_kind == "str_hash":
         if pickle_key is not None:
             raise TypeError(
-                "pickle_key must not be specified for " "str_hash memoization method"
+                "pickle_key must not be specified for "
+                "str_hash memoization method"
             )
         memo_factory = _memo_factory_str_hash
     else:
-        raise ValueError(f'memo_kind must be "str_hash" or "pickle", given {memo_kind}')
+        raise ValueError(
+            f'memo_kind must be "str_hash" or "pickle", given {memo_kind}'
+        )
 
     tree_info = GroupTreeInfo(logwriter=logwriter, memo_factory=memo_factory)
 

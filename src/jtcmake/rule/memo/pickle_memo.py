@@ -24,7 +24,9 @@ class PickleMemo(IMemo):
 
     @property
     def memo(self):
-        lcode, ldigest = pickle_encode([v() for v in self.lazy_values], self.key)
+        lcode, ldigest = pickle_encode(
+            [v() for v in self.lazy_values], self.key
+        )
 
         return {
             "type": _TYPE,
