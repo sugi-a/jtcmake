@@ -98,7 +98,6 @@ class RuleNodeBase(ABC):
         """
         ...
 
-
     @abstractmethod
     def clean(self):
         """
@@ -115,7 +114,7 @@ def _touch(path, create, _t, logwriter):
             open(path, "w").close()
         except Exception:
             return
-        
+
     if os.path.exists(path):
         os.utime(path, (_t, _t))
         logwriter.info("touch ", RichStr(path, link=path), "\n")
@@ -702,7 +701,7 @@ class Group(IGroup):
         elif isinstance(file_node_root, FrozenDict):
             rc = RuleNodeDict(fullname, r, self._info, file_node_root)
         else:
-            raise Exception('Internal Error')
+            raise Exception("Internal Error")
 
         # update group tree
         self._children[name] = rc
