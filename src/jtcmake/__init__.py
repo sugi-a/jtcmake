@@ -1,4 +1,4 @@
-from .frontend.group import create_group, SELF, make
+from .frontend.group import create_group, SELF, make, Group
 from .frontend.atom import Atom, Memstr, Nomem
 from .rule.file import File, VFile
 from .frontend.graphviz import print_graphviz
