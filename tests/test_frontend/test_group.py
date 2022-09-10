@@ -228,13 +228,13 @@ def test_group_add():
         g.add("b", os.path.abspath("r/a1"), fn)
 
     g = create_group("r")
-    _p = Path(".").resolve() / "x"
+    _p = APath("x")
     g.add("a", fn, File(_p))
     with pytest.raises(Exception):
         g.add(_p, fn)
 
     g = create_group("r")
-    _p = Path(".").resolve() / "x"
+    _p = APath("x")
     g.add("a", fn, VFile(_p))
     with pytest.raises(Exception):
         g.add(_p, fn)
@@ -274,11 +274,11 @@ def test_add_by_decorator():
         adder = getattr(g, adder_name)
 
         _fn = adder("a", "a1", None)(fn)
-        assert g.a.abspath == Path("r/a1").resolve()
+        assert g.a.abspath == Path(os.path.abspath("r/a1"))
         assert _fn == fn  # decorator should return the func as-is
 
         _fn = adder("b", None)(fn)
-        assert g.b.abspath == Path("r/b").resolve()
+        assert g.b.abspath == Path(os.path.abspath("r/b"))
         assert _fn == fn
 
 
