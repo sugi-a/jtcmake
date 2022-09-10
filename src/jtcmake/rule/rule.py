@@ -53,19 +53,8 @@ class Rule(IRule):
             if isinstance(f, IFile) and os.path.getmtime(f.path) > oldest_y:
                 return True
 
-        memo = load_memo(self.metadata_fname)
-
-        if memo is None:
+        if not self.memo.compare_to_saved(self.metadata_fname):
             return True
-
-        try:
-            if not self.memo.compare(memo):
-                return True
-        except Exception as e:
-            raise Exception(
-                f"Failed to check memoized arguments "
-                f"loaded from {self.metadata_fname}"
-            ) from e
 
         return False
 
@@ -99,7 +88,7 @@ class Rule(IRule):
         return p.parent / ".jtcmake" / p.name
 
     def update_memo(self):
-        save_memo(self.metadata_fname, self.memo.memo)
+        self.memo.save_memo(self.metadata_fname)
 
     @property
     def method(self):
@@ -117,18 +106,3 @@ class Rule(IRule):
     def deplist(self):
         return self._deplist
 
-
-def save_memo(metadata_fname, args_memo):
-    os.makedirs(Path(metadata_fname).parent, exist_ok=True)
-    with open(metadata_fname, "w") as f:
-        json.dump(args_memo, f)
-
-
-def load_memo(metadata_fname):
-    if not os.path.exists(metadata_fname):
-        return None
-
-    with open(metadata_fname) as f:
-        data = json.load(f)
-
-    return data  # TODO: validation

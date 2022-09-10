@@ -63,13 +63,9 @@ def test_update_memo(tmp_path, mocker):
 
     r = Rule(ys, xs, [], _method, _args, _kwargs, mock_memo)
 
-    m = mocker.patch("jtcmake.rule.rule.save_memo")
     r.update_memo()
 
-    pickle_code = pickle.dumps(["xyz"])
-    m.assert_called_once_with(r.metadata_fname, 0)
-
-    # TODO
+    mock_memo.save_memo.assert_called_once_with(r.metadata_fname)
 
 
 def test_rule_should_update(tmp_path, mocker):
@@ -97,7 +93,7 @@ def test_rule_should_update(tmp_path, mocker):
     xs = [x1, x2]
 
     mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare.return_value = True
+    mock_memo.compare_to_saved.return_value = True
     mock_memo.memo = 0
 
     r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, mock_memo)
@@ -145,20 +141,12 @@ def test_rule_should_update(tmp_path, mocker):
 
     # case 5
     for dry_run in (False, True):
-        # no cache case
         touch(y1, y2, x1, x2)
-        rm(r.metadata_fname)
+        mock_memo.compare_to_saved.return_value = False
         assert r.should_update(False, dry_run)
-
-        # cache differing case
-        r.update_memo()
-        touch(y1, y2, x1, x2)
-        mock_memo.compare.return_value = False
-        assert r.should_update(False, dry_run)
-        mock_memo.compare.return_value = True
+        mock_memo.compare_to_saved.return_value = True
 
     # case 6
-    r.update_memo()
     for dry_run in (False, True):
         # simple
         touch(x1, t=time.time() - 2)
@@ -176,7 +164,7 @@ def test_rule_should_update(tmp_path, mocker):
 
     #### no x ####
     mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare.return_value = True
+    mock_memo.compare_to_saved.return_value = True
     mock_memo.memo = 0
 
     y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
@@ -214,12 +202,11 @@ def test_preprocess(tmp_path, mocker):
 def test_postprocess(tmp_path, mocker):
     """Rule.postprocess(callback, successed:bool) should
     1. if successed,
-        1. Create input VFile hash cache
+        1. update memo
     2. if !successed,
         1. Set mtime of all the existing output files to 0
-        2. Delete input VFile hash cache
+        2. Delete memo
     """
-    mock_save_memo = mocker.patch("jtcmake.rule.rule.save_memo")
     mock_memo = mocker.MagicMock(IMemo)
 
     y = File(tmp_path / "y")
@@ -231,6 +218,6 @@ def test_postprocess(tmp_path, mocker):
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)
 
-    mock_save_memo.assert_called_once()
+    mock_memo.save_memo.assert_called_once_with(r.metadata_fname)
 
     # TODO: test
