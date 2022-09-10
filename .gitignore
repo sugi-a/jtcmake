@@ -5,3 +5,5 @@ Untitled.ipynb
 .*.swp
 
 /.venv/
+/dist/
+/src/jtcmake.egg-info/
