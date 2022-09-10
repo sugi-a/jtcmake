@@ -27,7 +27,7 @@ class Rule(IRule):
         self.name = name
         self.memo = memo
 
-    def should_update(self, par_updated, dry_run):
+    def check_update(self, par_updated, dry_run):
         if dry_run and par_updated:
             return True
 
@@ -105,4 +105,3 @@ class Rule(IRule):
     @property
     def deplist(self):
         return self._deplist
-

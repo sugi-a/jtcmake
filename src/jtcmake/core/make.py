@@ -112,12 +112,12 @@ def make(
 def process_rule(rule, dry_run, par_updated, is_main, callback):
     if dry_run:
         try:
-            should_update = rule.should_update(par_updated, True)
+            check_update = rule.check_update(par_updated, True)
         except Exception as e:
             callback(events.UpdateCheckError(rule, e))
             return Result.Fail
 
-        if should_update:
+        if check_update:
             callback(events.DryRun(rule))
             return Result.Update
         else:
@@ -125,12 +125,12 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
             return Result.Skip
 
     try:
-        should_update = rule.should_update(par_updated, False)
+        check_update = rule.check_update(par_updated, False)
     except Exception as e:
         callback(events.UpdateCheckError(rule, e))
         return Result.Fail
 
-    if not should_update:
+    if not check_update:
         callback(events.Skip(rule, is_main))
         return Result.Skip
 

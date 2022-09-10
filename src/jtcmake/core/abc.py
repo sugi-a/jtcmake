@@ -7,7 +7,7 @@ class IEvent:
 
 class IRule(abc.ABC):
     @abc.abstractmethod
-    def should_update(self, updated_rules, dry_run):
+    def check_update(self, updated_rules, dry_run):
         ...
 
     @abc.abstractmethod

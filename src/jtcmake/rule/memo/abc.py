@@ -11,12 +11,12 @@ class IMemo(ABC):
     @abstractmethod
     def memo(self):
         ...
-    
+
     def save_memo(self, fname):
         os.makedirs(os.path.dirname(fname), exist_ok=True)
         with open(fname, "w") as f:
             json.dump(self.memo, f)
-    
+
     def compare_to_saved(self, fname):
         if not os.path.exists(fname):
             return False
@@ -25,7 +25,7 @@ class IMemo(ABC):
             other = json.load(f)
 
         return self.compare(other)
-    
+
 
 class IMemoAtom(ABC):
     @property

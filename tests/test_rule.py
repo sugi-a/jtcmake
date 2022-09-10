@@ -68,7 +68,7 @@ def test_update_memo(tmp_path, mocker):
     mock_memo.save_memo.assert_called_once_with(r.metadata_fname)
 
 
-def test_rule_should_update(tmp_path, mocker):
+def test_rule_check_update(tmp_path, mocker):
     """
     Prerequisite: the y-list has at least one item.
 
@@ -100,10 +100,10 @@ def test_rule_should_update(tmp_path, mocker):
 
     # case 1
     touch(x1, x2, y1, y2)
-    assert r.should_update(True, True)
+    assert r.check_update(True, True)
 
     touch(x1, t=0)
-    assert r.should_update(True, True)
+    assert r.check_update(True, True)
 
     # case 2
     for dry_run in (False, True):
@@ -111,25 +111,25 @@ def test_rule_should_update(tmp_path, mocker):
         rm(x1)
         touch(x2, y1, y2)
         with pytest.raises(Exception):
-            r.should_update(False, dry_run)
+            r.check_update(False, dry_run)
 
         # x1's mtime is 0
         touch(y1, y2, x2)
         touch(x1, t=0)
         with pytest.raises(Exception):
-            r.should_update(False, dry_run)
+            r.check_update(False, dry_run)
 
     # case 3
     for dry_run in (False, True):
         # y1 is missing
         rm(y1)
         touch(x1, x2, y2)
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
 
         # y1 has mtime of 0
         touch(y2)
         touch(y1, t=0)
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
 
     # case 4
     for dry_run in (False, True):
@@ -137,13 +137,13 @@ def test_rule_should_update(tmp_path, mocker):
         touch(y2, t=time.time() - 2)
         touch(x1, t=time.time() - 1)
         touch(y1)
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
 
     # case 5
     for dry_run in (False, True):
         touch(y1, y2, x1, x2)
         mock_memo.compare_to_saved.return_value = False
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
         mock_memo.compare_to_saved.return_value = True
 
     # case 6
@@ -152,15 +152,15 @@ def test_rule_should_update(tmp_path, mocker):
         touch(x1, t=time.time() - 2)
         touch(y1, y2, t=time.time() - 1)
         touch(x2, t=time.time() - 0)
-        assert not r.should_update(False, dry_run)
+        assert not r.check_update(False, dry_run)
 
         # equal mtime
         touch(y1, y2, x1, x2)
-        assert not r.should_update(False, dry_run)
+        assert not r.check_update(False, dry_run)
 
     # pass case 1 with !dry_run
     touch(x1, x2, y1, y2)
-    assert not r.should_update(True, False)
+    assert not r.check_update(True, False)
 
     #### no x ####
     mock_memo = mocker.MagicMock(IMemo)
@@ -176,17 +176,17 @@ def test_rule_should_update(tmp_path, mocker):
         # y1 is missing
         rm(y1)
         touch(y2)
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
 
         # y1 is of mtime 0
         touch(y2)
         touch(y1, t=0)
-        assert r.should_update(False, dry_run)
+        assert r.check_update(False, dry_run)
 
     # case 6.
     for dry_run in (False, True):
         touch(y1, y2)
-        assert not r.should_update(False, dry_run)
+        assert not r.check_update(False, dry_run)
 
 
 def test_preprocess(tmp_path, mocker):

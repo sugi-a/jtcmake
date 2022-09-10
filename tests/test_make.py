@@ -49,23 +49,23 @@ class MockRule(IRule):
         args,
         kwargs,
         method,
-        should_update=True,
+        check_update=True,
         preprocess_err=None,
         postprocess_err=None,
     ):
         self._deplist = deplist
-        self._should_update = should_update
+        self._check_update = check_update
         self._args = args
         self._kwargs = kwargs
         self._method = method
         self._preprocess_err = preprocess_err
         self._postprocess_err = postprocess_err
 
-    def should_update(self, par_updated, dry_run):
-        log.append(("should_update", self, par_updated, dry_run))
-        if isinstance(self._should_update, Exception):
-            raise self._should_update
-        return self._should_update
+    def check_update(self, par_updated, dry_run):
+        log.append(("check_update", self, par_updated, dry_run))
+        if isinstance(self._check_update, Exception):
+            raise self._check_update
+        return self._check_update
 
     def preprocess(self, callback):
         log.append(("preprocess", self))
@@ -127,13 +127,13 @@ def test_basic(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             ("method",),
             ("postprocess", r1, True),
             events.Done(r1),
-            ("should_update", r2, True, False),
+            ("check_update", r2, True, False),
             events.Start(r2),
             ("preprocess", r2),
             ("method",),
@@ -150,7 +150,7 @@ def test_basic(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             ("method",),
@@ -167,13 +167,13 @@ def test_basic(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             ("method",),
             ("postprocess", r1, True),
             events.Done(r1),
-            ("should_update", r2, True, False),
+            ("check_update", r2, True, False),
             events.Start(r2),
             ("preprocess", r2),
             ("method",),
@@ -210,8 +210,8 @@ def test_skip(mp):
 
     # skip both
     log.clear()
-    r1._should_update = False
-    r2._should_update = False
+    r1._check_update = False
+    r2._check_update = False
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -219,17 +219,17 @@ def test_skip(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Skip(r1, False),
-            ("should_update", r2, False, False),
+            ("check_update", r2, False, False),
             events.Skip(r2, True),
         ],
     )
 
     # skip r1
     log.clear()
-    r1._should_update = False
-    r2._should_update = True
+    r1._check_update = False
+    r2._check_update = True
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -237,9 +237,9 @@ def test_skip(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Skip(r1, False),
-            ("should_update", r2, False, False),
+            ("check_update", r2, False, False),
             events.Start(r2),
             ("preprocess", r2),
             ("method",),
@@ -273,7 +273,7 @@ def test_dryrun(mp):
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
     assert_same_log(
-        log, [("should_update", r1, False, True), events.DryRun(r1)]
+        log, [("check_update", r1, False, True), events.DryRun(r1)]
     )
 
     # dry-run r2
@@ -284,17 +284,17 @@ def test_dryrun(mp):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, True),
+            ("check_update", r1, False, True),
             events.DryRun(r1),
-            ("should_update", r2, True, True),
+            ("check_update", r2, True, True),
             events.DryRun(r2),
         ],
     )
 
 
-def test_should_update_error():
+def test_check_update_error():
     e = Exception()
-    r1 = MockRule([], (), {}, lambda: None, should_update=e)
+    r1 = MockRule([], (), {}, lambda: None, check_update=e)
 
     id2rule = [r1]
 
@@ -305,7 +305,7 @@ def test_should_update_error():
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.UpdateCheckError(r1, e),
             events.StopOnFail(),
         ],
@@ -325,7 +325,7 @@ def test_preprocess_error():
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             events.PreProcError(r1, e),
@@ -351,7 +351,7 @@ def test_exec_error():
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             events.ExecError(r1, e),
@@ -374,7 +374,7 @@ def test_postprocess_error(tmp_path):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             # method
@@ -402,7 +402,7 @@ def test_keyboard_interrupt(tmp_path):
     assert_same_log(
         log,
         [
-            ("should_update", r1, False, False),
+            ("check_update", r1, False, False),
             events.Start(r1),
             ("preprocess", r1),
             # method
