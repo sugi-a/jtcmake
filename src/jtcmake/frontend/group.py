@@ -529,10 +529,9 @@ class Group(IGroup):
                 p = f.path
 
             if os.path.isabs(p):
-                return f.__class__(p)
+                return f.copy_with(p)
             else:
-                return f.__class__(self._prefix + str(p))
-                # TODO: __init__ of f's class may take args other than path
+                return f.copy_with(self._prefix + str(p))
 
         yfiles = map_structure(add_pfx, yfiles)
 
