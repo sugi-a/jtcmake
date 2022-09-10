@@ -11,7 +11,7 @@ def log_make_event(w, e):
         r = e.rule
 
         # Show stack trace and error message
-        w.warning(''.join(e.trace_exc.format()))
+        w.warning("".join(e.trace_exc.format()))
 
         if r.name is not None:
             name = "/".join(r.name)
@@ -27,13 +27,13 @@ def log_make_event(w, e):
             w.error(
                 f"Failed to make ",
                 name,
-                ": An error occured while checking if update is necessary\n"
+                ": An error occured while checking if update is necessary\n",
             )
         elif isinstance(e, events.PreProcError):
             w.error(
                 f"Failed to make ",
                 name,
-                f": An error occured during preprocessing\n"
+                f": An error occured during preprocessing\n",
             )
         elif isinstance(e, events.ExecError):
             w.error(f"Failed to make ", name, f": Method failed\n")
