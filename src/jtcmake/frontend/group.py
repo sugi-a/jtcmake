@@ -267,6 +267,15 @@ def _parse_args_group_add(name, args, kwargs):
     return name, path, method, args, kwargs
 
 
+def _validate_signature(func, args, kwargs):
+    try:
+        binding = inspect.signature(func).bind(*args, **kwargs)
+    except Exception as e:
+        return False
+
+    return True
+
+
 class Group(IGroup):
     """
     __init__() for this class is private.
@@ -538,14 +547,6 @@ class Group(IGroup):
         if not _expanded:
             args = (yfiles, *args)
 
-        # validate method signature
-        try:
-            inspect.signature(method).bind(*args, **kwargs)
-        except Exception as e:
-            raise Exception(
-                f"Method signature and args/kwargs do not match"
-            ) from e
-
         # flatten yfiles and args (for convenience)
         try:
             yfiles_ = flatten(yfiles)
@@ -655,6 +656,10 @@ class Group(IGroup):
         method_args = pack_sequence_as((args, kwargs), args_)
         method_args = map_structure(_unwrap_IFileBase_Atom, method_args)
         method_args, method_kwargs = method_args
+
+        # validate arguments
+        if not _validate_signature(method, method_args, method_kwargs):
+            raise TypeError("arguments do not match the method signature")
 
         memo_args = pack_sequence_as((args, kwargs), args_)
         memo = self._info.memo_factory(memo_args)
