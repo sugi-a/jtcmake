@@ -267,6 +267,10 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group("r").add("a", fn, lambda: 0)
 
+    # arguments shape not matching the method signature
+    with pytest.raises(TypeError):
+        create_group("r").add("a", lambda x: None, 1)
+
 
 def test_add_by_decorator():
     for adder_name in ["add", "addvf"]:
