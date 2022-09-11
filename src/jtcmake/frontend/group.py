@@ -250,6 +250,23 @@ class GroupTreeInfo:
         self.logwriter = logwriter
 
 
+def _parse_args_group_add(name, args, kwargs):
+    """No type checking. Structure checking only."""
+    if len(args) == 0:
+        raise TypeError("method must be specified")
+
+    if callable(args[0]) or args[0] is None:
+        path = name
+        method, *args = args
+    else:
+        if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
+            raise TypeError("method must be specified")
+
+        path, method, *args = args
+
+    return name, path, method, args, kwargs
+
+
 class Group(IGroup):
     """
     __init__() for this class is private.
@@ -391,32 +408,18 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if isinstance(name, os.PathLike):
-            name = str(name)
-        elif not isinstance(name, str):
-            raise ValueError(f"name must be str|os.PathLike")
-
-        if len(args) == 0:
-            raise TypeError("method must be specified")
-
-        if callable(args[0]) or args[0] is None:
-            path = str(name)
-            method, *args = args
-        else:
-            if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError("method must be specified")
-
-            path, method, *args = args
+        name, path, method, args, kwargs = \
+            _parse_args_group_add(name, args, kwargs)
 
         if method is None:
-
-            def adder(method):
-                self._add(name, path, method, *args, **kwargs)
+            def decorator_add(method):
+                self._add(File, name, path, method, *args, **kwargs)
                 return method
 
-            return adder
+            return decorator_add
+        else:
+            return self._add(File, name, path, method, *args, **kwargs)
 
-        return self._add(name, path, method, *args, **kwargs)
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -452,48 +455,25 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
+        name, path, method, args, kwargs = \
+            _parse_args_group_add(name, args, kwargs)
+
+        if method is None:
+            def decorator_addvf(method):
+                self._add(VFile, name, path, method, *args, **kwargs)
+                return method
+
+            return decorator_addvf
+        else:
+            return self._add(VFile, name, path, method, *args, **kwargs)
+
+
+    def _add(self, file_factory, name, yfiles, method, *args, **kwargs):
+        # type checking and normalization
         if isinstance(name, os.PathLike):
             name = str(name)
         elif not isinstance(name, str):
-            raise ValueError(f"name must be str|os.PathLike")
-
-        if len(args) == 0:
-            raise TypeError("method must be specified")
-
-        if callable(args[0]) or args[0] is None:
-            path = str(name)
-            method, *args = args
-        else:
-            if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError("method must be specified")
-
-            path, method, *args = args
-
-        if method is None:
-
-            def adder(method):
-                assert callable(method)
-                self.addvf(name, path, method, *args, **kwargs)
-                return method
-
-            return adder
-
-        def wrap_by_VFile(p):
-            if isinstance(p, (str, os.PathLike)):
-                return VFile(p)
-            else:
-                return p
-
-        path = map_structure(wrap_by_VFile, path)
-
-        return self._add(name, path, method, *args, **kwargs)
-
-    def _add(self, name, yfiles, method, *args, **kwargs):
-        assert isinstance(name, str)
-        assert callable(method)
-
-        path2idx = self._info.path2idx
-        path_to_file = self._info.path_to_file
+            raise TypeError("name must be str|os.PathLike")
 
         if not _is_valid_node_name(name):
             raise ValueError(f'name "{name}" contains some illegal characters')
@@ -503,15 +483,23 @@ class Group(IGroup):
         if name == "":
             raise ValueError(f'name must not be ""')
 
-        # wrap str/os.PathLike in yfiles by File
-        def wrap_by_File(p):
+        if not callable(method):
+            raise TypeError("method must be callable")
+
+        path2idx = self._info.path2idx
+        path_to_file = self._info.path_to_file
+
+        def normalize_output_files(p):
             if isinstance(p, (str, os.PathLike)):
-                return File(p)
-            else:
-                assert isinstance(p, IFileBase)
+                return file_factory(p)
+            elif isinstance(p, IFileBase):
                 return p
 
-        yfiles = map_structure(wrap_by_File, yfiles)
+            raise TypeError(
+                "output file must be str|os.PathLike|IFileBase. Given {p}"
+            )
+
+        yfiles = map_structure(normalize_output_files, yfiles)
 
         # add prefix to paths of yfiles if necessary
         def add_pfx(f):
