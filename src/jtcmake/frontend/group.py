@@ -417,10 +417,12 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        name, path, method, args, kwargs = \
-            _parse_args_group_add(name, args, kwargs)
+        name, path, method, args, kwargs = _parse_args_group_add(
+            name, args, kwargs
+        )
 
         if method is None:
+
             def decorator_add(method):
                 self._add(File, name, path, method, *args, **kwargs)
                 return method
@@ -428,7 +430,6 @@ class Group(IGroup):
             return decorator_add
         else:
             return self._add(File, name, path, method, *args, **kwargs)
-
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -464,10 +465,12 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        name, path, method, args, kwargs = \
-            _parse_args_group_add(name, args, kwargs)
+        name, path, method, args, kwargs = _parse_args_group_add(
+            name, args, kwargs
+        )
 
         if method is None:
+
             def decorator_addvf(method):
                 self._add(VFile, name, path, method, *args, **kwargs)
                 return method
@@ -475,7 +478,6 @@ class Group(IGroup):
             return decorator_addvf
         else:
             return self._add(VFile, name, path, method, *args, **kwargs)
-
 
     def _add(self, file_factory, name, yfiles, method, *args, **kwargs):
         # type checking and normalization
