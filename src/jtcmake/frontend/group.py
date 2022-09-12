@@ -1,4 +1,5 @@
 import sys, os, pathlib, re, contextlib, time, json, inspect
+from abc import ABC, abstractmethod
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
@@ -7,7 +8,7 @@ from logging import Logger
 
 from ..rule.rule import Rule
 from ..rule.memo import PickleMemo, StrHashMemo
-from .abc import IGroup, IFileNode
+from .abc import IGroup
 from ..rule.file import File, VFile, IFile, IFileBase
 from .event_logger import log_make_event
 from ..core.make import make as _make
@@ -35,141 +36,10 @@ from ..utils.nest import (
     pack_sequence_as,
 )
 
-
-class FileNodeAtom(IFileNode):
-    def __init__(self, tree_info, file):
-        assert isinstance(file, IFileBase)
-        self._info = tree_info
-        self._file = file
-
-    @property
-    def path(self):
-        return self._file.path
-
-    @property
-    def abspath(self):
-        return self._file.abspath
-
-    def touch(self, create=False, _t=None):
-        """Touch this file
-
-        Args:
-            create (bool):
-                if False (default), skip the file if it does not exist.
-            _t (float):
-                set mtime to `_t` after touching
-        """
-        if _t is None:
-            _t = time.time()
-        if create or os.path.exists(self._file.path):
-            open(self._file.path, "w").close()
-            os.utime(self._file.path, (_t, _t))
-            self._info.logwriter.info(
-                "touch ", RichStr(str(self.path), link=str(self.path)), "\n"
-            )
-
-    def clean(self):
-        """Delete this file if exists"""
-        try:
-            os.remove(self._file.path)
-            self._info.logwriter.info(
-                "clean ", RichStr(str(self.path), link=str(self.path)), "\n"
-            )
-        except:
-            pass
-
-    def __repr__(self):
-        return f'FileNodeAtom("{self.path}")'
+from ..utils.frozen_dict import FrozenDict
 
 
-class FileNodeTuple(tuple, IFileNode):
-    def __new__(cls, lst):
-        return super().__new__(cls, lst)
-
-    def __init__(self, lst):
-        ...
-
-    @property
-    def path(self):
-        return tuple(x.path for x in self)
-
-    @property
-    def abspath(self):
-        return tuple(x.abspath for x in self)
-
-    def touch(self, create=False, _t=None):
-        """Touch files in this tuple
-
-        Args:
-            create (bool):
-                if False (default), skip the file if it does not exist.
-            _t (float):
-                set mtime to `_t` after touching
-        """
-        if _t is None:
-            _t = time.time()
-        for x in self:
-            x.touch(create, _t)
-
-    def clean(self):
-        """Delete files in this tuple"""
-        for x in self:
-            x.clean()
-
-    def __repr__(self):
-        return f"FileNodeTuple{super().__repr__()}"
-
-
-class FileNodeDict(Mapping, IFileNode):
-    def __init__(self, dic):
-        self._dic = dic
-
-    @property
-    def path(self):
-        return {k: v.path for k, v in self._dic.items()}
-
-    @property
-    def abspath(self):
-        return {k: v.abspath for k, v in self._dic.items()}
-
-    def touch(self, create=False, _t=None):
-        """Touch files in this dict
-        Args:
-            create (bool):
-                if False (default), skip the file if it does not exist.
-            _t (float):
-                set mtime to `_t` after touching
-        """
-        if _t is None:
-            _t = time.time()
-        for k, v in self._dic.items():
-            v.touch(create, _t)
-
-    def clean(self):
-        """Delete files in this dict"""
-        for k, v in self._dic.items():
-            v.clean()
-
-    def __getitem__(self, k):
-        return self._dic[k]
-
-    def __iter__(self):
-        return self._dic.__iter__()
-
-    def __len__(self):
-        return len(self._dic)
-
-    def __eq__(self, other):
-        return self is other
-
-    def __hash__(self):
-        return hash(id(self))
-
-    def __repr__(self):
-        return f"FileNodeDict{dict(self)}"
-
-
-class RuleNodeBase:
+class RuleNodeBase(ABC):
     def __init__(self, name, rule, group_tree_info):
         self._rule = rule
         self._info = group_tree_info
@@ -210,37 +80,159 @@ class RuleNodeBase:
         return self._name
 
     def touch_memo(self):
+        """
+        Overwrite memo based on the current content of the method arguments.
+        """
         self._rule.update_memo()
 
+    @abstractmethod
+    def touch(self, create=False, _t=None):
+        """
+        Set the modification time of the output files of this rule to now.
 
-class RuleNodeAtom(RuleNodeBase, FileNodeAtom):
+        Args:
+            create (bool): if True, files that do not exist will be
+                created as empty files.
+            _t (float):
+                set mtime to `_t` instead of now
+        """
+        ...
+
+    @abstractmethod
+    def clean(self):
+        """
+        Delete the output files and the memo of this rule.
+        """
+        ...
+
+
+def _touch(path, create, _t, logwriter):
+    path = str(path)
+
+    if not os.path.exists(path) and create:
+        try:
+            open(path, "w").close()
+        except Exception:
+            return
+
+    if os.path.exists(path):
+        os.utime(path, (_t, _t))
+        logwriter.info("touch ", RichStr(path, link=path), "\n")
+
+
+def _clean(path, logwriter):
+    path = str(path)
+
+    try:
+        os.remove(path)
+        logwriter.info("clean ", RichStr(path, link=path), "\n")
+    except:
+        pass
+
+
+class RuleNodeAtom(RuleNodeBase):
     def __init__(self, name, rule, group_tree_info, file):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
-        FileNodeAtom.__init__(self, group_tree_info, file)
+        self._file = file
+
+    @property
+    def path(self):
+        return self._file.path
+
+    @property
+    def abspath(self):
+        return self._file.abspath
+
+    def clean(self):
+        _clean(self._file.path, self._info.logwriter)
+
+    def touch(self, create=False, _t=None):
+        if _t is None:
+            _t = time.time()
+
+        _touch(self._file.path, create, _t, self._info.logwriter)
 
     def __repr__(self):
         return f'RuleNodeAtom(path="{self.path}")'
 
 
-class RuleNodeTuple(RuleNodeBase, FileNodeTuple):
+# dict and FrozenDict are the map-type target of map_structure
+_MAP_FACTORY = {(dict, FrozenDict): dict}
+
+
+class RuleNodeTuple(tuple, RuleNodeBase):
     def __new__(cls, _name, _rule, _group_tree_info, lst):
-        return FileNodeTuple.__new__(cls, lst)
+        return tuple.__new__(cls, lst)
 
     def __init__(self, name, rule, group_tree_info, lst):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
-        FileNodeTuple.__init__(self, lst)
+
+    def _map_structure(self, map_fn):
+        return map_structure(map_fn, self, map_factory=_MAP_FACTORY)
+
+    @property
+    def path(self):
+        return self._map_structure(lambda f: f.path)
+
+    @property
+    def abspath(self):
+        return self._map_structure(lambda f: f.abspath)
+
+    def clean(self):
+        self._map_structure(lambda f: _clean(f.path, self._info.logwriter))
+
+    def touch(self, create=False, _t=None):
+        if _t is None:
+            _t = time.time()
+
+        map_fn = lambda f: _touch(f.path, create, _t, self._info.logwriter)
+        self._map_structure(map_fn)
+
+    def __hash__(self, other):
+        """ensure the instance does not behave as a value object"""
+        return hash(id(self))
+
+    def __eq__(self, other):
+        """ensure the instance does not behave as a value object"""
+        return id(self) == id(other)
 
     def __repr__(self):
         return f"RuleNodeTuple{tuple(self)}"
 
 
-class RuleNodeDict(RuleNodeBase, FileNodeDict):
-    def __new__(cls, _name, _rule, _group_tree_info, dic):
-        return FileNodeDict.__new__(cls)
-
+class RuleNodeDict(FrozenDict, RuleNodeBase):
     def __init__(self, name, rule, group_tree_info, dic):
         RuleNodeBase.__init__(self, name, rule, group_tree_info)
-        FileNodeDict.__init__(self, dic)
+        FrozenDict.__init__(self, dic)
+
+    def _map_structure(self, map_fn):
+        return map_structure(map_fn, self, map_factory=_MAP_FACTORY)
+
+    @property
+    def path(self):
+        return self._map_structure(lambda f: f.path)
+
+    @property
+    def abspath(self):
+        return self._map_structure(lambda f: f.abspath)
+
+    def clean(self):
+        self._map_structure(lambda f: _clean(f.path, self._info.logwriter))
+
+    def touch(self, create=False, _t=None):
+        if _t is None:
+            _t = time.time()
+
+        map_fn = lambda f: _touch(f.path, create, _t, self._info.logwriter)
+        self._map_structure(map_fn)
+
+    def __hash__(self):
+        """ensure the instance does not behave as a value object"""
+        return id(self)
+
+    def __eq__(self, other):
+        """ensure the instance does not behave as a value object"""
+        return id(self) == id(other)
 
     def __repr__(self):
         return f"RuleNodeDict{dict(self)}"
@@ -256,6 +248,32 @@ class GroupTreeInfo:
         self.memo_factory = memo_factory
 
         self.logwriter = logwriter
+
+
+def _parse_args_group_add(name, args, kwargs):
+    """No type checking. Structure checking only."""
+    if len(args) == 0:
+        raise TypeError("method must be specified")
+
+    if callable(args[0]) or args[0] is None:
+        path = name
+        method, *args = args
+    else:
+        if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
+            raise TypeError("method must be specified")
+
+        path, method, *args = args
+
+    return name, path, method, args, kwargs
+
+
+def _validate_signature(func, args, kwargs):
+    try:
+        binding = inspect.signature(func).bind(*args, **kwargs)
+    except Exception as e:
+        return False
+
+    return True
 
 
 class Group(IGroup):
@@ -399,32 +417,19 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if isinstance(name, os.PathLike):
-            name = str(name)
-        elif not isinstance(name, str):
-            raise ValueError(f"name must be str|os.PathLike")
-
-        if len(args) == 0:
-            raise TypeError("method must be specified")
-
-        if callable(args[0]) or args[0] is None:
-            path = str(name)
-            method, *args = args
-        else:
-            if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError("method must be specified")
-
-            path, method, *args = args
+        name, path, method, args, kwargs = _parse_args_group_add(
+            name, args, kwargs
+        )
 
         if method is None:
 
-            def adder(method):
-                self._add(name, path, method, *args, **kwargs)
+            def decorator_add(method):
+                self._add(File, name, path, method, *args, **kwargs)
                 return method
 
-            return adder
-
-        return self._add(name, path, method, *args, **kwargs)
+            return decorator_add
+        else:
+            return self._add(File, name, path, method, *args, **kwargs)
 
     def addvf(self, name, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -460,48 +465,26 @@ class Group(IGroup):
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        if isinstance(name, os.PathLike):
-            name = str(name)
-        elif not isinstance(name, str):
-            raise ValueError(f"name must be str|os.PathLike")
-
-        if len(args) == 0:
-            raise TypeError("method must be specified")
-
-        if callable(args[0]) or args[0] is None:
-            path = str(name)
-            method, *args = args
-        else:
-            if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-                raise TypeError("method must be specified")
-
-            path, method, *args = args
+        name, path, method, args, kwargs = _parse_args_group_add(
+            name, args, kwargs
+        )
 
         if method is None:
 
-            def adder(method):
-                assert callable(method)
-                self.addvf(name, path, method, *args, **kwargs)
+            def decorator_addvf(method):
+                self._add(VFile, name, path, method, *args, **kwargs)
                 return method
 
-            return adder
+            return decorator_addvf
+        else:
+            return self._add(VFile, name, path, method, *args, **kwargs)
 
-        def wrap_by_VFile(p):
-            if isinstance(p, (str, os.PathLike)):
-                return VFile(p)
-            else:
-                return p
-
-        path = map_structure(wrap_by_VFile, path)
-
-        return self._add(name, path, method, *args, **kwargs)
-
-    def _add(self, name, yfiles, method, *args, **kwargs):
-        assert isinstance(name, str)
-        assert callable(method)
-
-        path2idx = self._info.path2idx
-        path_to_file = self._info.path_to_file
+    def _add(self, file_factory, name, yfiles, method, *args, **kwargs):
+        # type checking and normalization
+        if isinstance(name, os.PathLike):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise TypeError("name must be str|os.PathLike")
 
         if not _is_valid_node_name(name):
             raise ValueError(f'name "{name}" contains some illegal characters')
@@ -511,15 +494,23 @@ class Group(IGroup):
         if name == "":
             raise ValueError(f'name must not be ""')
 
-        # wrap str/os.PathLike in yfiles by File
-        def wrap_by_File(p):
+        if not callable(method):
+            raise TypeError("method must be callable")
+
+        path2idx = self._info.path2idx
+        path_to_file = self._info.path_to_file
+
+        def normalize_output_files(p):
             if isinstance(p, (str, os.PathLike)):
-                return File(p)
-            else:
-                assert isinstance(p, IFileBase)
+                return file_factory(p)
+            elif isinstance(p, IFileBase):
                 return p
 
-        yfiles = map_structure(wrap_by_File, yfiles)
+            raise TypeError(
+                "output file must be str|os.PathLike|IFileBase. Given {p}"
+            )
+
+        yfiles = map_structure(normalize_output_files, yfiles)
 
         # add prefix to paths of yfiles if necessary
         def add_pfx(f):
@@ -552,19 +543,11 @@ class Group(IGroup):
         args, kwargs = map_structure(
             expand_self,
             (args, kwargs),
-            map_factory={(dict, FileNodeDict): dict},
+            map_factory=_MAP_FACTORY,
         )
 
         if not _expanded:
             args = (yfiles, *args)
-
-        # validate method signature
-        try:
-            inspect.signature(method).bind(*args, **kwargs)
-        except Exception as e:
-            raise Exception(
-                f"Method signature and args/kwargs do not match"
-            ) from e
 
         # flatten yfiles and args (for convenience)
         try:
@@ -588,8 +571,8 @@ class Group(IGroup):
         if len(yfiles_) == 0:
             raise ValueError("at least 1 output file must be specified")
 
-        # Unwrap FileNodeAtom
-        args_ = [x._file if isinstance(x, FileNodeAtom) else x for x in args_]
+        # Unwrap RuleNodeAtom
+        args_ = [x._file if isinstance(x, RuleNodeAtom) else x for x in args_]
 
         # normalize paths (take the shorter one of absolute or relative path)
         def _shorter_path(p):
@@ -676,6 +659,10 @@ class Group(IGroup):
         method_args = map_structure(_unwrap_IFileBase_Atom, method_args)
         method_args, method_kwargs = method_args
 
+        # validate arguments
+        if not _validate_signature(method, method_args, method_kwargs):
+            raise TypeError("arguments do not match the method signature")
+
         memo_args = pack_sequence_as((args, kwargs), args_)
         memo = self._info.memo_factory(memo_args)
 
@@ -694,24 +681,22 @@ class Group(IGroup):
         # create RuleNode
         yfiles = pack_sequence_as(yfiles, yfiles_)
 
-        def conv_to_atom(x):
-            assert isinstance(x, IFileBase)
-            return FileNodeAtom(self._info, x)
-
         file_node_root = map_structure(
-            conv_to_atom,
+            lambda x: x,
             yfiles,
-            seq_factory={list: FileNodeTuple, tuple: FileNodeTuple},
-            map_factory={dict: FileNodeDict},
+            seq_factory={list: tuple, tuple: tuple},
+            map_factory={dict: FrozenDict},
         )
 
         fullname = (*self._name, name)
-        if isinstance(file_node_root, FileNodeAtom):
-            rc = RuleNodeAtom(fullname, r, self._info, file_node_root._file)
-        elif isinstance(file_node_root, FileNodeTuple):
+        if isinstance(file_node_root, IFileBase):
+            rc = RuleNodeAtom(fullname, r, self._info, file_node_root)
+        elif isinstance(file_node_root, tuple):
             rc = RuleNodeTuple(fullname, r, self._info, file_node_root)
-        elif isinstance(file_node_root, FileNodeDict):
+        elif isinstance(file_node_root, FrozenDict):
             rc = RuleNodeDict(fullname, r, self._info, file_node_root)
+        else:
+            raise Exception("Internal Error")
 
         # update group tree
         self._children[name] = rc

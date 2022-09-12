@@ -151,13 +151,13 @@ def test_group_add():
     #### kind of IFile ####
     # add: default is File
     a = create_group("r").add("a", ["a1", VFile("a2")], fn)
-    assert isinstance(a[0]._file, File)
-    assert isinstance(a[1]._file, VFile)
+    assert isinstance(a[0], File)
+    assert isinstance(a[1], VFile)
 
     # addvf: default is VFile
     a = create_group("r").addvf("a", ["a1", File("a2")], fn)
-    assert isinstance(a[0]._file, VFile)
-    assert isinstance(a[1]._file, File)
+    assert isinstance(a[0], VFile)
+    assert isinstance(a[1], File)
 
     ######## arguments ########
     #### args and kwargs
@@ -267,6 +267,10 @@ def test_group_add():
     with pytest.raises(Exception):
         create_group("r").add("a", fn, lambda: 0)
 
+    # arguments shape not matching the method signature
+    with pytest.raises(TypeError):
+        create_group("r").add("a", lambda x: None, 1)
+
 
 def test_add_by_decorator():
     for adder_name in ["add", "addvf"]:
@@ -289,13 +293,8 @@ def test_rule_touch(tmp_path):
     r.touch(True)
     assert os.path.getmtime(r[0].path) == os.path.getmtime(r[1].path)
 
-    # a1 only
-    r.clean()
-    r[0].touch(True)
-    assert os.path.exists(r[0].path)
-    assert not os.path.exists(r[1].path)
-
     # touch with create=False
+    os.remove(r[1].path)
     os.utime(r[0].path, (0, 0))
     r.touch()
     assert os.path.getmtime(r[0].path) > 0
@@ -309,8 +308,9 @@ def test_rule_clean(tmp_path):
     r.clean()
 
     r.touch(create=True)
-    r[1].clean()
-    assert os.path.exists(r[0].path)
+
+    r.clean()
+    assert not os.path.exists(r[0].path)
     assert not os.path.exists(r[1].path)
 
 

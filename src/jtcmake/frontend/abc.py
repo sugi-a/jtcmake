@@ -2,21 +2,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 
 
-class IFileNode(ABC):
-    @property
-    @abstractmethod
-    def path(self):
-        ...
-
-    @abstractmethod
-    def touch(self, create, _t):
-        ...
-
-    @abstractmethod
-    def clean(self):
-        ...
-
-
 class IGroup(ABC):
     @abstractmethod
     def add_group(self, name, dirname=None, *, prefix=None):
