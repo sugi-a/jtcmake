@@ -18,36 +18,40 @@ def log_make_event(w, e):
         else:
             name = "<unknown>"
             warnings.warn(
-                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+                "Internal Error: an event of unnamed Rule has been emitted."
             )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
         if isinstance(e, events.UpdateCheckError):
             w.error(
-                f"Failed to make ",
+                "Failed to make ",
                 name,
-                ": An error occured while checking if update is necessary\n",
+                ": An error occured while checking if update is necessary",
             )
         elif isinstance(e, events.PreProcError):
             w.error(
-                f"Failed to make ",
+                "Failed to make ",
                 name,
-                f": An error occured during preprocessing\n",
+                ": An error occured during preprocessing",
             )
         elif isinstance(e, events.ExecError):
-            w.error(f"Failed to make ", name, f": Method failed\n")
+            w.error(
+                "Failed to make ",
+                name,
+                f": Method {get_func_name(r.method)} failed"
+            )
         elif isinstance(e, events.PostProcError):
             w.error(
                 f"Failed to make {name}: "
                 f"An error occured during post-processing. "
                 f"Make sure to remove the output files (if any) "
-                f"by yourself\n"
+                f"by yourself"
             )
         elif isinstance(e, events.FatalError):
-            w.error("Fatal error\n")
+            w.error("Fatal error")
         else:
-            w.warning(f"Unhandled error event for {r}\n")
+            w.warning(f"Unhandled error event for {r}")
 
         return
     elif isinstance(e, events.RuleEvent):
@@ -58,35 +62,35 @@ def log_make_event(w, e):
         else:
             name = "<unknown>"
             warnings.warn(
-                f"Internal Error: an event of unnamed Rule has been emitted.\n"
+                "Internal Error: an event of unnamed Rule has been emitted."
             )
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
         if isinstance(e, events.Skip):
             if e.is_direct_target:
-                w.info("Skip ", name, "\n")
+                w.info("Skip ", name)
             else:
-                w.debug("Skip ", name, "\n")
+                w.debug("Skip ", name)
         elif isinstance(e, events.Start):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
             w.info("Make ", name, "\n", *msg)
         elif isinstance(e, events.Done):
-            w.info(f"Done ", name, "\n")
+            w.info("Done ", name)
         elif isinstance(e, events.DryRun):
             msg = []
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
             w.info("Make (dry) ", name, "\n", *msg)
         else:
-            w.warning(f"Unhandled event for {r}\n")
+            w.warning(f"Unhandled event for {r}")
         return
     elif isinstance(e, events.StopOnFail):
-        w.warning(f"Execution aborted due to an error\n")
+        w.warning("Execution aborted due to an error")
     else:
-        w.warning(f"Unhandled event {e}\n")
+        w.warning(f"Unhandled event {e}")
 
 
 def add_indent(sl, indent):

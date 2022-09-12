@@ -98,7 +98,7 @@ class TextWriter(IWriter):
         self.writable = writable
 
     def _write(self, *args, **kwargs):
-        self.writable.write("".join(map(str, args)))
+        self.writable.write("".join(map(str, args)) + "\n")
 
 
 class ColorTextWriter(IWriter):
@@ -126,7 +126,7 @@ class ColorTextWriter(IWriter):
         ).get(level)
 
         args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
-        self.writable.write(create_color_str(args))
+        self.writable.write(create_color_str(args) + "\n")
 
 
 class LoggerWriter(IWriter):
@@ -160,7 +160,7 @@ class TextFileWriterOpenOnDemand(IWriter):
 
     def _write(self, *args, **kwargs):
         with open(self.fname, "a") as f:
-            f.write("".join(map(str, args)))
+            f.write("".join(map(str, args)) + "\n")
 
 
 HTML_BG_COLOR_MAP = {
