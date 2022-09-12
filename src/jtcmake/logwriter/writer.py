@@ -281,10 +281,10 @@ def _richstr_to_html(s, basedir):
 
     if s.link is not None:
         if basedir is not None:
-            rel = os.path.relpath(s.link, basedir)
-            starts.append(f'<a href="{rel}">')
+            link = os.path.relpath(s.link, basedir)
         else:
-            starts.append(f'<a href="{s.link}">')
+            link = s.link
+        starts.append(f'<a href="{Path(link).as_posix()}">')
         ends.append(f"</a>")
 
     styles = []
