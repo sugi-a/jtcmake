@@ -177,45 +177,6 @@ HTML_COLOR_MAP = {
 }
 
 
-class HTMLWriter(IWriter):
-    def __init__(self, writable, loglevel, basedir=None):
-        super().__init__(loglevel)
-        self.writable = writable
-        self._header = False
-        self._footer = False
-        self.basedir = basedir
-
-    def _write(self, *args, level):
-        color = HTML_COLOR_MAP.get(level, "black")
-        bgcolor = HTML_BG_COLOR_MAP.get(level, "white")
-
-        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
-        self.writable.write(create_html(args, self.basedir))
-
-    def write_header(self):
-        if self._header:
-            return
-        self._header = True
-        self.writable.write(
-            '<html><head><meta charset="utf-8"><title>log</title></head>'
-            "\n<body><pre>"
-        )
-
-    def write_footer(self):
-        if self._footer:
-            return
-
-        self._footer = True
-        self.writable.write("</pre></body></html>")
-
-    def __enter__(self):
-        self.write_header()
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.write_footer()
-
-
 class HTMLFileWriterOpenOnDemand(IWriter):
     def __init__(self, loglevel, fname, basedir=None):
         super().__init__(loglevel)
@@ -229,12 +190,13 @@ class HTMLFileWriterOpenOnDemand(IWriter):
         color = HTML_COLOR_MAP.get(level, "black")
         bgcolor = HTML_BG_COLOR_MAP.get(level, "white")
 
-        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
+        args = [RichStr(x, defaults=dict(c=color)) for x in args]
 
         with open(self.fname, "a") as f:
             f.write(
                 '<html><head><meta charset="utf-8"><title>log</title></head>'
-                "<body><pre>"
+                '<body><pre style="background-color: '
+                f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
             )
             f.write(create_html(args, self.basedir))
             f.write("</pre></body></html>")
@@ -253,9 +215,12 @@ class HTMLJupyterWriter(IWriter):
         color = HTML_COLOR_MAP.get(level, "black")
         bgcolor = HTML_BG_COLOR_MAP.get(level, "white")
 
-        args = [RichStr(x, defaults=dict(c=color, bg=bgcolor)) for x in args]
+        args = [RichStr(x, defaults=dict(c=color)) for x in args]
 
-        display(HTML(f"<pre>{create_html(args, self.basedir)}</pre>"))
+        display(HTML(
+            '<pre style="background-color: '
+            f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
+            f'{create_html(args, self.basedir)}</pre>'))
 
 
 def create_html(sl, basedir=None):
