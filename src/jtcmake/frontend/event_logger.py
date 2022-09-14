@@ -23,13 +23,7 @@ def log_make_event(w, e):
 
         name = RichStr(name, c=(0, 0xCC, 0))
 
-        if isinstance(e, events.UpdateCheckError):
-            w.error(
-                "Failed to make ",
-                name,
-                ": An error occured while checking if update is necessary",
-            )
-        elif isinstance(e, events.PreProcError):
+        if isinstance(e, events.PreProcError):
             w.error(
                 "Failed to make ",
                 name,
@@ -39,7 +33,7 @@ def log_make_event(w, e):
             w.error(
                 "Failed to make ",
                 name,
-                f": Method {get_func_name(r.method)} failed"
+                f": Method {get_func_name(r.method)} failed",
             )
         elif isinstance(e, events.PostProcError):
             w.error(
@@ -84,6 +78,12 @@ def log_make_event(w, e):
             tostrs_func_call(msg, r.method, r.args, r.kwargs)
             msg = add_indent(msg, "  ")
             w.info("Make (dry) ", name, "\n", *msg)
+        elif isinstance(e, events.UpdateInfeasible):
+            w.error(
+                "Cannot make ",
+                name,
+                f": {e.reason}",
+            )
         else:
             w.warning(f"Unhandled event for {r}")
         return

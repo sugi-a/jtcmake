@@ -4,6 +4,13 @@ from unittest.mock import patch
 
 import pytest
 
+from jtcmake.core.check_update_result import (
+    Necessary,
+    PossiblyNecessary,
+    UpToDate,
+    Infeasible,
+)
+
 from jtcmake.rule.rule import Rule
 
 from jtcmake.rule.file import File, VFile, IFile, IFileBase
@@ -44,7 +51,7 @@ def test_metadata_fname(mocker):
     """
     y1, y2 = File(Path("a/b.c")), File(Path("d/e.f"))
     memo = mocker.MagicMock()
-    r = Rule([y1, y2], [], [], _method, _args, _kwargs, memo)
+    r = Rule([y1, y2], [], [], [], _method, _args, _kwargs, memo)
     assert os.path.abspath(r.metadata_fname) == os.path.abspath(
         "a/.jtcmake/b.c"
     )
@@ -60,8 +67,9 @@ def test_update_memo(tmp_path, mocker):
     x1, x2 = (File(tmp_path / f"x{i}") for i in (1, 2))
     ys = [y1, y2]
     xs = [x1, x2]
+    xisorig = [True, True]
 
-    r = Rule(ys, xs, [], _method, _args, _kwargs, mock_memo)
+    r = Rule(ys, xs, xisorig, [], _method, _args, _kwargs, mock_memo)
 
     r.update_memo()
 
@@ -73,127 +81,144 @@ def test_rule_check_update(tmp_path, mocker):
     Prerequisite: the y-list has at least one item.
 
     Procedure:
-    1. dry_run and any dependency was updated: True
-    2. Any x does not exist or has mtime of 0: raise
-    3. Any y is missing or has a mtime of 0: True
-    4. Any x with IFile type is newer than the oldest y: True
-    5. Memoized values are updated: True
-    6. Otherwise: False
-    """
 
-    q1 = mocker.MagicMock("Rule")
-    q2 = mocker.MagicMock("Rule")
+    - dry run:
+        1. Any original x does not exist or has mtime of 0: Infeasible
+        2. Any y is missing or has a mtime of 0: Necessary
+        3. Any x with IFile type is newer than the oldest y: Necessary
+        4. Memoized values are updated: Necessary
+        5. Any parent was updated: PossiblyNecessary
+        6. Otherwise: UpToDate
+    - not dry run
+        1. Any x does not exist or has mtime of 0: Infeasible
+        2. Any y is missing or has a mtime of 0: Necessary
+        3. Any x with IFile type is newer than the oldest y: Necessary
+        4. Memoized values are updated: Necessary
+        5. ---
+        6. Otherwise: UpToDate
+    """
 
     #### multi-y, multi-x, fixed args cases ####
 
-    y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
+    y1, y2 = File(tmp_path / "y1"), VFile(tmp_path / "y2")
     x1, x2 = File(tmp_path / "x1"), VFile(tmp_path / "x2")
 
     ys = [y1, y2]
     xs = [x1, x2]
+    xisorig = [True, True]
 
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare_to_saved.return_value = True
-    mock_memo.memo = 0
+    def _Rule(ys, xs, xisorig, memo_no_change):
+        mock_memo = mocker.MagicMock(IMemo)
+        mock_memo.compare_to_saved.return_value = memo_no_change
+        mock_memo.memo = 0
 
-    r = Rule(ys, xs, [q1, q2], _method, _args, _kwargs, mock_memo)
+        return Rule(ys, xs, xisorig, [], lambda x: None, [], {}, mock_memo)
 
-    # case 1
-    touch(x1, x2, y1, y2)
-    assert r.check_update(True, True)
+    # case 1 (dry_run, x1 is original)
+    r = _Rule([y1, y2], [x1, x2], [True, False], True)
 
+    # x1 (original) is missing
+    rm(x1)
+    touch(x2, y1, y2)
+    assert isinstance(r.check_update(False, True), Infeasible)
+
+    # x1's mtime is 0
+    touch(y1, y2, x2)
     touch(x1, t=0)
-    assert r.check_update(True, True)
+    assert isinstance(r.check_update(False, True), Infeasible)
+
+    # case 1 (not dry_run)
+    r = _Rule([y1, y2], [x1, x2], [False, False], True)
+
+    # x1 (original) is missing
+    rm(x1)
+    touch(x2, y1, y2)
+    assert isinstance(r.check_update(False, False), Infeasible)
+
+    # x1's mtime is 0
+    touch(y1, y2, x2)
+    touch(x1, t=0)
+    assert isinstance(r.check_update(False, False), Infeasible)
 
     # case 2
-    for dry_run in (False, True):
-        # x1 is missing
-        rm(x1)
-        touch(x2, y1, y2)
-        with pytest.raises(Exception):
-            r.check_update(False, dry_run)
+    r = _Rule([y1, y2], [x1, x2], [False, False], True)
 
-        # x1's mtime is 0
-        touch(y1, y2, x2)
-        touch(x1, t=0)
-        with pytest.raises(Exception):
-            r.check_update(False, dry_run)
-
-    # case 3
     for dry_run in (False, True):
         # y1 is missing
         rm(y1)
         touch(x1, x2, y2)
-        assert r.check_update(False, dry_run)
+        assert isinstance(r.check_update(False, dry_run), Necessary)
 
         # y1 has mtime of 0
         touch(y2)
         touch(y1, t=0)
-        assert r.check_update(False, dry_run)
+        assert isinstance(r.check_update(False, dry_run), Necessary)
+
+    # case 3 (x1 is newer than y2)
+    r = _Rule([y1, y2], [x1, x2], [False, False], True)
+
+    for dry_run in (False, True):
+        t = time.time()
+        touch(x2, t=t - 3)
+        touch(y2, t=t - 2)
+        touch(x1, t=t - 1)
+        touch(y1, t=t - 0)
+        assert isinstance(r.check_update(False, dry_run), Necessary)
 
     # case 4
-    for dry_run in (False, True):
-        touch(x2, t=time.time() - 3)
-        touch(y2, t=time.time() - 2)
-        touch(x1, t=time.time() - 1)
-        touch(y1)
-        assert r.check_update(False, dry_run)
+    r = _Rule([y1, y2], [x1, x2], [False, False], False)
 
-    # case 5
     for dry_run in (False, True):
         touch(y1, y2, x1, x2)
-        mock_memo.compare_to_saved.return_value = False
-        assert r.check_update(False, dry_run)
-        mock_memo.compare_to_saved.return_value = True
+        assert isinstance(r.check_update(False, dry_run), Necessary)
+
+    # case 5 (dry_run)
+    r = _Rule([y1, y2], [x1, x2], [False, True], True)
+
+    touch(x1, x2, y1, y2)
+    assert isinstance(r.check_update(True, True), PossiblyNecessary)
+
+    touch(x2, y1, y2)
+    touch(x1, t=0)
+    assert isinstance(r.check_update(True, True), PossiblyNecessary)
+
+    touch(x2, y1, y2)
+    rm(x1)
+    assert isinstance(r.check_update(True, True), PossiblyNecessary)
 
     # case 6
+    r = _Rule([y1, y2], [x1, x2], [True, False], True)
     for dry_run in (False, True):
-        # simple
-        touch(x1, t=time.time() - 2)
-        touch(y1, y2, t=time.time() - 1)
-        touch(x2, t=time.time() - 0)
-        assert not r.check_update(False, dry_run)
+        t = time.time()
+        # input IVFile is newer than output files
+        touch(x1, t=t - 2)
+        touch(y1, t=t - 1)
+        touch(y2, t=t - 1)
+        touch(x2, t=t - 0)
+        assert isinstance(r.check_update(False, dry_run), UpToDate)
 
         # equal mtime
         touch(y1, y2, x1, x2)
-        assert not r.check_update(False, dry_run)
+        assert isinstance(r.check_update(False, dry_run), UpToDate)
 
-    # pass case 1 with !dry_run
+    # pass case 5 with !dry_run
     touch(x1, x2, y1, y2)
-    assert not r.check_update(True, False)
+    assert isinstance(r.check_update(True, False), UpToDate)
 
     #### no x ####
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.compare_to_saved.return_value = True
-    mock_memo.memo = 0
-
-    y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
-    ys = [y1, y2]
-    r = Rule(ys, [], [q1, q2], _method, _args, _kwargs, mock_memo)
-
-    # case 3
-    for dry_run in (False, True):
-        # y1 is missing
-        rm(y1)
-        touch(y2)
-        assert r.check_update(False, dry_run)
-
-        # y1 is of mtime 0
-        touch(y2)
-        touch(y1, t=0)
-        assert r.check_update(False, dry_run)
+    r = _Rule([y1, y2], [], [], True)
 
     # case 6.
     for dry_run in (False, True):
         touch(y1, y2)
-        assert not r.check_update(False, dry_run)
+        assert isinstance(r.check_update(False, dry_run), UpToDate)
 
 
 def test_preprocess(tmp_path, mocker):
     """Rule.preprocess(callaback) should make dirs for all its output files."""
     mock_memo = mocker.MagicMock(IMemo)
     y = File(tmp_path / "a")
-    r = Rule([y], [], [], _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [], [], [], _method, _args, _kwargs, mock_memo)
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.path.parent)
     assert os.path.isdir(y.path.parent)
@@ -212,8 +237,9 @@ def test_postprocess(tmp_path, mocker):
     y = File(tmp_path / "y")
     x1 = File(tmp_path / "x1")
     x2 = VFile(tmp_path / "x2")
+    xisorig = [True, True]
 
-    r = Rule([y], [x1, x2], [], _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [x1, x2], xisorig, [], _method, _args, _kwargs, mock_memo)
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)

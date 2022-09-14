@@ -3,6 +3,7 @@ from pathlib import Path, PurePath
 from collections import namedtuple
 
 from ..core.abc import IRule
+from ..core import check_update_result
 from .file import IFile, IVFile
 
 
@@ -11,6 +12,7 @@ class Rule(IRule):
         self,
         yfiles,
         xfiles,
+        xfile_is_orig,
         deplist,
         method,
         args,
@@ -18,8 +20,11 @@ class Rule(IRule):
         memo,
         name=None,
     ):
+        assert len(xfiles) == len(xfile_is_orig)
+
         self.yfiles = yfiles
         self.xfiles = xfiles
+        self.xfile_is_orig = xfile_is_orig
         self._deplist = deplist
         self._method = method
         self._args = args
@@ -28,35 +33,38 @@ class Rule(IRule):
         self.memo = memo
 
     def check_update(self, par_updated, dry_run):
-        if dry_run and par_updated:
-            return True
-
-        for f in self.xfiles:
+        for f, is_orig in zip(self.xfiles, self.xfile_is_orig):
             if not os.path.exists(f.path):
-                raise Exception(f"Input file {f.path} is missing")
-
-            if os.path.getmtime(f.path) == 0:
-                raise Exception(
-                    f"Input file {f.path} has mtime of 0. Input files"
-                    " with mtime of 0 are considered to be invalid."
-                )
+                if not dry_run or is_orig:
+                    return check_update_result.Infeasible(
+                        f"Input file {f.path} is missing"
+                    )
+            elif os.path.getmtime(f.path) == 0:
+                if not dry_run or is_orig:
+                    return check_update_result.Infeasible(
+                        f"Input file {f.path} has mtime of 0. Input files"
+                        " with mtime of 0 are considered to be invalid."
+                    )
 
         if any(not os.path.exists(f.path) for f in self.yfiles):
-            return True
+            return check_update_result.Necessary()
 
         oldest_y = min(os.path.getmtime(f.path) for f in self.yfiles)
 
         if oldest_y <= 0:
-            return True
+            return check_update_result.Necessary()
+
+        if dry_run and par_updated:
+            return check_update_result.PossiblyNecessary()
 
         for f in self.xfiles:
             if isinstance(f, IFile) and os.path.getmtime(f.path) > oldest_y:
-                return True
+                return check_update_result.Necessary()
 
         if not self.memo.compare_to_saved(self.metadata_fname):
-            return True
+            return check_update_result.Necessary()
 
-        return False
+        return check_update_result.UpToDate()
 
     def preprocess(self, callback):
         for f in self.yfiles:

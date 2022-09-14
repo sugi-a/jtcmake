@@ -4,12 +4,14 @@ from collections import defaultdict, deque, namedtuple
 
 from . import events
 from .abc import IRule
+from . import check_update_result
 
 
 class Result(enum.Enum):
     Update = 1
     Skip = 2
     Fail = 3
+    Fatal = 4
 
 
 MakeSummary = namedtuple(
@@ -78,12 +80,12 @@ def make(
                 r, dry_run, par_updated, i in main_ids, callback
             )
         except Exception as e:
+            result = Result.Fatal
             try:
                 callback(events.FatalError(r, e))
             except Exception:
                 traceback.print_exc()
                 pass
-            break
 
         if result == Result.Update:
             updated_ids.add(i)
@@ -96,6 +98,10 @@ def make(
                 except Exception:
                     traceback.print_exc()
                 break
+        elif result == Result.Fatal:
+            nfails += 1
+            failed_ids.add(i)
+            break
         else:
             assert result == Result.Skip
             nskips += 1
@@ -111,28 +117,36 @@ def make(
 
 def process_rule(rule, dry_run, par_updated, is_main, callback):
     if dry_run:
-        try:
-            check_update = rule.check_update(par_updated, True)
-        except Exception as e:
-            callback(events.UpdateCheckError(rule, e))
-            return Result.Fail
+        res = rule.check_update(par_updated, True)
 
-        if check_update:
+        if isinstance(res, check_update_result.Infeasible):
+            callback(events.UpdateInfeasible(rule, res.reason))
+            return Result.Fail
+        elif isinstance(
+            res,
+            (
+                check_update_result.Necessary,
+                check_update_result.PossiblyNecessary,
+            ),
+        ):
             callback(events.DryRun(rule))
             return Result.Update
-        else:
+        elif isinstance(res, check_update_result.UpToDate):
             callback(events.Skip(rule, is_main))
             return Result.Skip
+        else:
+            raise Exception(f"Internal error: unexpected result {res}")
 
-    try:
-        check_update = rule.check_update(par_updated, False)
-    except Exception as e:
-        callback(events.UpdateCheckError(rule, e))
+    res = rule.check_update(par_updated, False)
+
+    if isinstance(res, check_update_result.Infeasible):
+        callback(events.UpdateInfeasible(rule, res.reason))
         return Result.Fail
-
-    if not check_update:
+    elif isinstance(res, check_update_result.UpToDate):
         callback(events.Skip(rule, is_main))
         return Result.Skip
+    elif not isinstance(res, check_update_result.Necessary):
+        raise Exception(f"Internal error: unexpected result {res}")
 
     callback(events.Start(rule))
 

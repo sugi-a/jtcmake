@@ -2,6 +2,7 @@ import sys, os, shutil
 import pytest
 
 from jtcmake.core.abc import IEvent, IRule
+from jtcmake.core import check_update_result
 from jtcmake.core.make import make, MakeSummary
 from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
@@ -49,7 +50,7 @@ class MockRule(IRule):
         args,
         kwargs,
         method,
-        check_update=True,
+        check_update=check_update_result.Necessary(),
         preprocess_err=None,
         postprocess_err=None,
     ):
@@ -210,8 +211,8 @@ def test_skip(mp):
 
     # skip both
     log.clear()
-    r1._check_update = False
-    r2._check_update = False
+    r1._check_update = check_update_result.UpToDate()
+    r2._check_update = check_update_result.UpToDate()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -228,8 +229,8 @@ def test_skip(mp):
 
     # skip r1
     log.clear()
-    r1._check_update = False
-    r2._check_update = True
+    r1._check_update = check_update_result.UpToDate()
+    r2._check_update = check_update_result.Necessary()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -288,26 +289,6 @@ def test_dryrun(mp):
             events.DryRun(r1),
             ("check_update", r2, True, True),
             events.DryRun(r2),
-        ],
-    )
-
-
-def test_check_update_error():
-    e = Exception()
-    r1 = MockRule([], (), {}, lambda: None, check_update=e)
-
-    id2rule = [r1]
-
-    log.clear()
-    res = make(id2rule, [0], False, False, callback)
-
-    assert res == MakeSummary(1, 0, 0, 1, 0)
-    assert_same_log(
-        log,
-        [
-            ("check_update", r1, False, False),
-            events.UpdateCheckError(r1, e),
-            events.StopOnFail(),
         ],
     )
 
