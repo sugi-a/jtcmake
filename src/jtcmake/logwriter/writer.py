@@ -217,10 +217,13 @@ class HTMLJupyterWriter(IWriter):
 
         args = [RichStr(x, defaults=dict(c=color)) for x in args]
 
-        display(HTML(
-            '<pre style="background-color: '
-            f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
-            f'{create_html(args, self.basedir)}</pre>'))
+        display(
+            HTML(
+                '<pre style="background-color: '
+                f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
+                f"{create_html(args, self.basedir)}</pre>"
+            )
+        )
 
 
 def create_html(sl, basedir=None):
