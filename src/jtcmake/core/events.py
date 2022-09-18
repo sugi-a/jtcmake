@@ -51,8 +51,10 @@ class StopOnFail(IEvent):
     ...
 
 
-class UpdateCheckError(ErrorRuleEvent):
-    ...
+class UpdateInfeasible(RuleEvent):
+    def __init__(self, rule, reason):
+        super().__init__(rule)
+        self.reason = reason
 
 
 class PreProcError(ErrorRuleEvent):

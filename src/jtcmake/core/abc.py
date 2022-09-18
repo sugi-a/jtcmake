@@ -1,4 +1,5 @@
 import abc
+import enum
 
 
 class IEvent:
@@ -7,7 +8,11 @@ class IEvent:
 
 class IRule(abc.ABC):
     @abc.abstractmethod
-    def check_update(self, updated_rules, dry_run):
+    def check_update(self, par_updated, dry_run):
+        """
+        Returns:
+            check_update_result.IResult
+        """
         ...
 
     @abc.abstractmethod

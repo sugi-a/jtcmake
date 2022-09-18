@@ -646,6 +646,8 @@ class Group(IGroup):
             f for f in args_ if isinstance(f, IFileBase) and f not in yfile_set
         ]
 
+        xfile_is_orig = [path2idx.get(f.abspath, -1) == -1 for f in xfiles]
+
         # create method args
         def _unwrap_IFileBase_Atom(x):
             if isinstance(x, IFileBase):
@@ -670,6 +672,7 @@ class Group(IGroup):
         r = Rule(
             yfiles_,
             xfiles,
+            xfile_is_orig,
             deplist,
             method,
             method_args,

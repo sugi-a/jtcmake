@@ -102,6 +102,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
             assert nidles <= njobs
 
             if res is None:  # fatal error
+                nfails += 1
                 stop = True
             elif res == Result.Fail:
                 nfails += 1
