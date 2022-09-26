@@ -1,10 +1,12 @@
-import sys, os, shutil, glob, time
+import sys, os, shutil, glob, time, inspect
 from pathlib import Path, PurePath
+from collections.abc import Sequence
 
 import pytest
 
-from jtcmake.frontend.group import create_group, SELF
-from jtcmake.rule.file import File, VFile
+from jtcmake.frontend.group import create_group, SELF, Group, Rule as RuleNode
+from jtcmake.rule.file import File, VFile, IFile
+from jtcmake.rule.rule import Rule as _RawRule
 from jtcmake.utils.nest import map_structure
 import jtcmake
 
@@ -21,6 +23,12 @@ fn = lambda *x, **y: None
 
 
 def test_create_group():
+    g = create_group("root")
+    assert isinstance(g, Group)
+
+    g = create_group(prefix="root")
+    assert isinstance(g, Group)
+
     # no args
     with pytest.raises(TypeError):
         g = create_group()
@@ -102,207 +110,342 @@ def test_group_add_group():
         g.add_group("a")
 
 
-def test_group_add():
-    APath = lambda p: Path(os.path.abspath(p))
-
-    ######## Output file path ########
-    #### atom path ####
-    def _test(expect, *x):
-        assert create_group("r").add(*x).abspath == APath("r") / expect
-        assert create_group("r").addvf(*x).abspath == APath("r") / expect
-
-    # str/PathLike/IFile
-    _test("a1", "a", "a1", fn)
-    _test("a1", "a", _PathLike("a1"), fn)
-    _test("a1", "a", File("a1"), fn)
-    _test("a1", "a", VFile("a1"), fn)
-
-    # abspath
-    _test(os.path.abspath("a1"), "a", os.path.abspath("a1"), fn)
-
-    # omit path
-    _test("a1", "a1", fn)
-
-    # posix home dir
-    if os.name == "posix":
-        _test(os.path.expanduser("~/a1"), "a", "~/a1", fn)
-
-    #### structured path ####
-    a = create_group("r").add("a", ["a1", {"x": File("a2")}, ("a3",)], fn)
-    assert a.abspath == (APath("r/a1"), {"x": APath("r/a2")}, (APath("r/a3"),))
-    a = create_group("r").add("a", ["a1", "a1"], fn)
-    assert a.abspath == (APath("r/a1"), APath("r/a1"))
-
-    a = create_group("r").add(
-        "d",
-        [{"x": "d1.txt", "y": ["d2.txt"]}, ("d3.txt", "d4.txt")],
-        lambda _: None,
-    )
-    assert a.abspath == (
-        {"x": APath("r/d1.txt"), "y": (APath("r/d2.txt"),)},
-        (APath("r/d3.txt"), APath("r/d4.txt")),
-    )
-
-    # dict key order
-    a = create_group("r").add("a", {"a": "a1", "b": "a2"}, fn)
-    b = create_group("r").add("a", {"b": "a2", "a": "a1"}, fn)
-    assert a.abspath == b.abspath
-
-    #### kind of IFile ####
-    # add: default is File
-    a = create_group("r").add("a", ["a1", VFile("a2")], fn)
-    assert isinstance(a[0], File)
-    assert isinstance(a[1], VFile)
-
-    # addvf: default is VFile
-    a = create_group("r").addvf("a", ["a1", File("a2")], fn)
-    assert isinstance(a[0], VFile)
-    assert isinstance(a[1], File)
-
-    ######## arguments ########
-    #### args and kwargs
-    """
-    Paths in arguments can be either relative or absolute.
-    """
-
-    def _to_abs(o):
-        return map_structure(
-            lambda x: Path(os.path.abspath(x)) if isinstance(x, Path) else x, o
-        )
-
-    g = create_group("r")
-    g.add("a", fn, 1, a=1)
-    g.add("b", fn, 1, {"a": [g.a]}, a=1, b=g.a)
-    assert _to_abs(g.a._rule.args) == (g.a.abspath, 1)
-    assert _to_abs(g.a._rule.kwargs) == {"a": 1}
-    assert _to_abs(g.b._rule.args) == (g.b.abspath, 1, {"a": [g.a.abspath]})
-    assert _to_abs(g.b._rule.kwargs) == {"a": 1, "b": g.a.abspath}
-
-    g = create_group("r")
-    g.add("a", ["a1", "a2"], fn)
-    g.add("b", ["b1", "b2"], fn, g.a[0], SELF[0], SELF[1], a=SELF)
-    assert _to_abs(g.b._rule.args) == (
-        g.a[0].abspath,
-        g.b[0].abspath,
-        g.b[1].abspath,
-    )
-    assert _to_abs(g.b._rule.kwargs) == {"a": list(g.b.abspath)}
-
-    g = create_group("r")
-    g.add("a", fn, VFile("x"))
-
-    assert _to_abs(g.a._rule.args) == (g.a.abspath, APath("x"))
-
-    #### deplist
-    g = create_group("r")
-    g.add("a", fn)
-    g.add("b", fn)
-    g.add("c", fn, {"b": g.a, "a": g.b})
-    assert set(g.c._rule.deplist) == set([0, 1])
-
-    ######## invalid calls ########
+def test_add_group_invalid_calls():
     # argument type errors
     with pytest.raises(Exception):
-        create_group("r").add(1, fn)
+        create_group("r").add(1, fn, SELF)
 
     with pytest.raises(Exception):
-        create_group("r").add("a", 1, fn)
+        create_group("r").add("a", 1, fn, SELF)
 
     with pytest.raises(Exception):
         create_group("r").add("a", "a", 1)
 
     # name being empty str
     with pytest.raises(Exception):
-        create_group("root").add("", "a", fn)
+        create_group("root").add("", "a", fn, SELF)
 
     # overwriting
     g = create_group("r")
-    g.add("a", fn)
+    g.add("a", fn, SELF)
     with pytest.raises(Exception):
-        g.add("a", fn)
+        g.add("a", fn, SELF)
 
     # path collision
     g = create_group("r")
-    g.add("a", "a1", fn)
+    g.add("a", "a1", fn, SELF)
     with pytest.raises(Exception):
-        g.add("b", os.path.abspath("r/a1"), fn)
+        g.add("b", os.path.abspath("r/a1"), fn, SELF)
 
     g = create_group("r")
-    _p = APath("x")
-    g.add("a", fn, File(_p))
+    _p = Path(os.path.abspath("x"))
+    g.add("a", fn, File(_p), SELF)
     with pytest.raises(Exception):
-        g.add(_p, fn)
+        g.add(_p, fn, SELF)
 
     g = create_group("r")
-    _p = APath("x")
-    g.add("a", fn, VFile(_p))
+    _p = Path(os.path.abspath("x"))
+    g.add("a", fn, VFile(_p), SELF)
     with pytest.raises(Exception):
-        g.add(_p, fn)
+        g.add(_p, fn, SELF)
 
     # zero paths
     with pytest.raises(Exception):
-        create_group("r").add("a", (), fn)
+        create_group("r").add("a", (), fn, SELF)
 
     # inconsistent IFile type
     with pytest.raises(Exception):
-        create_group("r").add("a", ["a1", VFile("a1")], fn)
+        create_group("r").add("a", {"a": "a", "b": VFile("a")}, fn, SELF.a1)
 
     with pytest.raises(Exception):
-        create_group("r").addvf("a", "a1", fn, File("r/a1"))
+        create_group("r").addvf("a", "a1", fn, File("r/a1"), SELF)
 
     g = create_group("r")
-    g.add("a", fn, File("x"))
+    g.add("a", fn, File("x"), SELF)
     with pytest.raises(Exception):
-        g.add("b", fn, VFile("x"))
+        g.add("b", fn, VFile("x"), SELF)
 
     # output paths not passed to method
     with pytest.raises(Exception):
-        create_group("r").add("a", ["a1", "a2"], fn, SELF[0])
+        create_group("r").add("a", ["a1", "a2"], fn, SELF.a1)
 
     # args contain an object that lacks pickle-unpickle invariance
     with pytest.raises(Exception):
-        create_group("r").add("a", fn, object())
+        create_group("r").add("a", fn, SELF, object())
 
     # unpicklable args
     with pytest.raises(Exception):
-        create_group("r").add("a", fn, lambda: 0)
+        create_group("r").add("a", fn, SELF, lambda: 0)
 
     # arguments shape not matching the method signature
     with pytest.raises(TypeError):
-        create_group("r").add("a", lambda x: None, 1)
+        create_group("r").add("a", lambda x: None, SELF, 1)
 
 
-def test_add_by_decorator():
-    for adder_name in ["add", "addvf"]:
-        g = create_group("r")
-        adder = getattr(g, adder_name)
+"""
+_Group = {
+    _rules?: { [str]: _RuleNode }
+    _files?: { [str]: _File }[]
+    _groups?: { [str]: _Group }[]
+}
+_RuleNode = {
+    _rule: _RawRule
+}
+_RawRule = {
+    args?: (Any, ...)
+    kwargs?: { [str]: Any }
+}
+_File = IFile
+"""
 
-        _fn = adder("a", "a1", None)(fn)
-        assert g.a.abspath == Path(os.path.abspath("r/a1"))
-        assert _fn == fn  # decorator should return the func as-is
+def _assert_group(ref, out):
+    assert isinstance(out, Group)
 
-        _fn = adder("b", None)(fn)
-        assert g.b.abspath == Path(os.path.abspath("r/b"))
-        assert _fn == fn
+    if '_rules' in ref:
+        assert set(ref['_rules']) == set(out._rules)
+        for k, v in ref['_rules'].items():
+            _assert_rule_node(v, out._rules[k])
+
+    if '_files' in ref:
+        assert set(ref['_files']) == set(out._files)
+        for k, v in ref['_files'].items():
+            _assert_file(v, out._files[k])
+
+    if '_groups' in ref:
+        assert set(ref['_groups']) == set(out._groups)
+        for k, v in ref['_groups'].items():
+            _assert_group(v, out._groups[k])
+
+def _assert_rule_node(ref, out):
+    assert isinstance(out, RuleNode)
+    
+    if isinstance(ref, RuleNode):
+        assert ref == out
+        return
+
+    assert isinstance(ref, dict)
+
+    if "_rule" in ref:
+        _assert_rule(ref["_rule"], out._rule)
+
+def _assert_rule(ref, out):
+    assert isinstance(out, _RawRule)
+
+    if "args" in ref:
+        assert ref["args"] == out.args
+
+    if "kwargs" in ref:
+        assert ref["kwargs"] == out.kwargs
+    
+def _assert_file(ref, out):
+    assert isinstance(out, IFile)
+    assert type(ref) == type(out)
+    assert os.path.abspath(ref) == os.path.abspath(out)
+
+
+@pytest.mark.parametrize("method", ["add", "addvf"])
+@pytest.mark.parametrize("name", [None, "name"])
+@pytest.mark.parametrize("use_abs", [False, True])
+@pytest.mark.parametrize("out_type", [str, Path, File, VFile])
+@pytest.mark.parametrize("out_shape", ["atom", "dict", "list"])
+@pytest.mark.parametrize("deco", [False, True])
+#@pytest.mark.parametrize(
+#    "method,name,use_abs,out_type,out_shape",
+#    [("addvf", "name", False, str, "dict")]
+#)
+def test_add_basic(mocker, method, name, use_abs, out_type, out_shape, deco):
+    _fn = lambda *args, **kwargs: None
+
+    mock_add = mocker.patch("jtcmake.frontend.group.Group._add")
+
+    g = create_group("g")
+    method_ = getattr(g, method)
+    
+    _to_abs = os.path.abspath if use_abs else lambda x: x
+    def _default_file(v):
+        if isinstance(v, IFile):
+            return v
+        else:
+            return File(v) if method == "add" else VFile(v)
+
+    if out_shape == "dict":
+        outs = { "b": _to_abs(out_type("B")), "a": _to_abs(out_type("A")) }
+        ref_name = name or "b"
+        ref_outs = { k: _default_file(v) for k, v in outs.items() }
+    elif out_shape == "list":
+        outs = [_to_abs(out_type("A")), _to_abs(out_type("B"))]
+        ref_name = name or str(outs[0])
+        ref_outs = { str(v): _default_file(v) for v in outs }
+    elif out_shape == "atom":
+        outs = _to_abs(out_type("A"))
+        ref_name = name or str(outs)
+        ref_outs = { str(outs): _default_file(outs) }
+    else:
+        raise Exception()
+
+    if name is None:
+        method__ = method_
+    else:
+        method__ = lambda *args, **kwargs: method_(name, *args, **kwargs)
+
+
+    if deco:
+        method__(outs, None, 1, a=2)(_fn)
+    else:
+        method__(outs, _fn, 1, a=2)
+
+    mock_add.assert_called_once_with(ref_name, ref_outs, _fn, [1], {"a": 2})
+
+
+@pytest.mark.parametrize("ftype", [File, VFile])
+@pytest.mark.parametrize("use_abs", [False, True])
+def test__add_basic(mocker, ftype, use_abs):
+    _fn = lambda *args, **kwargs: None
+    _to_abs = os.path.abspath if use_abs else lambda x: x
+    _ref_to_abs = os.path.abspath if use_abs else lambda x: "g/" + x
+
+    def _assert_eq_path(x, y):
+        if isinstance(x, Path):
+            x = Path(os.path.abspath(x))
+        if isinstance(y, Path):
+            y = Path(os.path.abspath(y))
+        assert x == y
+
+    def _assert_eq_path_strict(x, y):
+        if isinstance(x, Path):
+            assert type(x) == type(y)
+            assert x == y
+        else:
+            assert x == y
+
+    _rule_call_params = None
+
+    def _set_rule_call_params(*args, **kwargs):
+        nonlocal _rule_call_params
+        _rule_call_params = (args, kwargs)
+        return _RawRule(*args, **kwargs)
+
+    g = create_group("g")
+
+    mock__rule = mocker.patch(
+        "jtcmake.frontend.group._RawRule",
+        side_effect=_set_rule_call_params
+    )
+
+    node_a = g._add(
+        "name_a",
+        { "a": ftype(_to_abs("a.txt"))},
+        _fn,
+        (SELF, 1, [{1: (SELF,)}]),
+        {"a": 2, "b": SELF}
+    )
+    
+    _assert_group(
+        {
+            "_rules": { "name_a": node_a },
+            "_files": { "a": ftype(_ref_to_abs("a.txt")) },
+            "_group": {}
+        },
+        g
+    )
+
+    mock__rule.assert_called_once()
+    
+    _params = inspect.signature(_RawRule).bind(
+        *_rule_call_params[0], **_rule_call_params[1]
+    ).arguments
+
+    map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
+    assert _params["xfiles"] == []
+    assert _params["xfile_is_orig"] == []
+    assert _params["deplist"] == []
+    assert _params["method"] == _fn
+    print((_params["args"], _params["kwargs"]))
+    map_structure(
+        _assert_eq_path,
+        (_params["args"], _params["kwargs"]),
+        (
+            (g._files.a, 1, [{1: (g._files.a,)}]),
+            {"a": 2, "b": g._files.a}
+        )
+    )
+
+    mock__rule = mocker.patch(
+        "jtcmake.frontend.group._RawRule",
+        side_effect=_set_rule_call_params
+    )
+
+    node_b = g._add(
+        "name_b",
+        { "b": ftype("b.txt")},
+        _fn,
+        (SELF, g.files.a, File("c.txt")),
+        {}
+    )
+    
+    _assert_group(
+        {
+            "_rules": { "name_a": node_a, "name_b": node_b },
+            "_files": {
+                "a": ftype(_ref_to_abs("a.txt")),
+                "b": ftype("g/b.txt")
+            },
+            "_group": {}
+        },
+        g
+    )
+
+    mock__rule.assert_called_once()
+    
+    _params = inspect.signature(_RawRule).bind(
+        *_rule_call_params[0], **_rule_call_params[1]
+    ).arguments
+
+    map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.b])
+    map_structure(
+        _assert_eq_path_strict,
+        _params["xfiles"],
+        [g._files.a, File("c.txt")]
+    )
+    assert _params["xfile_is_orig"] == [False, True]
+    assert _params["deplist"] == [0]
+    map_structure(
+        _assert_eq_path,
+        (_params["args"], _params["kwargs"]),
+        (
+            (g._files.b, g._files.a, Path("c.txt")),
+            {}
+        )
+    )
+
+
+def test__add_posix_path_expansion():
+    if os.name == "nt":
+        return
+
+    _fn = lambda *args, **kwargs: None
+    g = create_group("g")
+    g._add("name", { "a": File("~/a")}, _fn, (SELF,), {})
+    
+    _assert_group({ "_files": { "a": File(os.path.expanduser("~/a")) } }, g)
 
 
 def test_rule_touch(tmp_path):
-    r = create_group(tmp_path).add("a", ["a1", "a2"], fn)
+    r = create_group(tmp_path).add("a", ["a1", "a2"], fn, SELF.a1, SELF.a2)
 
-    # both
     r.touch(True)
-    assert os.path.getmtime(r[0].path) == os.path.getmtime(r[1].path)
+    assert os.path.getmtime(r.a1) == os.path.getmtime(r.a2)
 
     # touch with create=False
-    os.remove(r[1].path)
-    os.utime(r[0].path, (0, 0))
+    os.remove(r.a2)
+    os.utime(r.a1, (0, 0))
     r.touch()
-    assert os.path.getmtime(r[0].path) > 0
-    assert not os.path.exists(r[1].path)
+    assert os.path.getmtime(r.a1) > 0
+    assert not os.path.exists(r.a2)
 
 
 def test_rule_clean(tmp_path):
-    r = create_group(tmp_path).add("a", ["a1", "a2"], fn)
+    r = create_group(tmp_path).add("a", ["a1", "a2"], fn, SELF.a1, SELF.a2)
 
     # don't raise if file does not exist
     r.clean()
@@ -310,154 +453,136 @@ def test_rule_clean(tmp_path):
     r.touch(create=True)
 
     r.clean()
-    assert not os.path.exists(r[0].path)
-    assert not os.path.exists(r[1].path)
+    assert not os.path.exists(r.a1)
+    assert not os.path.exists(r.a2)
 
 
-def test_select_sig1():
-    """
-    Signature-1: Group.select(group_tree_pattern: str)
-    Signature-2: Group.select(group_tree_pattern: Sequence[str], group=False)
+@pytest.mark.parametrize("kind",["group", "rule", "file"])
+def test_group_select(mocker, kind):
+    m = mocker.patch("jtcmake.frontend.group.Group._select_wrapper")
 
-    This test is for Signature-1
-    """
+    g = create_group("g")
+    getattr(g, f'select_{kind}s')("a")
 
+    m.assert_called_once_with("a", kind)
+
+
+@pytest.mark.parametrize("kind",["group", "rule", "file"])
+@pytest.mark.parametrize("x,y", [
+    ("a", ["a"]),
+    ("a/b/**/*c", ["a", "b", "**", "*c"]),
+    ("/a/b/", ["a", "b"]),
+    (["a", "b/c", "**"], None),
+])
+def test_group__select_wrapper(mocker, x, y, kind):
+    m = mocker.patch("jtcmake.frontend.group.Group._select")
+
+    y = y or x
+
+    g = create_group("g")
+    g._select_wrapper(x, kind)
+    
+    m.assert_called_once_with(y, kind)
+
+    
+def _create_group_for_test_select():
     """
     a/
-    |-- a
-    |-- b/
-    |   |-- a
-    |   |-- a_a
-    |   |-- b_a
-    |   `-- c/
-    |-- c/
+    |-- a (a)
+    |-- b (b, c)
+    |-- a/
+    |   |-- a (a)
     |   |-- a/
-    |   |   `-- b/
-    |   |       `-- c/
-    |   |           `-- d
-    |   |-- b/
-    |   |   `-- a/
-    |   `-- c
-    `-- d/
-        `-- a
+    |   `-- a/b (a/b)
+    |-- b/
+    |   `-- a/
+    `-- a/b/
+        `-- a (a_)
     """
-    fn = lambda x: None
+    _fn = lambda *args, **kwargs: None
 
-    g = create_group("a")
-    g.add("a", fn)
+    g = create_group("g")
+    g.add_group("a")
+    g.a.add_group("a")
+    g.a.add_group("a/b")
 
     g.add_group("b")
-    g.b.add("a", {0: "a"}, fn)
-    g.b.add("a_a", fn)
-    g.b.add("b_a", fn)
-    g.b.add_group("c")
+    g.b.add_group("a")
 
-    g.add_group("c")
-    g.c.add_group("a").add_group("b").add_group("c").add("d", fn)
-    g.c.add_group("b").add_group("a")
-    g.c.add("c", fn)
+    g.add_group("a/b")
 
-    g.add_group("d").add("a", fn)
+    g.add("a", _fn, SELF)
+    g.add("b", ["b", "c"], _fn, SELF.b, SELF.c)
 
+    g.a.add("a", _fn, SELF)
+    g.a.add("a/b", _fn, SELF)
+
+    g.groups["a/b"].add("a", _fn, SELF)
+
+    return g
+
+def test_group_select_groups():
+    g = _create_group_for_test_select()
     # no *
-    assert g.select("a") == [g.a]
-    assert g.select("b/") == [g.b]
-    assert g.select("b/c/") == [g.b.c]
-    assert g.b.select("a") == g.select("b/a")
+    assert g.select_groups("a") == [g.a]
+    assert g.select_groups("b/a") == [g.b.a]
+    assert g.b.select_groups("a") == g.select_groups("b/a")
 
-    # single *
-    assert g.select("*") == [g.a]
-    assert g.select("*/") == [g.b, g.c, g.d]
-    assert g.select("b/*") == [g.b.a, g.b.a_a, g.b.b_a]
-    assert g.select("*/a") == [g.b.a, g.d.a]
-    assert set(g.select("*/*")) == set([g.b.a, g.c.c, g.d.a, g.b.a_a, g.b.b_a])
-    assert g.select("b/*_a") == [g.b.a_a, g.b.b_a]
-    assert g.select("b/a*") == [g.b.a, g.b.a_a]
-    assert g.select("b/*_*") == [g.b.a_a, g.b.b_a]
-    assert g.select("*/a/*/") == [g.c.a.b]
-    assert g.select("c/*/*/") == [g.c.a.b, g.c.b.a]
-    assert g.c.select("*/*/") == g.select("c/*/*/")
+    # *
+    assert set(g.select_groups("*")) == {g.a, g.b, g.groups["a/b"]}
+    assert g.select_groups("b/*") == [g.b.a]
+    assert set(g.select_groups("*/a")) == {g.a.a, g.b.a}
+    assert set(g.select_groups("*/*")) == {g.a.a, g.a.groups["a/b"], g.b.a}
 
-    # double *
-    assert set(g.select("**")) == set(
-        [g.a, g.b.a, g.c.a.b.c.d, g.c.c, g.d.a, g.b.a_a, g.b.b_a]
-    )
-    assert g.select("**/") == [
-        g,
-        g.b,
-        g.b.c,
-        g.c,
-        g.c.a,
-        g.c.a.b,
-        g.c.a.b.c,
-        g.c.b,
-        g.c.b.a,
-        g.d,
-    ]
-    assert g.select("**/a") == [g.a, g.b.a, g.d.a]
-    assert g.select("c/**/**") == g.select("c/**")
-    assert g.select("c/**/**/") == g.select("c/**/")
-    assert g.c.select("**/") == g.select("c/**/")
+    # **
+    assert set(g.select_groups("**")) == \
+        {g, g.a, g.a.a, g.a.groups["a/b"], g.b, g.b.a, g.groups["a/b"]}
 
-    # misc
-    assert g.select("**/*") == g.select("**")
-    assert g.select("**/*_a") == [g.b.a_a, g.b.b_a]
+    assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
+    assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
+
+def test_group_select_rules():
+    g = _create_group_for_test_select()
+    # no *
+    assert g.select_rules("a") == [g.rules.a]
+
+    # *
+    assert set(g.select_rules("*")) == {g.rules.a, g.rules.b}
+
+    # **
+    assert set(g.select_rules("**")) == {
+        g.rules.a, g.rules.b, g.a.rules.a, g.a.rules["a/b"],
+        g.groups["a/b"].rules.a
+    }
+
+def test_group_select_files():
+    g = _create_group_for_test_select()
+    # no *
+    assert g.select_files("c") == [g.files.c]
+
+    # *
+    assert set(g.select_files("*")) == {g.files.a, g.files.b, g.files.c}
+
+@pytest.mark.parametrize(
+    "method",
+    ["select_groups", "select_rules", "select_files"]
+)
+def test_group_select_common(method):
+    def _method(g):
+        return getattr(g, method)
+
+    g = _create_group_for_test_select()
+
+    assert set(_method(g)("**/**")) == set(_method(g)("**"))
 
     # error
     with pytest.raises(ValueError):
-        g.select("")
+        _method(g)("")
 
     with pytest.raises(ValueError):
-        g.select("***")
+        _method(g)("***")
 
     with pytest.raises(ValueError):
-        g.select("**a")
-
-    # names containing parents
-    g = create_group("root")
-    a = g.add("a/a", fn)
-    sub = g.add_group("x/y")
-    b = sub.add("b/b/", fn)
-
-    assert g.select("*") == [a]
-    assert g.select("**") == [a, b]
-    assert g.select("*/") == [sub]
-    assert sub.select("*") == [b]
+        _method(g)("**a")
 
 
-def test_select_sig2():
-    """
-    Signature-1: Group.select(group_tree_pattern: str)
-    Signature-2: Group.select(group_tree_pattern: Sequence[str], group=False)
-
-    This test is for Signature-2.
-    Test for Signature-1 is assumed to be succeeded.
-    """
-    fn = lambda x: None
-
-    g = create_group("root")
-    g.add("a1", fn)
-    g.add("a2", fn)
-    g.add_group("sub")
-    g.sub.add("b1", fn)
-    g.sub.add("b2", fn)
-    g.sub.add_group("sub")
-
-    a = g.add("a/a", fn)
-    sub = g.add_group("x/y")
-    b = sub.add("b/b/", fn)
-
-    assert g.select(["a1"]) == g.select("a1")
-    assert g.select(["sub", "b1"]) == g.select("sub/b1")
-    assert g.select(["*"]) == g.select("*")
-    assert g.select(["**"]) == g.select("**")
-    assert g.select(("*", "*")) == g.select("*/*")
-    assert g.select(("**", "*1")) == g.select("**/*1")
-
-    assert g.select(["sub"], True) == g.select("sub/")
-    assert g.select(["**"], True) == g.select("**/")
-
-    assert g.select(["a/a"]) == [a]
-    assert g.select(["**", "*/*"]) == [a, b]
-    assert g.select(["x/y"], True) == [sub]
-    assert g.select(["x/y", "*"]) == [b]

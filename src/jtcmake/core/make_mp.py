@@ -236,7 +236,7 @@ def _init_event_q(q):
 
 def process_worker(rule, dry_run, par_updated, is_main):
     def cb(e):
-        _event_q.put(e)
+        _event_q.put(e)  # type: ignore
 
     return process_rule(rule, dry_run, par_updated, is_main, cb)
 

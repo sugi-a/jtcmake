@@ -2,8 +2,8 @@ import os, sys, re, json, subprocess, shutil
 from html import escape
 from pathlib import Path
 
+from .group import Group
 from ..logwriter.writer import term_is_jupyter
-from .abc import IGroup
 
 
 def print_graphviz(group, output_file=None):
@@ -56,7 +56,7 @@ def print_graphviz(group, output_file=None):
 
 
 def gen_dot_code(group, basedir=None):
-    if not isinstance(group, IGroup):
+    if not isinstance(group, Group):
         raise TypeError("argument group must be Group")
 
     gid = {}
@@ -88,7 +88,7 @@ def gen_dot_code(group, basedir=None):
 
         for cname in g:
             c = g[cname]
-            if isinstance(c, IGroup):
+            if isinstance(c, Group):
                 rec_group(c, idt + "  ", g._prefix)
             else:
                 proc_rulew(c, cname, idt + "  ", g._prefix)

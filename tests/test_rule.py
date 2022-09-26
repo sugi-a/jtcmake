@@ -13,7 +13,7 @@ from jtcmake.core.check_update_result import (
 
 from jtcmake.rule.rule import Rule
 
-from jtcmake.rule.file import File, VFile, IFile, IFileBase
+from jtcmake.rule.file import File, VFile, IFile
 
 from jtcmake.rule.memo import IMemo, StrHashMemo
 
@@ -25,8 +25,6 @@ _method = lambda: None
 
 def rm(*paths):
     for p in paths:
-        if isinstance(p, IFileBase):
-            p = p.path
         try:
             os.remove(p)
         except:
@@ -38,8 +36,6 @@ def touch(*paths, t=None):
         t = time.time()
 
     for p in paths:
-        if isinstance(p, IFileBase):
-            p = p.path
         Path(p).touch()
         os.utime(p, (t, t))
 
@@ -85,14 +81,14 @@ def test_rule_check_update(tmp_path, mocker):
     - dry run:
         1. Any original x does not exist or has mtime of 0: Infeasible
         2. Any y is missing or has a mtime of 0: Necessary
-        3. Any x with IFile type is newer than the oldest y: Necessary
+        3. Any x of type File is newer than the oldest y: Necessary
         4. Memoized values are updated: Necessary
         5. Any parent was updated: PossiblyNecessary
         6. Otherwise: UpToDate
     - not dry run
         1. Any x does not exist or has mtime of 0: Infeasible
         2. Any y is missing or has a mtime of 0: Necessary
-        3. Any x with IFile type is newer than the oldest y: Necessary
+        3. Any x of type File type is newer than the oldest y: Necessary
         4. Memoized values are updated: Necessary
         5. ---
         6. Otherwise: UpToDate
@@ -220,8 +216,8 @@ def test_preprocess(tmp_path, mocker):
     y = File(tmp_path / "a")
     r = Rule([y], [], [], [], _method, _args, _kwargs, mock_memo)
     r.preprocess(lambda *_: None)
-    assert os.path.exists(y.path.parent)
-    assert os.path.isdir(y.path.parent)
+    assert os.path.exists(y.parent)
+    assert os.path.isdir(y.parent)
 
 
 def test_postprocess(tmp_path, mocker):

@@ -25,31 +25,57 @@ def nest_get(nest, nest_key):
     return nest
 
 
+def _raise_structure_unmatch(i):
+    raise TypeError(
+        f"Structure of the 0-th nest does not match that of the {i}-th nest"
+    )
+    
 def map_structure(
     map_fn,
-    nest,
+    *nests,
     seq_factory={list: list, tuple: tuple},
     map_factory={dict: dict},
 ):
     assert callable(map_fn)
 
-    def rec(nest):
-        if isinstance(nest, NestKey):
-            return map_fn(nest)
+    containert = (*seq_factory, *map_factory)
 
+    def _rec(nests):
+        nest0, *rest = nests
+
+        if isinstance(nest0, NestKey):
+            for i, nest in enumerate(rest):
+                if not isinstance(nest, NestKey) and \
+                    isinstance(nest, containert):
+                    _raise_structure_unmatch(i + 1)
+            return map_fn(*nests)
+        
         for src, dst in seq_factory.items():
-            if isinstance(nest, src):
-                return dst(map(rec, nest))
+            if isinstance(nest0, src):
+                for i, nest in enumerate(rest):
+                    if isinstance(nest, NestKey) or not isinstance(nest, src):
+                        _raise_structure_unmatch(i + 1)
+
+                return dst(map(_rec, zip(*nests)))
 
         for src, dst in map_factory.items():
-            if isinstance(nest, src):
-                return dst({k: rec(nest[k]) for k in nest.keys()})
+            if isinstance(nest0, src):
+                for i, nest in enumerate(rest):
+                    if isinstance(nest, NestKey) or not isinstance(nest, src):
+                        _raise_structure_unmatch(i + 1)
 
-        return map_fn(nest)
+                    if set(nest0) != set(nest):
+                        _raise_structure_unmatch(i + 1)
 
-    return rec(nest)
+                return dst(
+                    {k: _rec(tuple(nest[k] for nest in nests)) for k in nest0}
+                )
 
+        return map_fn(*nests)
 
+    return _rec(nests)
+        
+    
 def ordered_map_structure(
     map_fn,
     nest,

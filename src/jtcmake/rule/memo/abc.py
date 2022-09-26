@@ -1,8 +1,8 @@
 import os, json
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
-class IMemo(ABC):
+class IMemo(metaclass=ABCMeta):
     @abstractmethod
     def compare(self, other_memo):
         ...
@@ -27,7 +27,7 @@ class IMemo(ABC):
         return self.compare(other)
 
 
-class IMemoAtom(ABC):
+class IMemoAtom(metaclass=ABCMeta):
     @property
     @abstractmethod
     def memo_value(self):
@@ -38,7 +38,7 @@ class IMemoAtom(ABC):
         ...
 
 
-class ILazyMemoValue(ABC):
+class ILazyMemoValue(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self):
         """

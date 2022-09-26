@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from ..core.abc import IRule
 from ..core import check_update_result
-from .file import IFile, IVFile
+from .file import File, VFile
 
 
 class Rule(IRule):
@@ -34,22 +34,22 @@ class Rule(IRule):
 
     def check_update(self, par_updated, dry_run):
         for f, is_orig in zip(self.xfiles, self.xfile_is_orig):
-            if not os.path.exists(f.path):
+            if not f.exists():
                 if not dry_run or is_orig:
                     return check_update_result.Infeasible(
-                        f"Input file {f.path} is missing"
+                        f"Input file {f} is missing"
                     )
-            elif os.path.getmtime(f.path) == 0:
+            elif os.path.getmtime(f) == 0:
                 if not dry_run or is_orig:
                     return check_update_result.Infeasible(
-                        f"Input file {f.path} has mtime of 0. Input files"
+                        f"Input file {f} has mtime of 0. Input files"
                         " with mtime of 0 are considered to be invalid."
                     )
 
-        if any(not os.path.exists(f.path) for f in self.yfiles):
+        if any(not f.exists() for f in self.yfiles):
             return check_update_result.Necessary()
 
-        oldest_y = min(os.path.getmtime(f.path) for f in self.yfiles)
+        oldest_y = min(os.path.getmtime(f) for f in self.yfiles)
 
         if oldest_y <= 0:
             return check_update_result.Necessary()
@@ -58,7 +58,7 @@ class Rule(IRule):
             return check_update_result.PossiblyNecessary()
 
         for f in self.xfiles:
-            if isinstance(f, IFile) and os.path.getmtime(f.path) > oldest_y:
+            if isinstance(f, File) and os.path.getmtime(f) > oldest_y:
                 return check_update_result.Necessary()
 
         if not self.memo.compare_to_saved(self.metadata_fname):
@@ -69,7 +69,7 @@ class Rule(IRule):
     def preprocess(self, callback):
         for f in self.yfiles:
             try:
-                os.makedirs(f.path.parent, exist_ok=True)
+                os.makedirs(f.parent, exist_ok=True)
             except:
                 pass
 
@@ -80,7 +80,7 @@ class Rule(IRule):
             # set mtime to 0
             for f in self.yfiles:
                 try:
-                    os.utime(f.path, (0, 0))
+                    os.utime(f, (0, 0))
                 except:
                     pass
 
@@ -92,7 +92,7 @@ class Rule(IRule):
 
     @property
     def metadata_fname(self):
-        p = PurePath(self.yfiles[0].path)
+        p = PurePath(self.yfiles[0])
         return p.parent / ".jtcmake" / p.name
 
     def update_memo(self):

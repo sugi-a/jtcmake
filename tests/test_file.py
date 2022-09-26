@@ -4,13 +4,6 @@ import pytest
 from jtcmake.rule.file import File, VFile, get_hash
 
 
-def test_file(tmp_path):
-    p = tmp_path / "a"
-    f = File(p)
-
-    assert f.path == p
-
-
 def test_vfile_hash(tmp_path):
     p = tmp_path / "a"
     p.write_text("a")
