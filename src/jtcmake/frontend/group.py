@@ -10,7 +10,7 @@ from ..rule.rule import Rule as _RawRule
 from ..rule.memo import PickleMemo, StrHashMemo
 from ..rule.file import File, VFile, IFile
 from .event_logger import log_make_event
-from ..core.make import make as _make
+from ..core.make import make as _make, MakeSummary
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import (
     TextWriter,
@@ -314,19 +314,17 @@ class Group:
         self._files = _ItemSet({})
         self._groups = _ItemSet({})
 
+    @property
+    def G(self):
+        return self._groups
 
     @property
-    def rules(self):
+    def R(self):
         return self._rules
 
     @property
-    def files(self):
+    def F(self):
         return self._files
-
-    @property
-    def groups(self):
-        return self._groups
-
 
     def mem(self, value, memoized_value):
         # reference: root Group -> memo_store -> atom -> value
@@ -529,8 +527,26 @@ class Group:
         else:
             return self._add(name, path, method, args, kwargs)
 
+    def add2(self, *args):
+        name, outs, method, args, kwargs = \
+            _parse_args_group_add(args, {}, File)
+
+        if len(args) != 0:
+            raise TypeError(f"Too many arguments: {args}")
+
+        if len(kwargs) != 0:
+            raise TypeError(f"Too many arguments: {kwargs}")
+
+        if method is None:
+            raise TypeError(f"method must be specified")
+
+        def _adder(*args, **kwargs):
+            self._add(name, outs, method, args, kwargs)
+
+        return _adder
+
+
     def _add(self, name, yfiles, method, args, kwargs):
-        print(yfiles)
         abspath = os.path.abspath
         info = self._info
 
@@ -740,10 +756,10 @@ class Group:
 
     def clean(self):
         """Delete files under this Group"""
-        for c in self.groups.values():
+        for c in self.G.values():
             c.clean()
 
-        for r in self.rules.values():
+        for r in self.R.values():
             r.clean()
 
     def touch(self, create=False, _t=None):
@@ -758,10 +774,10 @@ class Group:
         if _t is None:
             _t = time.time()
 
-        for c in self.groups.values():
+        for c in self.G.values():
             c.touch(create, _t)
 
-        for r in self.rules.values():
+        for r in self.R.values():
             r.touch(create, _t)
 
     def _get_offspring_groups(self, dst):
@@ -821,7 +837,7 @@ class Group:
         elif kind == "rule":
             _a = list(itertools.chain(
                 *(
-                    tuple((n.rules[name], (*n._name, name)) for name in n.rules)
+                    tuple((n.R[name], (*n._name, name)) for name in n.R)
                     for n in offspring_groups
                 )
             ))
@@ -830,7 +846,7 @@ class Group:
         elif kind == "file":
             _a = list(itertools.chain(
                 *(
-                    tuple((n.files[name], (*n._name, name)) for name in n.files)
+                    tuple((n.F[name], (*n._name, name)) for name in n.F)
                     for n in offspring_groups
                 )
             ))
@@ -929,16 +945,16 @@ class Group:
         return f"<Group name={repr(name)} prefix={repr(self._prefix)}>"
 
     def __getitem__(self, k):
-        return self.groups[k]
+        return self.G[k]
 
     def __iter__(self):
-        return iter(self.groups)
+        return iter(self.G)
 
     def __len__(self):
-        return len(self.groups)
+        return len(self.G)
 
     def __contains__(self, k):
-        return k in self.groups
+        return k in self.G
 
 
 def repr_group_name(group_name):
@@ -1022,11 +1038,11 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
 
     while stack:
         node = stack.pop()
-        stack.extend(node.groups.values())
-        rules.extend(r._rrule for r in node.rules.values())
+        stack.extend(node.G.values())
+        rules.extend(r._rrule for r in node.R.values())
 
-        list(map(_assert_same_tree, node.groups.values()))
-        list(map(_assert_same_tree, node.rules.values()))
+        list(map(_assert_same_tree, node.G.values()))
+        list(map(_assert_same_tree, node.R.values()))
 
     ids = [_info.rule2idx[r] for r in rules]
 

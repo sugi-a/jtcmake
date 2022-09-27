@@ -4,7 +4,7 @@ from .event_logger import tostrs_func_call
 
 
 def print_method(rule):
-    rule = rule._rule
+    rule = rule._rrule
     sl = []
     tostrs_func_call(sl, rule.method, rule.args, rule.kwargs)
 

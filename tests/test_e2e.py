@@ -44,7 +44,7 @@ def test_1(njobs, tmp_path):
     """basics"""
 
     g = create_group(tmp_path)
-    files = g.files
+    files = g.F
 
     g.add({"a": "a.txt"}, add_text, SELF, None, "a")
     g.add({"aa": "aa.txt"}, add_text, SELF, files.a, "a")
@@ -78,7 +78,7 @@ def test_1(njobs, tmp_path):
     assert globfiles(tmp_path) == []
 
     # run some
-    res = g.g1.rules.ab.make(njobs=njobs)
+    res = g.g1.R.ab.make(njobs=njobs)
 
     assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
     assert globfiles(tmp_path) == sorted(
@@ -96,7 +96,7 @@ def test_1(njobs, tmp_path):
     )
 
     # clean some
-    g.rules.a.clean()
+    g.R.a.clean()
     g1.clean()
     assert globfiles(tmp_path) == sorted(["aa.txt", "aaa.txt"])
 
@@ -107,7 +107,7 @@ def test_4(tmp_path):
 
     # make failure
     g = create_group(tmp_path)
-    files = g.files
+    files = g.F
 
     g.add({"a": "a.txt"}, touch, SELF)
     g.add({"b1": "b1.txt"}, fail, SELF, files.a)
@@ -142,7 +142,7 @@ def test_addvf(tmp_path):
 
         g = create_group(tmp_path)
         g.addvf("a", lambda p, _: p.write_text(x), SELF, _cnt)
-        g.add("b", lambda p, _: p.write_text(y), SELF, g.files.a)
+        g.add("b", lambda p, _: p.write_text(y), SELF, g.F.a)
         return g
 
     g = _create_group("0", "0")
@@ -182,14 +182,14 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
     g.add("a", _write, SELF, before)
     g.make()
 
-    assert g.files.a.read_text() == repr(before)
+    assert g.F.a.read_text() == repr(before)
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add("a", _write, SELF, after)
     res = g.make()
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-    assert g.files.a.read_text() == repr(after)
+    assert g.F.a.read_text() == repr(after)
 
     #### set case ({1, 2} -> {2, 3}) ####
     before, after = {1, 2}, {2, 3}
@@ -198,14 +198,14 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
     g.add("a", _write, SELF, before)
     g.make()
 
-    assert g.files.a.read_text() == repr(before)
+    assert g.F.a.read_text() == repr(before)
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add("a", _write, SELF, after)
     res = g.make()
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-    assert g.files.a.read_text() == repr(after)
+    assert g.F.a.read_text() == repr(after)
 
     #### PurePath/Path case (don't update) (PurePath -> Path) ####
     before, after = PurePath("a"), Path("a")
@@ -214,14 +214,14 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
     g.add("a", _write, SELF, before)
     g.make()
 
-    assert g.files.a.read_text() == repr(before)
+    assert g.F.a.read_text() == repr(before)
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add("a", _write, SELF, after)
     res = g.make()
 
     assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)
-    assert g.files.a.read_text() == repr(before)
+    assert g.F.a.read_text() == repr(before)
 
     #### ignore change using Atom(_, None) ({1, 2} -> {2, 3}) ####
     before, after = {1, 2}, {2, 3}
@@ -230,14 +230,14 @@ def test_memoization_common(tmp_path, memo_kind, pickle_key):
     g.add("a", _write, SELF, g.memnone(before))
     g.make()
 
-    assert g.files.a.read_text() == repr(before)
+    assert g.F.a.read_text() == repr(before)
 
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)
     g.add("a", _write, SELF, g.memnone(before))
     res = g.make()
 
     assert res == MakeSummary(total=1, update=0, skip=1, fail=0, discard=0)
-    assert g.files.a.read_text() == repr(before)  # not after
+    assert g.F.a.read_text() == repr(before)  # not after
 
     #### raise when given instances that are not value object ####
     g = create_group(tmp_path, memo_kind=memo_kind, pickle_key=pickle_key)

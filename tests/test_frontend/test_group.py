@@ -379,7 +379,7 @@ def test__add_basic(mocker, ftype, use_abs):
         "name_b",
         { "b": ftype("b.txt")},
         _fn,
-        (SELF, g.files.a, File("c.txt")),
+        (SELF, g.F.a, File("c.txt")),
         {}
     )
     
@@ -517,7 +517,7 @@ def _create_group_for_test_select():
     g.a.add("a", _fn, SELF)
     g.a.add("a/b", _fn, SELF)
 
-    g.groups["a/b"].add("a", _fn, SELF)
+    g.G["a/b"].add("a", _fn, SELF)
 
     return g
 
@@ -529,14 +529,14 @@ def test_group_select_groups():
     assert g.b.select_groups("a") == g.select_groups("b/a")
 
     # *
-    assert set(g.select_groups("*")) == {g.a, g.b, g.groups["a/b"]}
+    assert set(g.select_groups("*")) == {g.a, g.b, g.G["a/b"]}
     assert g.select_groups("b/*") == [g.b.a]
     assert set(g.select_groups("*/a")) == {g.a.a, g.b.a}
-    assert set(g.select_groups("*/*")) == {g.a.a, g.a.groups["a/b"], g.b.a}
+    assert set(g.select_groups("*/*")) == {g.a.a, g.a.G["a/b"], g.b.a}
 
     # **
     assert set(g.select_groups("**")) == \
-        {g, g.a, g.a.a, g.a.groups["a/b"], g.b, g.b.a, g.groups["a/b"]}
+        {g, g.a, g.a.a, g.a.G["a/b"], g.b, g.b.a, g.G["a/b"]}
 
     assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
     assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
@@ -544,24 +544,24 @@ def test_group_select_groups():
 def test_group_select_rules():
     g = _create_group_for_test_select()
     # no *
-    assert g.select_rules("a") == [g.rules.a]
+    assert g.select_rules("a") == [g.R.a]
 
     # *
-    assert set(g.select_rules("*")) == {g.rules.a, g.rules.b}
+    assert set(g.select_rules("*")) == {g.R.a, g.R.b}
 
     # **
     assert set(g.select_rules("**")) == {
-        g.rules.a, g.rules.b, g.a.rules.a, g.a.rules["a/b"],
-        g.groups["a/b"].rules.a
+        g.R.a, g.R.b, g.a.R.a, g.a.R["a/b"],
+        g.G["a/b"].R.a
     }
 
 def test_group_select_files():
     g = _create_group_for_test_select()
     # no *
-    assert g.select_files("c") == [g.files.c]
+    assert g.select_files("c") == [g.F.c]
 
     # *
-    assert set(g.select_files("*")) == {g.files.a, g.files.b, g.files.c}
+    assert set(g.select_files("*")) == {g.F.a, g.F.b, g.F.c}
 
 @pytest.mark.parametrize(
     "method",
