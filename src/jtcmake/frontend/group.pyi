@@ -32,13 +32,11 @@ from ..core.make import MakeSummary
 T = TypeVar("T")
 P = ParamSpec("P")
 
-
 class _ItemSet(Mapping[str, T]):
     def __getattr__(self, k: str) -> T: ...
     def __getitem__(self, k: str) -> T: ...
     def __iter__(self) -> Iterator[str]: ...
     def __len__(self) -> int: ...
-
 
 class Rule(FrozenDict[str, IFile]):
     def make(
@@ -48,16 +46,13 @@ class Rule(FrozenDict[str, IFile]):
         *,
         njobs: None | int = None,
     ) -> MakeSummary: ...
-
     def touch_memo(self) -> None: ...
-
     def touch(self, create=False, _t=None) -> None: ...
-
     def clean(self) -> None: ...
 
-
-TOutput: TypeAlias = \
-    str|PathLike|Sequence[str|PathLike]|Mapping[str, str|PathLike]
+TOutput: TypeAlias = (
+    str | PathLike | Sequence[str | PathLike] | Mapping[str, str | PathLike]
+)
 
 class Group:
     def add_group(
@@ -74,7 +69,6 @@ class Group:
         *,
         njobs: None | int = None,
     ) -> MakeSummary: ...
-
     @overload
     def add(
         self,
@@ -84,7 +78,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Rule: ...
-
     @overload
     def add(
         self,
@@ -94,7 +87,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
-
     @overload
     def add(
         self,
@@ -103,7 +95,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Rule: ...
-
     @overload
     def add(
         self,
@@ -112,7 +103,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
-
     @overload
     def addvf(
         self,
@@ -122,7 +112,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Rule: ...
-
     @overload
     def addvf(
         self,
@@ -132,7 +121,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
-
     @overload
     def addvf(
         self,
@@ -141,7 +129,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Rule: ...
-
     @overload
     def addvf(
         self,
@@ -150,7 +137,6 @@ class Group:
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
-
     @overload
     def add2(
         self,
@@ -158,32 +144,26 @@ class Group:
         output: TOutput,
         method: Callable[P, Any],
     ) -> Callable[P, Any]: ...
-
     @overload
     def add2(
         self,
         output: TOutput,
         method: Callable[P, Any],
     ) -> Callable[P, Any]: ...
-
     def clean(self) -> None: ...
     def touch(self, create: bool = False, _t: None | float = None): ...
-
-    def select_groups(self, pattern: str|Sequence[str]) -> List[Group]: ...
-    def select_rules(self, pattern: str|Sequence[str]) -> List[Rule]: ...
-    def select_files(self, pattern: str|Sequence[str]) -> List[IFile]: ...
-
+    def select_groups(self, pattern: str | Sequence[str]) -> List[Group]: ...
+    def select_rules(self, pattern: str | Sequence[str]) -> List[Rule]: ...
+    def select_files(self, pattern: str | Sequence[str]) -> List[IFile]: ...
     @property
     def G(self) -> _ItemSet[Group]: ...
     @property
     def R(self) -> _ItemSet[Rule]: ...
     @property
     def F(self) -> _ItemSet[IFile]: ...
-
     def mem(self, value: T, memoized_value: Any) -> T: ...
     def memstr(self, value: T) -> T: ...
     def memnone(self, value: T) -> T: ...
-
     def __getitem__(self, k: str) -> Group: ...
     def __getattr__(self, k: str) -> Group: ...
     def __iter__(self) -> Iterator[str]: ...
@@ -206,7 +186,6 @@ def create_group(
     | Writable
     | Sequence[str | os.PathLike | Logger | Writable] = None,
 ) -> Group: ...
-
 def make(
     *rule_or_groups: Sequence[Rule | Group],
     dry_run: bool = False,

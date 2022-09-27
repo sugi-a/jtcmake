@@ -29,7 +29,8 @@ def _raise_structure_unmatch(i):
     raise TypeError(
         f"Structure of the 0-th nest does not match that of the {i}-th nest"
     )
-    
+
+
 def map_structure(
     map_fn,
     *nests,
@@ -45,11 +46,12 @@ def map_structure(
 
         if isinstance(nest0, NestKey):
             for i, nest in enumerate(rest):
-                if not isinstance(nest, NestKey) and \
-                    isinstance(nest, containert):
+                if not isinstance(nest, NestKey) and isinstance(
+                    nest, containert
+                ):
                     _raise_structure_unmatch(i + 1)
             return map_fn(*nests)
-        
+
         for src, dst in seq_factory.items():
             if isinstance(nest0, src):
                 for i, nest in enumerate(rest):
@@ -74,8 +76,8 @@ def map_structure(
         return map_fn(*nests)
 
     return _rec(nests)
-        
-    
+
+
 def ordered_map_structure(
     map_fn,
     nest,

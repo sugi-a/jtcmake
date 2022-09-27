@@ -198,27 +198,29 @@ _RawRule = {
 _File = IFile
 """
 
+
 def _assert_group(ref, out):
     assert isinstance(out, Group)
 
-    if '_rules' in ref:
-        assert set(ref['_rules']) == set(out._rules)
-        for k, v in ref['_rules'].items():
+    if "_rules" in ref:
+        assert set(ref["_rules"]) == set(out._rules)
+        for k, v in ref["_rules"].items():
             _assert_rule_node(v, out._rules[k])
 
-    if '_files' in ref:
-        assert set(ref['_files']) == set(out._files)
-        for k, v in ref['_files'].items():
+    if "_files" in ref:
+        assert set(ref["_files"]) == set(out._files)
+        for k, v in ref["_files"].items():
             _assert_file(v, out._files[k])
 
-    if '_groups' in ref:
-        assert set(ref['_groups']) == set(out._groups)
-        for k, v in ref['_groups'].items():
+    if "_groups" in ref:
+        assert set(ref["_groups"]) == set(out._groups)
+        for k, v in ref["_groups"].items():
             _assert_group(v, out._groups[k])
+
 
 def _assert_rule_node(ref, out):
     assert isinstance(out, RuleNode)
-    
+
     if isinstance(ref, RuleNode):
         assert ref == out
         return
@@ -228,6 +230,7 @@ def _assert_rule_node(ref, out):
     if "_rule" in ref:
         _assert_rule(ref["_rule"], out._rule)
 
+
 def _assert_rule(ref, out):
     assert isinstance(out, _RawRule)
 
@@ -236,7 +239,8 @@ def _assert_rule(ref, out):
 
     if "kwargs" in ref:
         assert ref["kwargs"] == out.kwargs
-    
+
+
 def _assert_file(ref, out):
     assert isinstance(out, IFile)
     assert type(ref) == type(out)
@@ -249,10 +253,10 @@ def _assert_file(ref, out):
 @pytest.mark.parametrize("out_type", [str, Path, File, VFile])
 @pytest.mark.parametrize("out_shape", ["atom", "dict", "list"])
 @pytest.mark.parametrize("deco", [False, True])
-#@pytest.mark.parametrize(
+# @pytest.mark.parametrize(
 #    "method,name,use_abs,out_type,out_shape",
 #    [("addvf", "name", False, str, "dict")]
-#)
+# )
 def test_add_basic(mocker, method, name, use_abs, out_type, out_shape, deco):
     _fn = lambda *args, **kwargs: None
 
@@ -260,8 +264,9 @@ def test_add_basic(mocker, method, name, use_abs, out_type, out_shape, deco):
 
     g = create_group("g")
     method_ = getattr(g, method)
-    
+
     _to_abs = os.path.abspath if use_abs else lambda x: x
+
     def _default_file(v):
         if isinstance(v, IFile):
             return v
@@ -269,17 +274,17 @@ def test_add_basic(mocker, method, name, use_abs, out_type, out_shape, deco):
             return File(v) if method == "add" else VFile(v)
 
     if out_shape == "dict":
-        outs = { "b": _to_abs(out_type("B")), "a": _to_abs(out_type("A")) }
+        outs = {"b": _to_abs(out_type("B")), "a": _to_abs(out_type("A"))}
         ref_name = name or "b"
-        ref_outs = { k: _default_file(v) for k, v in outs.items() }
+        ref_outs = {k: _default_file(v) for k, v in outs.items()}
     elif out_shape == "list":
         outs = [_to_abs(out_type("A")), _to_abs(out_type("B"))]
         ref_name = name or str(outs[0])
-        ref_outs = { str(v): _default_file(v) for v in outs }
+        ref_outs = {str(v): _default_file(v) for v in outs}
     elif out_shape == "atom":
         outs = _to_abs(out_type("A"))
         ref_name = name or str(outs)
-        ref_outs = { str(outs): _default_file(outs) }
+        ref_outs = {str(outs): _default_file(outs)}
     else:
         raise Exception()
 
@@ -287,7 +292,6 @@ def test_add_basic(mocker, method, name, use_abs, out_type, out_shape, deco):
         method__ = method_
     else:
         method__ = lambda *args, **kwargs: method_(name, *args, **kwargs)
-
 
     if deco:
         method__(outs, None, 1, a=2)(_fn)
@@ -328,32 +332,33 @@ def test__add_basic(mocker, ftype, use_abs):
     g = create_group("g")
 
     mock__rule = mocker.patch(
-        "jtcmake.frontend.group._RawRule",
-        side_effect=_set_rule_call_params
+        "jtcmake.frontend.group._RawRule", side_effect=_set_rule_call_params
     )
 
     node_a = g._add(
         "name_a",
-        { "a": ftype(_to_abs("a.txt"))},
+        {"a": ftype(_to_abs("a.txt"))},
         _fn,
         (SELF, 1, [{1: (SELF,)}]),
-        {"a": 2, "b": SELF}
+        {"a": 2, "b": SELF},
     )
-    
+
     _assert_group(
         {
-            "_rules": { "name_a": node_a },
-            "_files": { "a": ftype(_ref_to_abs("a.txt")) },
-            "_group": {}
+            "_rules": {"name_a": node_a},
+            "_files": {"a": ftype(_ref_to_abs("a.txt"))},
+            "_group": {},
         },
-        g
+        g,
     )
 
     mock__rule.assert_called_once()
-    
-    _params = inspect.signature(_RawRule).bind(
-        *_rule_call_params[0], **_rule_call_params[1]
-    ).arguments
+
+    _params = (
+        inspect.signature(_RawRule)
+        .bind(*_rule_call_params[0], **_rule_call_params[1])
+        .arguments
+    )
 
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
     assert _params["xfiles"] == []
@@ -364,58 +369,47 @@ def test__add_basic(mocker, ftype, use_abs):
     map_structure(
         _assert_eq_path,
         (_params["args"], _params["kwargs"]),
-        (
-            (g._files.a, 1, [{1: (g._files.a,)}]),
-            {"a": 2, "b": g._files.a}
-        )
+        ((g._files.a, 1, [{1: (g._files.a,)}]), {"a": 2, "b": g._files.a}),
     )
 
     mock__rule = mocker.patch(
-        "jtcmake.frontend.group._RawRule",
-        side_effect=_set_rule_call_params
+        "jtcmake.frontend.group._RawRule", side_effect=_set_rule_call_params
     )
 
     node_b = g._add(
-        "name_b",
-        { "b": ftype("b.txt")},
-        _fn,
-        (SELF, g.F.a, File("c.txt")),
-        {}
+        "name_b", {"b": ftype("b.txt")}, _fn, (SELF, g.F.a, File("c.txt")), {}
     )
-    
+
     _assert_group(
         {
-            "_rules": { "name_a": node_a, "name_b": node_b },
+            "_rules": {"name_a": node_a, "name_b": node_b},
             "_files": {
                 "a": ftype(_ref_to_abs("a.txt")),
-                "b": ftype("g/b.txt")
+                "b": ftype("g/b.txt"),
             },
-            "_group": {}
+            "_group": {},
         },
-        g
+        g,
     )
 
     mock__rule.assert_called_once()
-    
-    _params = inspect.signature(_RawRule).bind(
-        *_rule_call_params[0], **_rule_call_params[1]
-    ).arguments
+
+    _params = (
+        inspect.signature(_RawRule)
+        .bind(*_rule_call_params[0], **_rule_call_params[1])
+        .arguments
+    )
 
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.b])
     map_structure(
-        _assert_eq_path_strict,
-        _params["xfiles"],
-        [g._files.a, File("c.txt")]
+        _assert_eq_path_strict, _params["xfiles"], [g._files.a, File("c.txt")]
     )
     assert _params["xfile_is_orig"] == [False, True]
     assert _params["deplist"] == [0]
     map_structure(
         _assert_eq_path,
         (_params["args"], _params["kwargs"]),
-        (
-            (g._files.b, g._files.a, Path("c.txt")),
-            {}
-        )
+        ((g._files.b, g._files.a, Path("c.txt")), {}),
     )
 
 
@@ -425,9 +419,9 @@ def test__add_posix_path_expansion():
 
     _fn = lambda *args, **kwargs: None
     g = create_group("g")
-    g._add("name", { "a": File("~/a")}, _fn, (SELF,), {})
-    
-    _assert_group({ "_files": { "a": File(os.path.expanduser("~/a")) } }, g)
+    g._add("name", {"a": File("~/a")}, _fn, (SELF,), {})
+
+    _assert_group({"_files": {"a": File(os.path.expanduser("~/a"))}}, g)
 
 
 def test_rule_touch(tmp_path):
@@ -457,23 +451,26 @@ def test_rule_clean(tmp_path):
     assert not os.path.exists(r.a2)
 
 
-@pytest.mark.parametrize("kind",["group", "rule", "file"])
+@pytest.mark.parametrize("kind", ["group", "rule", "file"])
 def test_group_select(mocker, kind):
     m = mocker.patch("jtcmake.frontend.group.Group._select_wrapper")
 
     g = create_group("g")
-    getattr(g, f'select_{kind}s')("a")
+    getattr(g, f"select_{kind}s")("a")
 
     m.assert_called_once_with("a", kind)
 
 
-@pytest.mark.parametrize("kind",["group", "rule", "file"])
-@pytest.mark.parametrize("x,y", [
-    ("a", ["a"]),
-    ("a/b/**/*c", ["a", "b", "**", "*c"]),
-    ("/a/b/", ["a", "b"]),
-    (["a", "b/c", "**"], None),
-])
+@pytest.mark.parametrize("kind", ["group", "rule", "file"])
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        ("a", ["a"]),
+        ("a/b/**/*c", ["a", "b", "**", "*c"]),
+        ("/a/b/", ["a", "b"]),
+        (["a", "b/c", "**"], None),
+    ],
+)
 def test_group__select_wrapper(mocker, x, y, kind):
     m = mocker.patch("jtcmake.frontend.group.Group._select")
 
@@ -481,10 +478,10 @@ def test_group__select_wrapper(mocker, x, y, kind):
 
     g = create_group("g")
     g._select_wrapper(x, kind)
-    
+
     m.assert_called_once_with(y, kind)
 
-    
+
 def _create_group_for_test_select():
     """
     a/
@@ -521,6 +518,7 @@ def _create_group_for_test_select():
 
     return g
 
+
 def test_group_select_groups():
     g = _create_group_for_test_select()
     # no *
@@ -535,11 +533,19 @@ def test_group_select_groups():
     assert set(g.select_groups("*/*")) == {g.a.a, g.a.G["a/b"], g.b.a}
 
     # **
-    assert set(g.select_groups("**")) == \
-        {g, g.a, g.a.a, g.a.G["a/b"], g.b, g.b.a, g.G["a/b"]}
+    assert set(g.select_groups("**")) == {
+        g,
+        g.a,
+        g.a.a,
+        g.a.G["a/b"],
+        g.b,
+        g.b.a,
+        g.G["a/b"],
+    }
 
     assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
     assert set(g.select_groups("**/a")) == {g.a, g.a.a, g.b.a}
+
 
 def test_group_select_rules():
     g = _create_group_for_test_select()
@@ -551,9 +557,13 @@ def test_group_select_rules():
 
     # **
     assert set(g.select_rules("**")) == {
-        g.R.a, g.R.b, g.a.R.a, g.a.R["a/b"],
-        g.G["a/b"].R.a
+        g.R.a,
+        g.R.b,
+        g.a.R.a,
+        g.a.R["a/b"],
+        g.G["a/b"].R.a,
     }
+
 
 def test_group_select_files():
     g = _create_group_for_test_select()
@@ -563,9 +573,9 @@ def test_group_select_files():
     # *
     assert set(g.select_files("*")) == {g.F.a, g.F.b, g.F.c}
 
+
 @pytest.mark.parametrize(
-    "method",
-    ["select_groups", "select_rules", "select_files"]
+    "method", ["select_groups", "select_rules", "select_files"]
 )
 def test_group_select_common(method):
     def _method(g):
@@ -584,5 +594,3 @@ def test_group_select_common(method):
 
     with pytest.raises(ValueError):
         _method(g)("**a")
-
-

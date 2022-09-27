@@ -7,7 +7,6 @@ from jtcmake import create_group, SELF, MakeSummary, Atom
 import jtcmake
 
 
-
 def touch(*dst):
     for p in dst:
         Path(p).touch()

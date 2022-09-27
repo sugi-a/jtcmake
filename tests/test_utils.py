@@ -6,6 +6,7 @@ from jtcmake.utils.nest import map_structure, flatten, nest_get
 def add1(x):
     return x + 1
 
+
 @pytest.mark.parametrize(
     "x,x2",
     [

@@ -42,7 +42,8 @@ from ..utils.frozen_dict import FrozenDict
 _MAP_FACTORY = {(dict, FrozenDict): dict}
 
 
-_Path = WindowsPath if os.name == 'nt' else PosixPath
+_Path = WindowsPath if os.name == "nt" else PosixPath
+
 
 def _touch(path, create, _t, logwriter):
     path = str(path)
@@ -203,10 +204,8 @@ class Rule(FrozenDict):
         for k in self:
             _clean(self[k], self._info.logwriter)
 
-
     def __eq__(self, other):
         return id(self) == id(other)
-
 
     def __hash__(self):
         return hash(id(self))
@@ -237,20 +236,20 @@ def _parse_args_group_add(args, kwargs, file_factory):
 
     # validate and normalize output files
     if isinstance(outs, (tuple, list)):
-        outs = { str(v): v for v in outs }
+        outs = {str(v): v for v in outs}
     elif isinstance(outs, (str, Path)):
-        outs = { str(outs): outs }
+        outs = {str(outs): outs}
     elif isinstance(outs, dict):
         pass
     else:
         raise TypeError(
-            'Expected tuple[str|PathLike), list[str|PathLike], '
-            f'dict[str, str|PathLike], str, or PathLike. Given {outs}'
+            "Expected tuple[str|PathLike), list[str|PathLike], "
+            f"dict[str, str|PathLike], str, or PathLike. Given {outs}"
         )
 
     for k in outs:
         if not isinstance(k, str):
-            raise TypeError(f'Keys of output dict must be str. Given {k}')
+            raise TypeError(f"Keys of output dict must be str. Given {k}")
 
     def _to_ifile(f):
         if isinstance(f, IFile):
@@ -259,19 +258,19 @@ def _parse_args_group_add(args, kwargs, file_factory):
         if isinstance(f, (str, os.PathLike)):
             return file_factory(f)
 
-        raise TypeError(f'Output file must be str or PathLike. Given {f}')
+        raise TypeError(f"Output file must be str or PathLike. Given {f}")
 
-    outs = { k: _to_ifile(v) for k, v in outs.items() }
+    outs = {k: _to_ifile(v) for k, v in outs.items()}
 
     if len(outs) == 0:
-        raise TypeError('At least 1 output file must be specified')
+        raise TypeError("At least 1 output file must be specified")
 
     # validate name
     if name is None:
         name = str(next(iter(outs)))
     else:
         if not isinstance(name, str):
-            raise TypeError(f'name must be str')
+            raise TypeError(f"name must be str")
 
     return name, outs, method, args, kwargs
 
@@ -334,14 +333,11 @@ class Group:
         self._info.memo_store[id(value)] = Atom(value, memoized_value)
         return value
 
-
     def memstr(self, value):
         return self.mem(value, str(value))
 
-
     def memnone(self, value):
         return self.mem(value, None)
-
 
     def add_group(self, name, dirname=None, *, prefix=None):
         """Add a child Group node
@@ -400,9 +396,8 @@ class Group:
 
         self._groups._add(name, g)
 
-        if name.isidentifier() and name[0] != '_' and not hasattr(self, name):
+        if name.isidentifier() and name[0] != "_" and not hasattr(self, name):
             self.__dict__[name] = g
-            
 
         return g
 
@@ -470,10 +465,12 @@ class Group:
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        name, path, method, args, kwargs = \
-            _parse_args_group_add(args, kwargs, File)
+        name, path, method, args, kwargs = _parse_args_group_add(
+            args, kwargs, File
+        )
 
         if method is None:
+
             def decorator_add(method):
                 self._add(name, path, method, args, kwargs)
                 return method
@@ -481,7 +478,6 @@ class Group:
             return decorator_add
         else:
             return self._add(name, path, method, args, kwargs)
-
 
     def addvf(self, *args, **kwargs):
         """Add a Rule node into this Group node.
@@ -517,10 +513,12 @@ class Group:
             - Group.add wraps them by File.
             - Group.addvf wraps them by VFile.
         """
-        name, path, method, args, kwargs = \
-            _parse_args_group_add(args, kwargs, VFile)
+        name, path, method, args, kwargs = _parse_args_group_add(
+            args, kwargs, VFile
+        )
 
         if method is None:
+
             def decorator_addvf(method):
                 self._add(name, path, method, args, kwargs)
                 return method
@@ -530,8 +528,9 @@ class Group:
             return self._add(name, path, method, args, kwargs)
 
     def add2(self, *args):
-        name, outs, method, args, kwargs = \
-            _parse_args_group_add(args, {}, File)
+        name, outs, method, args, kwargs = _parse_args_group_add(
+            args, {}, File
+        )
 
         if len(args) != 0:
             raise TypeError(f"Too many arguments: {args}")
@@ -546,7 +545,6 @@ class Group:
             self._add(name, outs, method, args, kwargs)
 
         return _adder
-
 
     def _add(self, name, yfiles, method, args, kwargs):
         abspath = os.path.abspath
@@ -576,7 +574,7 @@ class Group:
             for k, f in yfiles.items()
         }
 
-        yfiles = { k: f.replace(_shorter_path(f)) for k, f in yfiles.items() }
+        yfiles = {k: f.replace(_shorter_path(f)) for k, f in yfiles.items()}
 
         # check yfile duplicated registration and type consistency
         yp2f = {}
@@ -602,7 +600,7 @@ class Group:
             if id(o) in info.memo_store:
                 return info.memo_store[id(o)]
             elif isinstance(o, dict):
-                return { k: _rec(v) for k, v in o.items() }
+                return {k: _rec(v) for k, v in o.items()}
             elif isinstance(o, tuple):
                 return tuple(map(_rec, o))
             elif isinstance(o, list):
@@ -790,7 +788,7 @@ class Group:
     def _select_wrapper(self, pattern, kind):
         if isinstance(pattern, str):
             if len(pattern) == 0:
-                raise ValueError('pattern must not be an empty str')
+                raise ValueError("pattern must not be an empty str")
 
             pattern = pattern.strip("/")
             pattern = re.split("/+", pattern)
@@ -837,21 +835,25 @@ class Group:
             targets = offspring_groups
 
         elif kind == "rule":
-            _a = list(itertools.chain(
-                *(
-                    tuple((n.R[name], (*n._name, name)) for name in n.R)
-                    for n in offspring_groups
+            _a = list(
+                itertools.chain(
+                    *(
+                        tuple((n.R[name], (*n._name, name)) for name in n.R)
+                        for n in offspring_groups
+                    )
                 )
-            ))
+            )
             targets = [a[0] for a in _a]
             target_names = [a[1] for a in _a]
         elif kind == "file":
-            _a = list(itertools.chain(
-                *(
-                    tuple((n.F[name], (*n._name, name)) for name in n.F)
-                    for n in offspring_groups
+            _a = list(
+                itertools.chain(
+                    *(
+                        tuple((n.F[name], (*n._name, name)) for name in n.F)
+                        for n in offspring_groups
+                    )
                 )
-            ))
+            )
             targets = [a[0] for a in _a]
             target_names = [a[1] for a in _a]
         else:
@@ -1207,4 +1209,3 @@ def _get_memo_factory_pickle(pickle_key):
 
 def _memo_factory_str_hash(args):
     return StrHashMemo(args)
-

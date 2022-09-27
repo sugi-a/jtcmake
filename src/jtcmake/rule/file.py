@@ -5,7 +5,8 @@ from pathlib import Path, WindowsPath, PosixPath
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
-_Path = WindowsPath if os.name == 'nt' else PosixPath
+_Path = WindowsPath if os.name == "nt" else PosixPath
+
 
 class IFile(_Path, IMemoAtom):
     @abstractmethod
