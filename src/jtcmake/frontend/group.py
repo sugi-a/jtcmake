@@ -109,6 +109,8 @@ class _ItemSet(Mapping):
 
     def _add(self, k, v):
         self._dic[k] = v
+        if not hasattr(self, k):
+            setattr(self, k, v)
 
 
 class _Self:
