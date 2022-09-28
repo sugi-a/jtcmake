@@ -387,6 +387,6 @@ def test_keyboard_interrupt(tmp_path):
             events.Start(r1),
             ("preprocess", r1),
             # method
-            ("postprocess", r1, True),
+            ("postprocess", r1, False),
         ],
     )

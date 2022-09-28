@@ -164,7 +164,7 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
         succ = False
     except KeyboardInterrupt as e:
         try:
-            rule.postprocess(callback, succ)
+            rule.postprocess(callback, False)
         except:
             pass
 

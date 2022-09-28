@@ -3,15 +3,14 @@ from abc import ABC, abstractmethod
 import itertools
 from collections import namedtuple
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, WindowsPath, PosixPath
 from logging import Logger
 
-from ..rule.rule import Rule
+from ..rule.rule import Rule as _RawRule
 from ..rule.memo import PickleMemo, StrHashMemo
-from .abc import IGroup
-from ..rule.file import File, VFile, IFile, IFileBase
+from ..rule.file import File, VFile, IFile
 from .event_logger import log_make_event
-from ..core.make import make as _make
+from ..core.make import make as _make, MakeSummary
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import (
     TextWriter,
@@ -39,9 +38,106 @@ from ..utils.nest import (
 from ..utils.frozen_dict import FrozenDict
 
 
-class RuleNodeBase(ABC):
-    def __init__(self, name, rule, group_tree_info):
-        self._rule = rule
+# dict and FrozenDict are the map-type target of map_structure
+_MAP_FACTORY = {(dict, FrozenDict): dict}
+
+
+_Path = WindowsPath if os.name == "nt" else PosixPath
+
+
+def _touch(path, create, _t, logwriter):
+    path = str(path)
+
+    if not os.path.exists(path) and create:
+        try:
+            open(path, "w").close()
+        except Exception:
+            return
+
+    if os.path.exists(path):
+        os.utime(path, (_t, _t))
+        logwriter.info("touch ", RichStr(path, link=path), "\n")
+
+
+def _clean(path, logwriter):
+    path = str(path)
+
+    try:
+        os.remove(path)
+        logwriter.info("clean ", RichStr(path, link=path), "\n")
+    except:
+        pass
+
+
+class GroupTreeInfo:
+    def __init__(self, logwriter, memo_factory):
+        self.rules = []  # list<Rule>
+        self.rule2idx = {}  # dict<int, int>
+        self.path2idx = {}  # dict<Path, int>. idx can be -1
+        self.idx2xpaths = []  # list<list<Path>>
+        self.path2file = {}  # dict<str, IFile>
+        self.memo_factory = memo_factory
+
+        self.logwriter = logwriter
+
+        self.memo_store = {}  # dict<int, (any, any)>
+
+
+class _ItemSet(Mapping):
+    def __init__(self, dic):
+        self._dic = dic
+
+    def __getitem__(self, k):
+        return self._dic[k]
+
+    def __getattr__(self, k):
+        return self._dic[k]
+
+    def __iter__(self):
+        return iter(self._dic)
+
+    def __len__(self):
+        return len(self._dic)
+
+    def __contains__(self, k):
+        return k in self._dic
+
+    def __eq__(self, other):
+        return id(self) == id(other)
+
+    def __hash__(self):
+        return hash(id(self))
+
+    def _add(self, k, v):
+        self._dic[k] = v
+        if not hasattr(self, k):
+            setattr(self, k, v)
+
+
+class _Self:
+    def __init__(self, key=None):
+        self._key = key
+
+    def __getitem__(self, key):
+        return _Self(key)
+
+    def __getattr__(self, key):
+        return self[key]
+
+    def __repr__(self):
+        if self._key is None:
+            return "Self"
+        else:
+            return f"Self({self._key})"
+
+
+SELF = _Self()
+
+
+class Rule(FrozenDict):
+    def __init__(self, name, files, rrule, group_tree_info):
+        super().__init__(files)
+        self._rrule = rrule
         self._info = group_tree_info
         self._name = name
 
@@ -83,9 +179,8 @@ class RuleNodeBase(ABC):
         """
         Overwrite memo based on the current content of the method arguments.
         """
-        self._rule.update_memo()
+        self._rrule.update_memo()
 
-    @abstractmethod
     def touch(self, create=False, _t=None):
         """
         Set the modification time of the output files of this rule to now.
@@ -96,175 +191,88 @@ class RuleNodeBase(ABC):
             _t (float):
                 set mtime to `_t` instead of now
         """
-        ...
+        if _t is None:
+            _t = time.time()
 
-    @abstractmethod
+        for k in self:
+            _touch(self[k], create, _t, self._info.logwriter)
+
     def clean(self):
         """
         Delete the output files and the memo of this rule.
         """
-        ...
-
-
-def _touch(path, create, _t, logwriter):
-    path = str(path)
-
-    if not os.path.exists(path) and create:
-        try:
-            open(path, "w").close()
-        except Exception:
-            return
-
-    if os.path.exists(path):
-        os.utime(path, (_t, _t))
-        logwriter.info("touch ", RichStr(path, link=path), "\n")
-
-
-def _clean(path, logwriter):
-    path = str(path)
-
-    try:
-        os.remove(path)
-        logwriter.info("clean ", RichStr(path, link=path), "\n")
-    except:
-        pass
-
-
-class RuleNodeAtom(RuleNodeBase):
-    def __init__(self, name, rule, group_tree_info, file):
-        RuleNodeBase.__init__(self, name, rule, group_tree_info)
-        self._file = file
-
-    @property
-    def path(self):
-        return self._file.path
-
-    @property
-    def abspath(self):
-        return self._file.abspath
-
-    def clean(self):
-        _clean(self._file.path, self._info.logwriter)
-
-    def touch(self, create=False, _t=None):
-        if _t is None:
-            _t = time.time()
-
-        _touch(self._file.path, create, _t, self._info.logwriter)
-
-    def __repr__(self):
-        return f'RuleNodeAtom(path="{self.path}")'
-
-
-# dict and FrozenDict are the map-type target of map_structure
-_MAP_FACTORY = {(dict, FrozenDict): dict}
-
-
-class RuleNodeTuple(tuple, RuleNodeBase):
-    def __new__(cls, _name, _rule, _group_tree_info, lst):
-        return tuple.__new__(cls, lst)
-
-    def __init__(self, name, rule, group_tree_info, lst):
-        RuleNodeBase.__init__(self, name, rule, group_tree_info)
-
-    def _map_structure(self, map_fn):
-        return map_structure(map_fn, self, map_factory=_MAP_FACTORY)
-
-    @property
-    def path(self):
-        return self._map_structure(lambda f: f.path)
-
-    @property
-    def abspath(self):
-        return self._map_structure(lambda f: f.abspath)
-
-    def clean(self):
-        self._map_structure(lambda f: _clean(f.path, self._info.logwriter))
-
-    def touch(self, create=False, _t=None):
-        if _t is None:
-            _t = time.time()
-
-        map_fn = lambda f: _touch(f.path, create, _t, self._info.logwriter)
-        self._map_structure(map_fn)
-
-    def __hash__(self, other):
-        """ensure the instance does not behave as a value object"""
-        return hash(id(self))
+        for k in self:
+            _clean(self[k], self._info.logwriter)
 
     def __eq__(self, other):
-        """ensure the instance does not behave as a value object"""
         return id(self) == id(other)
-
-    def __repr__(self):
-        return f"RuleNodeTuple{tuple(self)}"
-
-
-class RuleNodeDict(FrozenDict, RuleNodeBase):
-    def __init__(self, name, rule, group_tree_info, dic):
-        RuleNodeBase.__init__(self, name, rule, group_tree_info)
-        FrozenDict.__init__(self, dic)
-
-    def _map_structure(self, map_fn):
-        return map_structure(map_fn, self, map_factory=_MAP_FACTORY)
-
-    @property
-    def path(self):
-        return self._map_structure(lambda f: f.path)
-
-    @property
-    def abspath(self):
-        return self._map_structure(lambda f: f.abspath)
-
-    def clean(self):
-        self._map_structure(lambda f: _clean(f.path, self._info.logwriter))
-
-    def touch(self, create=False, _t=None):
-        if _t is None:
-            _t = time.time()
-
-        map_fn = lambda f: _touch(f.path, create, _t, self._info.logwriter)
-        self._map_structure(map_fn)
 
     def __hash__(self):
-        """ensure the instance does not behave as a value object"""
-        return id(self)
-
-    def __eq__(self, other):
-        """ensure the instance does not behave as a value object"""
-        return id(self) == id(other)
-
-    def __repr__(self):
-        return f"RuleNodeDict{dict(self)}"
+        return hash(id(self))
 
 
-class GroupTreeInfo:
-    def __init__(self, logwriter, memo_factory):
-        self.rules = []  # list<Rule>
-        self.rule2idx = {}  # dict<int, int>
-        self.path2idx = {}  # dict<Path, int>. idx can be -1
-        self.idx2xpaths = []  # list<list<Path>>
-        self.path_to_file = {}
-        self.memo_factory = memo_factory
+def _parse_args_group_add(args, kwargs, file_factory):
+    """
+    Extracted values:
+        name (str): name of the rule
+        outs (Dict[str, IFile]): output files (name -> path)
+        method (Callable[P, T]|None): method
+        *args: positional arguments for the method
+        **kwargs: keyward arguments for the method
+    """
+    if len(args) <= 1:
+        raise TypeError(
+            f"At least two arguments are expected. Given {len(args)}."
+        )
 
-        self.logwriter = logwriter
-
-
-def _parse_args_group_add(name, args, kwargs):
-    """No type checking. Structure checking only."""
-    if len(args) == 0:
-        raise TypeError("method must be specified")
-
-    if callable(args[0]) or args[0] is None:
-        path = name
-        method, *args = args
+    if args[1] is None or callable(args[1]):
+        outs, method, *args = args
+        name = None
     else:
-        if not (len(args) >= 2 and (callable(args[1]) or args[1] is None)):
-            raise TypeError("method must be specified")
+        if len(args) == 2 or not (args[2] is None or callable(args[2])):
+            raise TypeError("Method must be specified")
 
-        path, method, *args = args
+        name, outs, method, *args = args
 
-    return name, path, method, args, kwargs
+    # validate and normalize output files
+    if isinstance(outs, (tuple, list)):
+        outs = {str(v): v for v in outs}
+    elif isinstance(outs, (str, Path)):
+        outs = {str(outs): outs}
+    elif isinstance(outs, dict):
+        pass
+    else:
+        raise TypeError(
+            "Expected tuple[str|PathLike), list[str|PathLike], "
+            f"dict[str, str|PathLike], str, or PathLike. Given {outs}"
+        )
+
+    for k in outs:
+        if not isinstance(k, str):
+            raise TypeError(f"Keys of output dict must be str. Given {k}")
+
+    def _to_ifile(f):
+        if isinstance(f, IFile):
+            return f
+
+        if isinstance(f, (str, os.PathLike)):
+            return file_factory(f)
+
+        raise TypeError(f"Output file must be str or PathLike. Given {f}")
+
+    outs = {k: _to_ifile(v) for k, v in outs.items()}
+
+    if len(outs) == 0:
+        raise TypeError("At least 1 output file must be specified")
+
+    # validate name
+    if name is None:
+        name = str(next(iter(outs)))
+    else:
+        if not isinstance(name, str):
+            raise TypeError(f"name must be str")
+
+    return name, outs, method, args, kwargs
 
 
 def _validate_signature(func, args, kwargs):
@@ -276,7 +284,20 @@ def _validate_signature(func, args, kwargs):
     return True
 
 
-class Group(IGroup):
+def _shorter_path(p):
+    cwd = os.getcwd()
+
+    if os.name == "posix":
+        p = Path(os.path.expanduser(p))
+
+    try:
+        rel = Path(os.path.relpath(p, cwd))
+        return rel if len(str(rel)) < len(str(p)) else p
+    except Exception:
+        return p
+
+
+class Group:
     """
     __init__() for this class is private.
     Use create_group() instead to instanciate it.
@@ -289,7 +310,34 @@ class Group(IGroup):
         self._info = info
         self._prefix = prefix
         self._name = name
-        self._children = {}
+
+        self._rules = _ItemSet({})
+        self._files = _ItemSet({})
+        self._groups = _ItemSet({})
+
+    @property
+    def G(self):
+        return self._groups
+
+    @property
+    def R(self):
+        return self._rules
+
+    @property
+    def F(self):
+        return self._files
+
+    def mem(self, value, memoized_value):
+        # reference: root Group -> memo_store -> atom -> value
+        # so value won't be GC'ed and id is valid while group tree is active
+        self._info.memo_store[id(value)] = Atom(value, memoized_value)
+        return value
+
+    def memstr(self, value):
+        return self.mem(value, str(value))
+
+    def memnone(self, value):
+        return self.mem(value, None)
 
     def add_group(self, name, dirname=None, *, prefix=None):
         """Add a child Group node
@@ -314,7 +362,7 @@ class Group(IGroup):
         elif not isinstance(name, str):
             raise TypeError("name must be str or os.PathLike")
 
-        if name in self._children:
+        if name in self._groups:
             raise KeyError(f"name {repr(name)} already exists in this Group")
 
         if not _is_valid_node_name(name):
@@ -346,9 +394,9 @@ class Group(IGroup):
 
         g = Group(self._info, prefix, (*self._name, name))
 
-        self._children[name] = g
+        self._groups._add(name, g)
 
-        if _ismembername(name):
+        if name.isidentifier() and name[0] != "_" and not hasattr(self, name):
             self.__dict__[name] = g
 
         return g
@@ -385,7 +433,7 @@ class Group(IGroup):
         )
 
     # APIs
-    def add(self, name, *args, **kwargs):
+    def add(self, *args, **kwargs):
         """Add a Rule node into this Group node.
 
         Call signatures:
@@ -418,20 +466,20 @@ class Group(IGroup):
             - Group.addvf wraps them by VFile.
         """
         name, path, method, args, kwargs = _parse_args_group_add(
-            name, args, kwargs
+            args, kwargs, File
         )
 
         if method is None:
 
             def decorator_add(method):
-                self._add(File, name, path, method, *args, **kwargs)
+                self._add(name, path, method, args, kwargs)
                 return method
 
             return decorator_add
         else:
-            return self._add(File, name, path, method, *args, **kwargs)
+            return self._add(name, path, method, args, kwargs)
 
-    def addvf(self, name, *args, **kwargs):
+    def addvf(self, *args, **kwargs):
         """Add a Rule node into this Group node.
 
         Call signatures:
@@ -466,199 +514,193 @@ class Group(IGroup):
             - Group.addvf wraps them by VFile.
         """
         name, path, method, args, kwargs = _parse_args_group_add(
-            name, args, kwargs
+            args, kwargs, VFile
         )
 
         if method is None:
 
             def decorator_addvf(method):
-                self._add(VFile, name, path, method, *args, **kwargs)
+                self._add(name, path, method, args, kwargs)
                 return method
 
             return decorator_addvf
         else:
-            return self._add(VFile, name, path, method, *args, **kwargs)
+            return self._add(name, path, method, args, kwargs)
 
-    def _add(self, file_factory, name, yfiles, method, *args, **kwargs):
-        # type checking and normalization
-        if isinstance(name, os.PathLike):
-            name = str(name)
-        elif not isinstance(name, str):
-            raise TypeError("name must be str|os.PathLike")
+    def add2(self, *args):
+        name, outs, method, args, kwargs = _parse_args_group_add(
+            args, {}, File
+        )
+
+        if len(args) != 0:
+            raise TypeError(f"Too many arguments: {args}")
+
+        if len(kwargs) != 0:
+            raise TypeError(f"Too many arguments: {kwargs}")
+
+        if method is None:
+            raise TypeError(f"method must be specified")
+
+        def _adder(*args, **kwargs):
+            self._add(name, outs, method, args, kwargs)
+
+        return _adder
+
+    def _add(self, name, yfiles, method, args, kwargs):
+        abspath = os.path.abspath
+        info = self._info
 
         if not _is_valid_node_name(name):
             raise ValueError(f'name "{name}" contains some illegal characters')
-        if name in self._children:
-            raise KeyError(f"name `{name}` already exists")
-
         if name == "":
             raise ValueError(f'name must not be ""')
 
-        if not callable(method):
-            raise TypeError("method must be callable")
+        if name in self._rules:
+            raise KeyError(f"name `{name}` already exists in the group")
 
-        path2idx = self._info.path2idx
-        path_to_file = self._info.path_to_file
+        for alias, f in yfiles.items():
+            if alias in self._files:
+                raise KeyError(f"Alias '{alias}' already exists in the group")
 
-        def normalize_output_files(p):
-            if isinstance(p, (str, os.PathLike)):
-                return file_factory(p)
-            elif isinstance(p, IFileBase):
-                return p
+        # expand ~
+        if os.name == "posix":
+            yfiles = {
+                k: f.replace(os.path.expanduser(f)) for k, f in yfiles.items()
+            }
 
-            raise TypeError(
-                "output file must be str|os.PathLike|IFileBase. Given {p}"
-            )
+        # add prefix to paths if not absolute
+        yfiles = {
+            k: f if f.is_absolute() else f.replace(self._prefix + str(f))
+            for k, f in yfiles.items()
+        }
 
-        yfiles = map_structure(normalize_output_files, yfiles)
+        yfiles = {k: f.replace(_shorter_path(f)) for k, f in yfiles.items()}
 
-        # add prefix to paths of yfiles if necessary
-        def add_pfx(f):
-            if os.name == "posix":
-                p = os.path.expanduser(f.path)
+        # check yfile duplicated registration and type consistency
+        yp2f = {}
+        for k, f in yfiles.items():
+            _absp = abspath(f)
+
+            if _absp in info.path2idx:
+                raise ValueError(
+                    f"File {_absp} is already used in the group tree"
+                )
+
+            if _absp in yp2f and type(yp2f[_absp]) != type(f):
+                raise TypeError(
+                    "IFile type inconsistency found: Output files "
+                    f"contains more than one IFiles pointing to {_absp} "
+                    f"with different types: {type(f)} and {type(yp2f[_absp])}"
+                )
+
+            yp2f[_absp] = f
+
+        # reserved Atom replacement
+        def _rec(o):
+            if id(o) in info.memo_store:
+                return info.memo_store[id(o)]
+            elif isinstance(o, dict):
+                return {k: _rec(v) for k, v in o.items()}
+            elif isinstance(o, tuple):
+                return tuple(map(_rec, o))
+            elif isinstance(o, list):
+                return list(map(_rec, o))
             else:
-                p = f.path
+                return o
 
-            if os.path.isabs(p):
-                return f.copy_with(p)
-            else:
-                return f.copy_with(self._prefix + str(p))
+        args, kwargs = _rec((args, kwargs))
 
-        yfiles = map_structure(add_pfx, yfiles)
-
-        # expand SELFs in args
-        _expanded = False
-
-        def expand_self(arg):
-            nonlocal _expanded
-            if isinstance(arg, NestKey):
-                _expanded = True
-                try:
-                    return nest_get(yfiles, arg)
-                except:
-                    raise ValueError(f"Invalid keys for SELF")
-            else:
-                return arg
-
-        args, kwargs = map_structure(
-            expand_self,
-            (args, kwargs),
-            map_factory=_MAP_FACTORY,
-        )
-
-        if not _expanded:
-            args = (yfiles, *args)
-
-        # flatten yfiles and args (for convenience)
-        try:
-            yfiles_ = flatten(yfiles)
-        except Exception as e:
-            raise Exception(
-                f"Failed to flatten the input file structure. "
-                f"This error occurs when the structure contains a dict "
-                f"whose keys are not sortable."
-            ) from e
-
+        # flatten args
         try:
             args_ = flatten((args, kwargs))
         except Exception as e:
-            raise Exception(
-                f"Failed to flatten the structure of the args/kwargs. "
-                f"This error occurs when it contain a dict "
-                f"whose keys are not sortable."
-            ) from e
+            raise Exception("Failed to flatten args and kwargs.") from e
 
-        if len(yfiles_) == 0:
-            raise ValueError("at least 1 output file must be specified")
-
-        # Unwrap RuleNodeAtom
-        args_ = [x._file if isinstance(x, RuleNodeAtom) else x for x in args_]
-
-        # normalize paths (take the shorter one of absolute or relative path)
-        def _shorter_path(p):
-            cwd = os.getcwd()
-            try:
-                if os.name == "posix":
-                    p = os.path.expanduser(p)
-                rel = Path(os.path.relpath(p, cwd))
-                return rel if len(str(rel)) < len(str(p)) else p
-            except:
-                return p
-
-        _norm = (
-            lambda f: f.copy_with(_shorter_path(f.path))
-            if isinstance(f, IFileBase)
-            else f
-        )
-        yfiles_ = list(map(_norm, yfiles_))
-        args_ = list(map(_norm, args_))
-
-        # check IFileBase consistency
-        p2f = {}
-        for x in args_:
-            if isinstance(x, IFileBase):
-                if (x.path in p2f and p2f[x.path] != x) or (
-                    x.abspath in path_to_file and path_to_file[x.abspath] != x
-                ):
-                    raise TypeError(
-                        f"Inconsistency in IFileBases of path {x.path}: "
-                        f"One is {x} and the other is {p2f[x.path]}"
-                    )
+        # replace SELFs with the corresponding output files
+        def _repl_self(o):
+            if isinstance(o, _Self):
+                if o._key is None:
+                    if len(yfiles) >= 2:
+                        raise TypeError(
+                            "Self-without-key is not allowed when the "
+                            "rule has multiple output files"
+                        )
+                    a = next(iter(yfiles.values()))
+                    return a
                 else:
-                    p2f[x.path] = x
-
-        # check duplicate registration of output files
-        for f in yfiles_:
-            idx = path2idx.get(f.abspath)
-            if idx is None:
-                pass
-            elif idx == -1:
-                raise ValueError(
-                    f"{f.path} is already used as an original file"
-                )
+                    if o._key not in yfiles:
+                        raise KeyError(f"Failed to resolve Self: {o._key}")
+                    return yfiles[o._key]
             else:
-                raise ValueError(
-                    f"{f.path} is already used by another rule: "
-                    f"{self._info.rules[path2idx[f.abspath]]}"
-                )
+                return o
 
-        # check if all the y files are included in the arguments
-        unused = set(yfiles_) - {f for f in args_ if isinstance(f, IFileBase)}
-        if len(unused) != 0:
-            raise ValueError(
-                f"Some files are not passed to the method: " f"{list(unused)}"
+        args_ = list(map(_repl_self, args_))
+
+        files = list(filter(lambda f: isinstance(f, IFile), args_))
+
+        # check type consistency and coverage of output files in arguments
+        _unused_yp = set(yp2f)
+        xp2f = {}
+
+        for f in files:
+            _absp = abspath(f)
+
+            if _absp in yp2f:
+                if type(yp2f[_absp]) != type(f):
+                    raise TypeError(
+                        "IFile type inconsistency found: two IFiles "
+                        f"pointing to {_absp} have different types "
+                        f"{type(f)} and {type(yp2f[_absp])}"
+                    )
+
+                if _absp in _unused_yp:
+                    _unused_yp.remove(_absp)
+            else:
+                # inconsistency with the existing files
+                _f = info.path2file.get(_absp)
+                if _f and type(_f) != type(f):
+                    raise TypeError(
+                        f"IFile inconsistency found: argument {f} is of type "
+                        f"({type(f)}) but the group tree already has "
+                        f"{_f} of type {type(_f)}"
+                    )
+
+                # inconsistency
+                if _absp in xp2f and type(xp2f[_absp]) != type(f):
+                    raise TypeError(
+                        "IFile inconsistency found: argument {f} is of type "
+                        f"({_absp}) must have the same type but "
+                        f"One is {type(f)} and the other is {xp2f[_absp]}"
+                    )
+
+                xp2f[_absp] = f
+
+        if len(_unused_yp) != 0:
+            _missings = [yp2f[p] for p in _unused_yp]
+            raise Exception(
+                "All the output files must be included in the arguments. "
+                f"Missing ones are: {_missings}"
             )
 
         # create deplist
-        deplist = []
-        _added = set()
-        for f in args_:
-            if isinstance(f, IFileBase) and path2idx.get(f.abspath, -1) != -1:
-                dep = path2idx[f.abspath]
-                if dep not in _added:
-                    deplist.append(dep)
-                    _added.add(dep)
+        deplist = [
+            info.path2idx[p] for p in xp2f if info.path2idx.get(p, -1) != -1
+        ]
+        dpelist = list(set(deplist))
 
         # create xfiles
-        yfile_set = set(yfiles_)
-
-        xfiles = [
-            f for f in args_ if isinstance(f, IFileBase) and f not in yfile_set
-        ]
-
-        xfile_is_orig = [path2idx.get(f.abspath, -1) == -1 for f in xfiles]
+        xfiles = list(xp2f.values())
+        xfile_is_orig = [info.path2idx.get(p, -1) == -1 for p in xp2f]
 
         # create method args
-        def _unwrap_IFileBase_Atom(x):
-            if isinstance(x, IFileBase):
-                return x.path
-            elif isinstance(x, Atom):
+        def _unwrap_Atom(x):
+            if isinstance(x, Atom):
                 return x.value
             else:
                 return x
 
         method_args = pack_sequence_as((args, kwargs), args_)
-        method_args = map_structure(_unwrap_IFileBase_Atom, method_args)
+        method_args = map_structure(_unwrap_Atom, method_args)
         method_args, method_kwargs = method_args
 
         # validate arguments
@@ -666,11 +708,11 @@ class Group(IGroup):
             raise TypeError("arguments do not match the method signature")
 
         memo_args = pack_sequence_as((args, kwargs), args_)
-        memo = self._info.memo_factory(memo_args)
+        memo = info.memo_factory(memo_args)
 
         # create Rule
-        r = Rule(
-            yfiles_,
+        _rrule = _RawRule(
+            list(yp2f.values()),
             xfiles,
             xfile_is_orig,
             deplist,
@@ -682,55 +724,43 @@ class Group(IGroup):
         )
 
         # create RuleNode
-        yfiles = pack_sequence_as(yfiles, yfiles_)
-
-        file_node_root = map_structure(
-            lambda x: x,
-            yfiles,
-            seq_factory={list: tuple, tuple: tuple},
-            map_factory={dict: FrozenDict},
-        )
-
-        fullname = (*self._name, name)
-        if isinstance(file_node_root, IFileBase):
-            rc = RuleNodeAtom(fullname, r, self._info, file_node_root)
-        elif isinstance(file_node_root, tuple):
-            rc = RuleNodeTuple(fullname, r, self._info, file_node_root)
-        elif isinstance(file_node_root, FrozenDict):
-            rc = RuleNodeDict(fullname, r, self._info, file_node_root)
-        else:
-            raise Exception("Internal Error")
+        rule = Rule((*self._name, name), yfiles, _rrule, info)
 
         # update group tree
-        self._children[name] = rc
+        self._rules._add(name, rule)
 
-        if _ismembername(name):
-            self.__dict__[name] = rc
+        for alias, f in yfiles.items():
+            assert alias not in self._files
+            self._files._add(alias, f)
 
         rule_idx = len(self._info.rules)
-        self._info.rules.append(r)
-        self._info.rule2idx[r] = rule_idx
-        assert len(self._info.rules) == len(self._info.rule2idx)
+        info.rules.append(_rrule)
+        info.rule2idx[_rrule] = rule_idx
 
-        for f in yfiles_:
-            path2idx[f.abspath] = rule_idx
+        assert len(info.rules) == len(info.rule2idx)
 
-        for f in xfiles:
-            if f.abspath not in path2idx:
-                # Add as an original file
-                path2idx[f.abspath] = -1
+        for p in yp2f:
+            info.path2idx[p] = rule_idx
 
-        for f in itertools.chain(yfiles_, xfiles):
-            path_to_file[f.abspath] = f
+        for p in xp2f:
+            if p not in info.path2idx:
+                # original file
+                info.path2idx[p] = -1
 
-        self._info.idx2xpaths.append([f.abspath for f in xfiles])
+        for p, f in itertools.chain(xp2f.items(), yp2f.items()):
+            info.path2file[p] = f
 
-        return rc
+        info.idx2xpaths.append(list(xp2f))
+
+        return rule
 
     def clean(self):
         """Delete files under this Group"""
-        for c in self._children.values():
+        for c in self.G.values():
             c.clean()
+
+        for r in self.R.values():
+            r.clean()
 
     def touch(self, create=False, _t=None):
         """Touch files under this Group
@@ -743,21 +773,107 @@ class Group(IGroup):
         """
         if _t is None:
             _t = time.time()
-        for c in self._children.values():
+
+        for c in self.G.values():
             c.touch(create, _t)
 
-    def _get_children_names(self, dst, group, rule):
-        for k, c in self._children.items():
-            if isinstance(c, Group):
-                if group:
-                    dst.append(c._name)
+        for r in self.R.values():
+            r.touch(create, _t)
 
-                c._get_children_names(dst, group, rule)
+    def _get_offspring_groups(self, dst):
+        for k, c in self._groups.items():
+            dst.append(c)
+            c._get_offspring_groups(dst)
+
+    def _select_wrapper(self, pattern, kind):
+        if isinstance(pattern, str):
+            if len(pattern) == 0:
+                raise ValueError("pattern must not be an empty str")
+
+            pattern = pattern.strip("/")
+            pattern = re.split("/+", pattern)
+        elif isinstance(pattern, (tuple, list)):
+            if not all(isinstance(v, str) for v in pattern):
+                raise TypeError("Pattern sequence items must be str")
+        else:
+            raise TypeError("Pattern must be str or sequence of str")
+
+        return self._select(pattern, kind)
+
+    def _select(self, pattern, kind):
+        SEP = ";"
+        regex = []
+        for p in pattern:
+            assert len(p) > 0
+
+            if p.find("**") != -1 and p != "**":
+                raise ValueError(
+                    'Invalid pattern: "**" can only be an entire component'
+                )
+            if p == "**":
+                regex.append(f"({SEP}[^{SEP}]+)*")
             else:
-                if rule:
-                    dst.append((*self._name, k))
+                if p == "*":
+                    # single * does not match an empty str
+                    regex.append(f"{SEP}[^{SEP}]+")
+                else:
 
-    def select(self, pattern, group=False):
+                    def _repl(x):
+                        x = x.group()
+                        return f"[^{SEP}]*" if x == "*" else re.escape(x)
+
+                    p = re.sub(r"\*|[^*]+", _repl, p)
+                    regex.append(f"{SEP}{p}")
+
+        regex = re.compile("^" + "".join(regex) + "$")
+
+        offspring_groups = [self]
+        self._get_offspring_groups(offspring_groups)
+
+        if kind == "group":
+            target_names = [n._name for n in offspring_groups]
+            targets = offspring_groups
+
+        elif kind == "rule":
+            _a = list(
+                itertools.chain(
+                    *(
+                        tuple((n.R[name], (*n._name, name)) for name in n.R)
+                        for n in offspring_groups
+                    )
+                )
+            )
+            targets = [a[0] for a in _a]
+            target_names = [a[1] for a in _a]
+        elif kind == "file":
+            _a = list(
+                itertools.chain(
+                    *(
+                        tuple((n.F[name], (*n._name, name)) for name in n.F)
+                        for n in offspring_groups
+                    )
+                )
+            )
+            targets = [a[0] for a in _a]
+            target_names = [a[1] for a in _a]
+        else:
+            raise Exception("unreachable")
+
+        res = []
+        for target, target_name in zip(targets, target_names):
+            target_name = target_name[len(self._name) :]
+            if regex.match("".join(SEP + n for n in target_name)):
+                res.append(target)
+
+        return res
+
+    def select_rules(self, pattern):
+        return self._select_wrapper(pattern, "rule")
+
+    def select_files(self, pattern):
+        return self._select_wrapper(pattern, "file")
+
+    def select_groups(self, pattern):
         """Obtain child groups or rules of this group.
 
         Signatures:
@@ -826,72 +942,23 @@ class Group(IGroup):
                 g.select(['dir/a.txt']) == [rule]  # OK
                 g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
         """
-        if isinstance(pattern, str):
-            if len(pattern) == 0:
-                raise ValueError(f'Invalid pattern "{pattern}"')
-
-            group = pattern[-1] == "/"
-            pattern = pattern.strip("/")
-            parts = re.split("/+", pattern)
-        elif isinstance(pattern, (tuple, list)):
-            if not all(isinstance(v, str) for v in pattern):
-                raise TypeError("Pattern sequence items must be str")
-
-            parts = pattern
-        else:
-            raise TypeError("Pattern must be str or sequence of str")
-
-        SEP = ";"
-        regex = []
-        for p in parts:
-            assert len(p) > 0
-
-            if p.find("**") != -1 and p != "**":
-                raise ValueError(
-                    'Invalid pattern: "**" can only be an entire component'
-                )
-            if p == "**":
-                regex.append(f"({SEP}[^{SEP}]+)*")
-            else:
-                if p == "*":
-                    # single * does not match an empty str
-                    regex.append(f"{SEP}[^{SEP}]+")
-                else:
-
-                    def _repl(x):
-                        x = x.group()
-                        return f"[^{SEP}]*" if x == "*" else re.escape(x)
-
-                    p = re.sub(r"\*|[^*]+", _repl, p)
-                    regex.append(f"{SEP}{p}")
-
-        regex = re.compile("^" + "".join(regex) + "$")
-        chnames = [self._name] if group else []
-        self._get_children_names(chnames, group, not group)
-
-        res = []
-        for name in chnames:
-            name = name[len(self._name) :]
-            if regex.match("".join(SEP + n for n in name)):
-                res.append(nest_get(self, name))
-
-        return res
+        return self._select_wrapper(pattern, "group")
 
     def __repr__(self):
         name = repr_group_name(self._name)
         return f"<Group name={repr(name)} prefix={repr(self._prefix)}>"
 
     def __getitem__(self, k):
-        return self._children[k]
+        return self.G[k]
 
     def __iter__(self):
-        return iter(self._children)
+        return iter(self.G)
 
     def __len__(self):
-        return len(self._children)
+        return len(self.G)
 
     def __contains__(self, k):
-        return k in self._children
+        return k in self.G
 
 
 def repr_group_name(group_name):
@@ -954,31 +1021,32 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
 
     # create list of unique rules by DFS
     _added = set()
-    rules = []
-    stack = list(reversed(rule_or_groups))
-    _info = None
 
     if len(rule_or_groups) == 0:
-        return True
+        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
+
+    _info = rule_or_groups[0]._info
+
+    def _assert_same_tree(node):
+        if node._info is not _info:
+            raise ValueError(
+                "All Groups/Rules must belong to the same Group tree. "
+            )
+
+    list(map(_assert_same_tree, rule_or_groups))
+
+    rules = [r._rrule for r in rule_or_groups if isinstance(r, Rule)]
+    stack = [g for g in reversed(rule_or_groups) if isinstance(g, Group)]
+
+    assert len(rules) + len(stack) == len(rule_or_groups)
 
     while stack:
         node = stack.pop()
+        stack.extend(node.G.values())
+        rules.extend(r._rrule for r in node.R.values())
 
-        if _info is None:
-            _info = node._info
-        else:
-            if _info is not node._info:
-                raise ValueError(
-                    f"All Groups/Rules must belong to the same Group tree. "
-                    f"This rule is to prevent potentially erroneous operations"
-                )
-
-        if isinstance(node, RuleNodeBase):
-            if node._rule not in _added:
-                rules.append(node._rule)
-        else:
-            assert isinstance(node, Group)
-            stack.extend(node._children.values())
+        list(map(_assert_same_tree, node.G.values()))
+        list(map(_assert_same_tree, node.R.values()))
 
     ids = [_info.rule2idx[r] for r in rules]
 
@@ -1141,6 +1209,3 @@ def _get_memo_factory_pickle(pickle_key):
 
 def _memo_factory_str_hash(args):
     return StrHashMemo(args)
-
-
-SELF = NestKey(())

@@ -2,8 +2,8 @@ import os, sys, re, json, subprocess, shutil
 from html import escape
 from pathlib import Path
 
+from .group import Group
 from ..logwriter.writer import term_is_jupyter
-from .abc import IGroup
 
 
 def print_graphviz(group, output_file=None):
@@ -56,7 +56,7 @@ def print_graphviz(group, output_file=None):
 
 
 def gen_dot_code(group, basedir=None):
-    if not isinstance(group, IGroup):
+    if not isinstance(group, Group):
         raise TypeError("argument group must be Group")
 
     gid = {}
@@ -86,17 +86,16 @@ def gen_dot_code(group, basedir=None):
         )
         res.append(idt + f'  style = "rounded";')
 
-        for cname in g:
-            c = g[cname]
-            if isinstance(c, IGroup):
-                rec_group(c, idt + "  ", g._prefix)
-            else:
-                proc_rulew(c, cname, idt + "  ", g._prefix)
+        for child_group in g.G.values():
+            rec_group(child_group, idt + "  ", g._prefix)
+
+        for name, child_rule in g.R.items():
+            proc_rulew(child_rule, name, idt + "  ", g._prefix)
 
         res.append(idt + "};")
 
     def proc_rulew(rw, name, idt, par_prefix):
-        r = rw._rule
+        r = rw._rrule
         rid[r] = len(rid)
 
         res.append(idt + f"subgraph cluster_r_{rid[r]} {{")
@@ -108,11 +107,11 @@ def gen_dot_code(group, basedir=None):
         for yf in r.yfiles:
             fid[yf] = len(fid)
 
-            p = str(yf.abspath)
+            p = os.path.abspath(yf)
             if par_prefix != "" and p[: len(par_prefix)] == par_prefix:
                 p = "... " + p[len(par_prefix) :]
             else:
-                p = str(yf.path)
+                p = str(yf)
 
             res.append(
                 idt + f"  f{fid[yf]} ["
@@ -121,7 +120,7 @@ def gen_dot_code(group, basedir=None):
                 f"color=white; "
                 f"shape=plain; "
                 f'margin="0.1,0.1"; '
-                f'URL="{_mk_link(yf.path, basedir)}"; '
+                f'URL="{_mk_link(yf, basedir)}"; '
                 f"];"
             )
         res.append(idt + f"}}")
@@ -135,9 +134,9 @@ def gen_dot_code(group, basedir=None):
                 res.append(
                     f"  f{fid[xf]} ["
                     f'label=<<FONT FACE="monospace">'
-                    f"{escape(str(xf.path))}</FONT>>; "
+                    f"{escape(str(xf))}</FONT>>; "
                     f"shape=plain; "
-                    f'URL="{_mk_link(xf.path, basedir)}"; '
+                    f'URL="{_mk_link(xf, basedir)}"; '
                     f"];"
                 )
 

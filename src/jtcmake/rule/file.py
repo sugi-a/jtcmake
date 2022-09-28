@@ -1,67 +1,37 @@
+import os
 from abc import ABC, abstractmethod
 import os, time, hashlib, base64
-from pathlib import PurePath, Path
+from pathlib import Path, WindowsPath, PosixPath
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
+_Path = WindowsPath if os.name == "nt" else PosixPath
 
-class IFileBase(IMemoAtom):
-    @property
+
+class IFile(_Path, IMemoAtom):
     @abstractmethod
-    def path(self):
+    def replace(self, path):
         ...
-
-    @abstractmethod
-    def copy_with(self, path):
-        ...
-
-    # mixins
-    @property
-    def abspath(self):
-        return Path(os.path.abspath(self.path))
-
-    def __hash__(self):
-        return hash(self.abspath)
-
-    def __eq__(self, other):
-        return type(other) == type(self) and self.abspath == other.abspath
-
-    def __repr__(self):
-        return f"{type(self).__name__}(path={repr(self.path)})"
-
-
-class IFile(IFileBase):
-    # Marker interface for (referencial) files
-    # memo_value must be constant (must not be further overridden)
-    @property
-    def memo_value(self):
-        return None
-
-
-class IVFile(IFileBase):
-    # Marker interface for value files
-    ...
 
 
 class File(IFile):
-    def __init__(self, path):
-        """
-        Create an object representing a file to be used as an input to
-        rules. Its modification time is checked when JTCMake determines
-        whether to update the rules.
+    """
+    An instance of this class represents a file, which can be an input or
+    output of rules.
 
-        Args:
-            path (str|os.PathLike): path of the file
-        """
-        assert isinstance(path, (str, os.PathLike))
-        self._path = Path(path)
+    When used as an input, on judging whether the rule must be updated,
+    its modification time is compared to the modification time of the
+    output files.
+    If any of the output files is older than the input, the rule must be
+    updated.
+    """
+
+    def replace(self, path):
+        return File(path)
 
     @property
-    def path(self):
-        return self._path
-
-    def copy_with(self, path):
-        return File(path)
+    def memo_value(self):
+        return None
 
 
 class _ContentHash(ILazyMemoValue):
@@ -72,29 +42,26 @@ class _ContentHash(ILazyMemoValue):
         return get_hash(self.path)
 
 
-class VFile(IVFile):
+class VFile(IFile):
+    """
+    An instance of this class represents a value file, which can be
+    an input or output of rules.
+
+    When used as an input, on judging whether the rule must be updated,
+    its modification time is compared to the modification time of the
+    output files.
+    If any of the output files is older than the input, the rule must be
+    updated.
+    """
+
     def __init__(self, path):
-        """
-        Create an object representing a file to be used as an input to
-        rules. This is for a value file: its content is checked when
-        JTCMake determines whether to update the rules.
-
-        Args:
-            path (str|os.PathLike): path of the file
-        """
-        assert isinstance(path, (str, os.PathLike))
-        self._path = Path(path)
         self._memo_value = _ContentHash(path)
-
-    @property
-    def path(self):
-        return self._path
 
     @property
     def memo_value(self):
         return self._memo_value
 
-    def copy_with(self, path):
+    def replace(self, path):
         return VFile(path)
 
 

@@ -8,20 +8,17 @@ def add1(x):
 
 
 @pytest.mark.parametrize(
-    "fn,x,y",
+    "x,x2",
     [
-        (add1, 1, 2),
-        (add1, (1, 2), (2, 3)),
-        (add1, {"a": 1, (1, 2): [1, 2, 3]}, {"a": 2, (1, 2): [2, 3, 4]}),
-        (add1, [], []),
-        (len, "a", 1),
-        (len, ["a"], [1]),
-        (len, {"a": {1, 2}}, {"a": 2}),
-        (len, {"a": ((), ())}, {"a": ((), ())}),
+        (1, 2),
+        ((1, 1), (2, 2)),
+        ({"a": 1, (1, 2): [1, 1, 1]}, {"a": 2, (1, 2): [2, 2, 2]}),
+        ([], []),
     ],
 )
-def test_map_structure(fn, x, y):
-    assert map_structure(fn, x) == y
+def test_map_structure(x, x2):
+    assert map_structure(lambda x: x, x) == x
+    assert map_structure(lambda x: 2 * x, x) == x2
 
 
 @pytest.mark.parametrize(

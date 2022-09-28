@@ -1,5 +1,6 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABCMeta
 import os
+from os import PathLike
 from collections import namedtuple
 from collections.abc import Mapping
 from pathlib import Path
@@ -13,18 +14,31 @@ from typing import (
     TypeVar,
     Iterator,
     TypeAlias,
+    ParamSpec,
+    Generic,
+    List,
+    Dict,
+    Mapping,
+    Set,
 )
 from typing_extensions import Protocol
 from logging import Logger
 
 from ..core.abc import IRule
-from ..rule.file import File, IFile, IVFile, VFile
-from ..utils.nest import NestKey
+from ..rule.file import IFile, File, VFile
 from ..utils.frozen_dict import FrozenDict
-from .abc import IGroup
 from ..core.make import MakeSummary
 
-class RuleNodeBase(ABC):
+T = TypeVar("T")
+P = ParamSpec("P")
+
+class _ItemSet(Mapping[str, T]):
+    def __getattr__(self, k: str) -> T: ...
+    def __getitem__(self, k: str) -> T: ...
+    def __iter__(self) -> Iterator[str]: ...
+    def __len__(self) -> int: ...
+
+class Rule(FrozenDict[str, IFile]):
     def make(
         self,
         dry_run: bool = False,
@@ -32,29 +46,15 @@ class RuleNodeBase(ABC):
         *,
         njobs: None | int = None,
     ) -> MakeSummary: ...
-    @property
-    def name(self) -> Sequence[str]: ...
-    def touch_memo(self): ...
-    @abstractmethod
-    def clean(self): ...
-    @abstractmethod
-    def touch(self, create: bool = False, _t: float = None): ...
+    def touch_memo(self) -> None: ...
+    def touch(self, create=False, _t=None) -> None: ...
+    def clean(self) -> None: ...
 
-class RuleNodeAtom(RuleNodeBase):
-    def clean(self): ...
-    def touch(self, create: bool = False, _t: float = None): ...
+TOutput: TypeAlias = (
+    str | PathLike | Sequence[str | PathLike] | Mapping[str, str | PathLike]
+)
 
-class RuleNodeTuple(tuple, RuleNodeBase):
-    def clean(self): ...
-    def touch(self, create: bool = False, _t: float = None): ...
-
-class RuleNodeDict(FrozenDict, RuleNodeBase):
-    def clean(self): ...
-    def touch(self, create: bool = False, _t: float = None): ...
-
-_RuleNode: TypeAlias = RuleNodeAtom | RuleNodeTuple | RuleNodeDict
-
-class Group(IGroup):
+class Group:
     def add_group(
         self,
         name: str | os.PathLike,
@@ -71,55 +71,101 @@ class Group(IGroup):
     ) -> MakeSummary: ...
     @overload
     def add(
-        self, name: str, method: Callable, *args, **kwargs
-    ) -> _RuleNode: ...
+        self,
+        name: str,
+        output: TOutput,
+        method: Callable[P, Any],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Rule: ...
     @overload
     def add(
         self,
         name: str,
-        output_file_struct: Any,
-        method: Callable,
-        *args,
-        **kwargs,
-    ) -> _RuleNode: ...
+        output: TOutput,
+        method: None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
     @overload
     def add(
-        self, name: str, method: None, *args, **kwargs
-    ) -> Callable[[Callable], _RuleNode]: ...
+        self,
+        output: TOutput,
+        method: Callable[P, Any],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Rule: ...
     @overload
     def add(
-        self, name: str, output_file_struct: Any, method: None, *args, **kwargs
-    ) -> Callable[[Callable], _RuleNode]: ...
-    @overload
-    def addvf(
-        self, name: str, method: Callable, *args, **kwargs
-    ) -> _RuleNode: ...
+        self,
+        output: TOutput,
+        method: None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
     @overload
     def addvf(
         self,
         name: str,
-        output_file_struct: Any,
-        method: Callable,
-        *args,
-        **kwargs,
-    ) -> _RuleNode: ...
+        output: TOutput,
+        method: Callable[P, Any],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Rule: ...
     @overload
     def addvf(
-        self, name: str, method: None, *args, **kwargs
-    ) -> Callable[[Callable], _RuleNode]: ...
+        self,
+        name: str,
+        output: TOutput,
+        method: None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
     @overload
     def addvf(
-        self, name: str, output_file_struct: Any, method: None, *args, **kwargs
-    ) -> Callable[[Callable], _RuleNode]: ...
+        self,
+        output: TOutput,
+        method: Callable[P, Any],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Rule: ...
+    @overload
+    def addvf(
+        self,
+        output: TOutput,
+        method: None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
+    @overload
+    def add2(
+        self,
+        name: str,
+        output: TOutput,
+        method: Callable[P, Any],
+    ) -> Callable[P, Any]: ...
+    @overload
+    def add2(
+        self,
+        output: TOutput,
+        method: Callable[P, Any],
+    ) -> Callable[P, Any]: ...
     def clean(self) -> None: ...
     def touch(self, create: bool = False, _t: None | float = None): ...
-    @overload
-    def select(self, pattern: str, group: bool = False) -> list[_RuleNode]: ...
-    @overload
-    def select(
-        self, pattern: list[str], group: bool = False
-    ) -> list[_RuleNode]: ...
-    def __getitem__(self, k: str) -> Group | _RuleNode: ...
+    def select_groups(self, pattern: str | Sequence[str]) -> List[Group]: ...
+    def select_rules(self, pattern: str | Sequence[str]) -> List[Rule]: ...
+    def select_files(self, pattern: str | Sequence[str]) -> List[IFile]: ...
+    @property
+    def G(self) -> _ItemSet[Group]: ...
+    @property
+    def R(self) -> _ItemSet[Rule]: ...
+    @property
+    def F(self) -> _ItemSet[IFile]: ...
+    def mem(self, value: T, memoized_value: Any) -> T: ...
+    def memstr(self, value: T) -> T: ...
+    def memnone(self, value: T) -> T: ...
+    def __getitem__(self, k: str) -> Group: ...
+    def __getattr__(self, k: str) -> Group: ...
     def __iter__(self) -> Iterator[str]: ...
     def __len__(self) -> int: ...
     def __contains__(self, k: str) -> bool: ...
@@ -139,13 +185,12 @@ def create_group(
     | Logger
     | Writable
     | Sequence[str | os.PathLike | Logger | Writable] = None,
-) -> IGroup: ...
-
-SELF: NestKey
-
+) -> Group: ...
 def make(
-    *rule_or_groups: Sequence[_RuleNode | Group],
+    *rule_or_groups: Sequence[Rule | Group],
     dry_run: bool = False,
     keep_going: bool = False,
     njobs: None | int = None,
 ) -> MakeSummary: ...
+
+SELF: Any
