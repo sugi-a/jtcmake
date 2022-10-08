@@ -33,7 +33,9 @@ def print_graphviz(group, output_file=None, *, rankdir=None):
         assert isinstance(output_file, (str, os.PathLike))
         output_file = str(output_file)
 
-        dot_code = gen_dot_code(group, Path(output_file).parent, rankdir=rankdir)
+        dot_code = gen_dot_code(
+            group, Path(output_file).parent, rankdir=rankdir
+        )
 
         if output_file[-4:] == ".svg":
             data = convert(dot_code, "svg")
@@ -58,7 +60,7 @@ def print_graphviz(group, output_file=None, *, rankdir=None):
 def gen_dot_code(group, basedir=None, rankdir=None):
     if not isinstance(group, Group):
         raise TypeError("argument group must be Group")
-	
+
     rankdir = rankdir or "TB"
 
     if rankdir not in {"TB", "LR"}:

@@ -5,4 +5,4 @@ from .frontend.graphviz import print_graphviz
 from .frontend.misc import print_method
 from .core.make import MakeSummary
 
-VERSION = '0.3.0'
+VERSION = "0.3.0"
