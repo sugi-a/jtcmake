@@ -6,7 +6,7 @@ from .group import Group
 from ..logwriter.writer import term_is_jupyter
 
 
-def print_graphviz(group, output_file=None):
+def print_graphviz(group, output_file=None, *, rankdir=None):
     """Visualize the dependency graph using Graphviz
     Args:
         group (Group): Group node whose Rules will be visualized
@@ -23,7 +23,7 @@ def print_graphviz(group, output_file=None):
         if term_is_jupyter():
             from IPython.display import display, SVG
 
-            dot_code = gen_dot_code(group)
+            dot_code = gen_dot_code(group, rankdir=rankdir)
             svg = convert(dot_code, "svg").decode()
             display(SVG(svg))
             return
@@ -33,7 +33,9 @@ def print_graphviz(group, output_file=None):
         assert isinstance(output_file, (str, os.PathLike))
         output_file = str(output_file)
 
-        dot_code = gen_dot_code(group, Path(output_file).parent)
+        dot_code = gen_dot_code(
+            group, Path(output_file).parent, rankdir=rankdir
+        )
 
         if output_file[-4:] == ".svg":
             data = convert(dot_code, "svg")
@@ -55,9 +57,14 @@ def print_graphviz(group, output_file=None):
             f.write(data)
 
 
-def gen_dot_code(group, basedir=None):
+def gen_dot_code(group, basedir=None, rankdir=None):
     if not isinstance(group, Group):
         raise TypeError("argument group must be Group")
+
+    rankdir = rankdir or "TB"
+
+    if rankdir not in {"TB", "LR"}:
+        raise ValueError(f"rankdir must be TB or LR. Given: {rankdir}")
 
     gid = {}
     rid = {}
@@ -66,6 +73,7 @@ def gen_dot_code(group, basedir=None):
     res = []
     res.append("digraph {")
     res.append("  compound=true;")
+    res.append(f"  rankdir={rankdir};")
 
     def rec_group(g, idt, par_prefix):
         gid[g] = len(gid)

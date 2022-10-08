@@ -1,11 +1,11 @@
-import os
+import os, sys
 from abc import ABC, abstractmethod
 import os, time, hashlib, base64
 from pathlib import Path, WindowsPath, PosixPath
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
-_Path = WindowsPath if os.name == "nt" else PosixPath
+_Path = WindowsPath if sys.platform == "win32" else PosixPath
 
 
 class IFile(_Path, IMemoAtom):
