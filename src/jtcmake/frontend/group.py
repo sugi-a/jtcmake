@@ -2,7 +2,6 @@ from __future__ import annotations
 import sys, os, re, time, inspect
 from os import PathLike
 import itertools
-from collections.abc import Mapping
 from pathlib import Path
 from logging import Logger
 from typing import (
@@ -18,6 +17,7 @@ from typing import (
     TypeVar,
     Union,
     overload,
+    Mapping,
 )
 from jtcmake.core.abc import IRule
 

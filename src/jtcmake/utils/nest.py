@@ -1,5 +1,4 @@
-from typing import Any, Callable
-from collections.abc import Mapping
+from typing import Any, Callable, Mapping
 
 
 class NestKey(tuple):

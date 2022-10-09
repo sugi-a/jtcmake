@@ -1,7 +1,6 @@
-from collections.abc import Sequence
 import traceback, enum
 from collections import namedtuple
-from typing import Callable, List, Set
+from typing import Callable, List, Set, Sequence
 
 from . import events
 from .abc import IRule, IEvent, UpdateResults

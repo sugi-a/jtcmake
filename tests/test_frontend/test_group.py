@@ -1,6 +1,6 @@
 import sys, os, shutil, glob, time, inspect
 from pathlib import Path, PurePath
-from collections.abc import Sequence
+from typing import Sequence
 
 import pytest
 

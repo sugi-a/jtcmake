@@ -1,6 +1,5 @@
-from collections.abc import Mapping
 import inspect, warnings
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence, Mapping
 from pathlib import Path
 
 from ..core.abc import IEvent
