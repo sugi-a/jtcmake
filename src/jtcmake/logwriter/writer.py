@@ -5,16 +5,16 @@ from typing import (
     Any,
     Dict,
     List,
-    Literal,
     Mapping,
     NamedTuple,
     Optional,
-    Protocol,
     Sequence,
     Tuple,
     TypeVar,
     Union,
 )
+
+from typing_extensions import Literal, Protocol
 
 T = TypeVar("T")
 

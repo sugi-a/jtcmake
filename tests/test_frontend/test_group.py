@@ -360,12 +360,15 @@ def test__add_basic(mocker, ftype, use_abs):
         .arguments
     )
 
+    print(_params)
+
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
+
     assert _params["xfiles"] == []
     assert _params["xfile_is_orig"] == []
     assert _params["deplist"] == set()
     assert _params["method"] == _fn
-    print((_params["args"], _params["kwargs"]))
+
     map_structure(
         _assert_eq_path,
         (_params["args"], _params["kwargs"]),

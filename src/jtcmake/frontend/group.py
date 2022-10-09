@@ -10,7 +10,6 @@ from typing import (
     Dict,
     Iterator,
     List,
-    Literal,
     Optional,
     Sequence,
     Tuple,
@@ -19,6 +18,7 @@ from typing import (
     overload,
     Mapping,
 )
+from typing_extensions import Literal
 from jtcmake.core.abc import IRule
 
 from jtcmake.rule.memo.abc import IMemo
