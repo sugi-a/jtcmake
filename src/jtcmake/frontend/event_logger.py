@@ -1,12 +1,13 @@
-from collections.abc import Mapping, Sequence
-import os, inspect, warnings
+import inspect, warnings
+from typing import Any, Callable, List, Optional, Sequence, Mapping
 from pathlib import Path
 
-from ..logwriter.writer import IWriter, RichStr
+from ..core.abc import IEvent
 from ..core import events
+from ..logwriter.writer import IWriter, RichStr
 
 
-def log_make_event(w, e):
+def log_make_event(w: IWriter, e: IEvent):
     if isinstance(e, events.ErrorRuleEvent):
         r = e.rule
 
@@ -93,8 +94,8 @@ def log_make_event(w, e):
         w.warning(f"Unhandled event {e}")
 
 
-def add_indent(sl, indent):
-    res = []
+def add_indent(sl: Sequence[str], indent: str) -> List[str]:
+    res: List[str] = []
     for i, s in enumerate(sl):
         if i == 0 or (i > 0 and len(sl[i - 1]) > 0 and sl[i - 1][-1] == "\n"):
             res.append(indent + s)
@@ -103,7 +104,7 @@ def add_indent(sl, indent):
     return res
 
 
-def get_func_name(f):
+def get_func_name(f: Callable) -> str:
     try:
         name, mod = f.__qualname__, f.__module__
 
@@ -130,11 +131,11 @@ def tostrs_func_call(dst, f, args, kwargs):
     dst.append(")\n")
 
 
-def tostrs_obj(dst, o, capacity=None):
+def tostrs_obj(dst: List[str], o: Any, capacity: Optional[int] = None):
     _tostrs_obj(dst, o, capacity or 10**10)
 
 
-def _tostrs_obj(dst, o, capacity):
+def _tostrs_obj(dst: List[str], o: Any, capacity: int) -> int:
     if isinstance(o, (tuple, list)):
         dst.append("[")
         for i, v in enumerate(o):

@@ -1,10 +1,27 @@
-import sys, os, pathlib, re, contextlib, time, json, inspect
-from abc import ABC, abstractmethod
+from __future__ import annotations
+import sys, os, re, time, inspect
+from os import PathLike
 import itertools
-from collections import namedtuple
-from collections.abc import Mapping
-from pathlib import Path, WindowsPath, PosixPath
+from pathlib import Path
 from logging import Logger
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+    Mapping,
+)
+from typing_extensions import Literal
+from jtcmake.core.abc import IRule
+
+from jtcmake.rule.memo.abc import IMemo
 
 from ..rule.rule import Rule as _RawRule
 from ..rule.memo import PickleMemo, StrHashMemo
@@ -13,6 +30,8 @@ from .event_logger import log_make_event
 from ..core.make import make as _make, MakeSummary
 from ..core.make_mp import make_mp_spawn
 from ..logwriter.writer import (
+    IWriter,
+    TLoglevel,
     TextWriter,
     ColorTextWriter,
     HTMLJupyterWriter,
@@ -27,25 +46,15 @@ from ..logwriter.writer import (
 from .atom import Atom
 
 from ..utils.nest import (
-    NestKey,
     map_structure,
     flatten,
-    nest_get,
-    flatten_to_nest_keys,
     pack_sequence_as,
 )
 
 from ..utils.frozen_dict import FrozenDict
 
 
-# dict and FrozenDict are the map-type target of map_structure
-_MAP_FACTORY = {(dict, FrozenDict): dict}
-
-
-_Path = WindowsPath if os.name == "nt" else PosixPath
-
-
-def _touch(path, create, _t, logwriter):
+def _touch(path: Union[str, PathLike], create, _t: float, logwriter: IWriter):
     path = str(path)
 
     if not os.path.exists(path) and create:
@@ -59,32 +68,45 @@ def _touch(path, create, _t, logwriter):
         logwriter.info("touch ", RichStr(path, link=path), "\n")
 
 
-def _clean(path, logwriter):
+def _clean(path: Union[str, PathLike], logwriter: IWriter):
     path = str(path)
 
     try:
         os.remove(path)
         logwriter.info("clean ", RichStr(path, link=path), "\n")
-    except:
+    except Exception:
         pass
 
 
 class GroupTreeInfo:
-    def __init__(self, logwriter, memo_factory):
+    rules: List[IRule]
+    rule2idx: Dict[IRule, int]
+    path2idx: Dict[str, int]
+    idx2xpaths: List[List[str]]
+    path2file: Dict[str, IFile]
+    memo_factory: Callable[[Any], IMemo]
+    logwriter: IWriter
+    memo_store: Dict[int, Atom]
+
+    def __init__(
+        self, logwriter: IWriter, memo_factory: Callable[[Any], IMemo]
+    ):
         self.rules = []  # list<Rule>
         self.rule2idx = {}  # dict<int, int>
         self.path2idx = {}  # dict<Path, int>. idx can be -1
         self.idx2xpaths = []  # list<list<Path>>
         self.path2file = {}  # dict<str, IFile>
         self.memo_factory = memo_factory
-
         self.logwriter = logwriter
-
         self.memo_store = {}  # dict<int, (any, any)>
 
 
-class _ItemSet(Mapping):
-    def __init__(self, dic):
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+class _ItemSet(Mapping[str, V]):
+    def __init__(self, dic: Dict[str, V]):
         self._dic = dic
 
     def __getitem__(self, k):
@@ -108,7 +130,7 @@ class _ItemSet(Mapping):
     def __hash__(self):
         return hash(id(self))
 
-    def _add(self, k, v):
+    def _add(self, k: str, v: V):
         self._dic[k] = v
         if not hasattr(self, k):
             setattr(self, k, v)
@@ -131,11 +153,17 @@ class _Self:
             return f"Self({self._key})"
 
 
-SELF = _Self()
+SELF: Any = _Self()
 
 
 class Rule(FrozenDict):
-    def __init__(self, name, files, rrule, group_tree_info):
+    def __init__(
+        self,
+        name: Sequence[str],
+        files: Dict[str, IFile],
+        rrule: _RawRule,
+        group_tree_info: GroupTreeInfo,
+    ):
         super().__init__(files)
         self._rrule = rrule
         self._info = group_tree_info
@@ -143,10 +171,10 @@ class Rule(FrozenDict):
 
     def make(
         self,
-        dry_run=False,
-        keep_going=False,
+        dry_run: bool = False,
+        keep_going: bool = False,
         *,
-        njobs=None,
+        njobs: Optional[int] = None,
     ):
         """Make this rule and its dependencies
         Args:
@@ -181,7 +209,7 @@ class Rule(FrozenDict):
         """
         self._rrule.update_memo()
 
-    def touch(self, create=False, _t=None):
+    def touch(self, create: bool = False, _t: Optional[float] = None):
         """
         Set the modification time of the output files of this rule to now.
 
@@ -211,7 +239,11 @@ class Rule(FrozenDict):
         return hash(id(self))
 
 
-def _parse_args_group_add(args, kwargs, file_factory):
+def _parse_args_group_add(
+    args: Sequence[Any],
+    kwargs: Any,
+    file_factory: Callable[[Union[str, PathLike]], IFile],
+) -> Tuple[str, Dict[str, IFile], Callable, Any, Any]:
     """
     Extracted values:
         name (str): name of the rule
@@ -275,16 +307,16 @@ def _parse_args_group_add(args, kwargs, file_factory):
     return name, outs, method, args, kwargs
 
 
-def _validate_signature(func, args, kwargs):
+def _validate_signature(func: Callable, args: Any, kwargs: Any) -> bool:
     try:
-        binding = inspect.signature(func).bind(*args, **kwargs)
-    except Exception as e:
+        inspect.signature(func).bind(*args, **kwargs)
+    except Exception:
         return False
 
     return True
 
 
-def _shorter_path(p):
+def _shorter_path(p: Union[str, PathLike]) -> Path:
     cwd = os.getcwd()
 
     if os.name == "posix":
@@ -297,13 +329,20 @@ def _shorter_path(p):
         return p
 
 
+T = TypeVar("T")
+
+
 class Group:
     """
     __init__() for this class is private.
     Use create_group() instead to instanciate it.
     """
 
-    def __init__(self, info, prefix, name):
+    _rules: _ItemSet[Rule]
+    _files: _ItemSet[IFile]
+    _groups: _ItemSet[Group]
+
+    def __init__(self, info: GroupTreeInfo, prefix: str, name: Sequence[str]):
         if not isinstance(prefix, str):
             raise TypeError("prefix must be str")
 
@@ -316,30 +355,36 @@ class Group:
         self._groups = _ItemSet({})
 
     @property
-    def G(self):
+    def G(self) -> _ItemSet[Group]:
         return self._groups
 
     @property
-    def R(self):
+    def R(self) -> _ItemSet[Rule]:
         return self._rules
 
     @property
-    def F(self):
+    def F(self) -> _ItemSet[IFile]:
         return self._files
 
-    def mem(self, value, memoized_value):
+    def mem(self, value: T, memoized_value: Any) -> T:
         # reference: root Group -> memo_store -> atom -> value
         # so value won't be GC'ed and id is valid while group tree is active
         self._info.memo_store[id(value)] = Atom(value, memoized_value)
         return value
 
-    def memstr(self, value):
+    def memstr(self, value: T) -> T:
         return self.mem(value, str(value))
 
-    def memnone(self, value):
+    def memnone(self, value: T) -> T:
         return self.mem(value, None)
 
-    def add_group(self, name, dirname=None, *, prefix=None):
+    def add_group(
+        self,
+        name: str,
+        dirname: Optional[Union[str, PathLike]] = None,
+        *,
+        prefix: Optional[Union[str, PathLike]] = None,
+    ) -> Group:
         """Add a child Group node
 
         Args:
@@ -386,8 +431,10 @@ class Group:
         if os.name == "posix":
             prefix = os.path.expanduser(prefix)
 
-        if isinstance(prefix, os.PathLike):
+        if isinstance(prefix, PathLike):
             prefix = prefix.__fspath__()
+
+        assert isinstance(prefix, str)
 
         if not os.path.isabs(prefix):
             prefix = self._prefix + prefix
@@ -403,11 +450,11 @@ class Group:
 
     def make(
         self,
-        dry_run=False,
-        keep_going=False,
+        dry_run: bool = False,
+        keep_going: bool = False,
         *,
-        njobs=None,
-    ):
+        njobs: Optional[int] = None,
+    ) -> MakeSummary:
         """Make rules in this group and their dependencies
 
         Args:
@@ -432,7 +479,6 @@ class Group:
             njobs=njobs,
         )
 
-    # APIs
     def add(self, *args, **kwargs):
         """Add a Rule node into this Group node.
 
@@ -528,9 +574,7 @@ class Group:
             return self._add(name, path, method, args, kwargs)
 
     def add2(self, *args):
-        name, outs, method, args, kwargs = _parse_args_group_add(
-            args, {}, File
-        )
+        name, outs, method, args, kwargs = _parse_args_group_add(args, {}, File)
 
         if len(args) != 0:
             raise TypeError(f"Too many arguments: {args}")
@@ -546,7 +590,14 @@ class Group:
 
         return _adder
 
-    def _add(self, name, yfiles, method, args, kwargs):
+    def _add(
+        self,
+        name: str,
+        yfiles: Dict[str, IFile],
+        method: Callable,
+        args: Sequence[Any],
+        kwargs: Dict[str, Any],
+    ) -> Rule:
         abspath = os.path.abspath
         info = self._info
 
@@ -596,7 +647,7 @@ class Group:
             yp2f[_absp] = f
 
         # reserved Atom replacement
-        def _rec(o):
+        def _rec(o: Any) -> Any:
             if id(o) in info.memo_store:
                 return info.memo_store[id(o)]
             elif isinstance(o, dict):
@@ -715,12 +766,12 @@ class Group:
             list(yp2f.values()),
             xfiles,
             xfile_is_orig,
-            deplist,
+            set(deplist),
             method,
             method_args,
             method_kwargs,
             memo=memo,
-            name=(*self._name, name),
+            name="/".join((*self._name, name)),
         )
 
         # create RuleNode
@@ -762,7 +813,7 @@ class Group:
         for r in self.R.values():
             r.clean()
 
-    def touch(self, create=False, _t=None):
+    def touch(self, create: bool = False, _t: Optional[float] = None):
         """Touch files under this Group
 
         Args:
@@ -780,12 +831,16 @@ class Group:
         for r in self.R.values():
             r.touch(create, _t)
 
-    def _get_offspring_groups(self, dst):
-        for k, c in self._groups.items():
+    def _get_offspring_groups(self, dst: List[Group]):
+        for c in self._groups.values():
             dst.append(c)
             c._get_offspring_groups(dst)
 
-    def _select_wrapper(self, pattern, kind):
+    def _select_wrapper(
+        self,
+        pattern: Union[str, Sequence[str]],
+        kind: Literal["group", "rule", "file"],
+    ):
         if isinstance(pattern, str):
             if len(pattern) == 0:
                 raise ValueError("pattern must not be an empty str")
@@ -800,7 +855,9 @@ class Group:
 
         return self._select(pattern, kind)
 
-    def _select(self, pattern, kind):
+    def _select(
+        self, pattern: Sequence[str], kind: Literal["group", "rule", "file"]
+    ):
         SEP = ";"
         regex = []
         for p in pattern:
@@ -827,7 +884,7 @@ class Group:
 
         regex = re.compile("^" + "".join(regex) + "$")
 
-        offspring_groups = [self]
+        offspring_groups: List[Group] = [self]
         self._get_offspring_groups(offspring_groups)
 
         if kind == "group":
@@ -867,13 +924,13 @@ class Group:
 
         return res
 
-    def select_rules(self, pattern):
+    def select_rules(self, pattern: Union[str, Sequence[str]]) -> List[Rule]:
         return self._select_wrapper(pattern, "rule")
 
-    def select_files(self, pattern):
+    def select_files(self, pattern: Union[str, Sequence[str]]) -> List[IFile]:
         return self._select_wrapper(pattern, "file")
 
-    def select_groups(self, pattern):
+    def select_groups(self, pattern: Union[str, Sequence[str]]) -> List[Group]:
         """Obtain child groups or rules of this group.
 
         Signatures:
@@ -948,37 +1005,38 @@ class Group:
         name = repr_group_name(self._name)
         return f"<Group name={repr(name)} prefix={repr(self._prefix)}>"
 
-    def __getitem__(self, k):
+    def __getitem__(self, k) -> Group:
         return self.G[k]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Group]:
         return iter(self.G)
 
     def __len__(self):
         return len(self.G)
 
-    def __contains__(self, k):
+    def __contains__(self, k) -> bool:
         return k in self.G
 
 
-def repr_group_name(group_name):
+def repr_group_name(group_name: Sequence[str]) -> str:
     return "/" + "/".join(map(str, group_name))
 
 
-def repr_rule_name(trg_name):
+def repr_rule_name(trg_name: Sequence[str]) -> str:
     return repr_group_name(trg_name[:-1]) + ":" + str(trg_name[-1])
 
 
-def _ismembername(name):
-    return isinstance(name, str) and name.isidentifier() and name[0] != "_"
-
-
-def _is_valid_node_name(name):
+def _is_valid_node_name(name: str) -> bool:
     # Group.select() depends on ':' being invalid
     return not re.search('[;*?"<>|]', name)
 
 
-def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
+def make(
+    *rule_or_groups: Union[Rule, Group],
+    dry_run: bool = False,
+    keep_going: bool = False,
+    njobs: Optional[int] = None,
+) -> MakeSummary:
     """make rules
 
     Args:
@@ -1018,10 +1076,6 @@ def make(*rule_or_groups, dry_run=False, keep_going=False, njobs=None):
             that are defined on the notebook is not transferable and thus
             executed in the main process.
     """
-
-    # create list of unique rules by DFS
-    _added = set()
-
     if len(rule_or_groups) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
@@ -1143,7 +1197,7 @@ def create_group(
                 "pickle_key must not be specified for "
                 "str_hash memoization method"
             )
-        memo_factory = _memo_factory_str_hash
+        memo_factory = StrHashMemo
     else:
         raise ValueError(
             f'memo_kind must be "str_hash" or "pickle", given {memo_kind}'
@@ -1154,7 +1208,7 @@ def create_group(
     return Group(tree_info, str(prefix), ())
 
 
-def _create_default_logwriter(loglevel):
+def _create_default_logwriter(loglevel: TLoglevel) -> IWriter:
     if term_is_jupyter():
         return HTMLJupyterWriter(loglevel, os.getcwd())
     elif sys.stderr.isatty():
@@ -1163,7 +1217,7 @@ def _create_default_logwriter(loglevel):
         return TextWriter(sys.stderr, loglevel)
 
 
-def _create_logwriter(f, loglevel):
+def _create_logwriter(f: Any, loglevel: TLoglevel) -> IWriter:
     if isinstance(f, (str, os.PathLike)):
         fname = str(Path(f))
         if fname[-5:] == ".html":
@@ -1190,8 +1244,10 @@ def _create_logwriter(f, loglevel):
     )
 
 
-def _get_memo_factory_pickle(pickle_key):
-    if type(pickle_key) == str:
+def _get_memo_factory_pickle(
+    pickle_key: Union[str, bytes]
+) -> Callable[[Any], IMemo]:
+    if isinstance(pickle_key, str):
         try:
             pickle_key = bytes.fromhex(pickle_key)
         except ValueError as e:
@@ -1201,11 +1257,7 @@ def _get_memo_factory_pickle(pickle_key):
     elif type(pickle_key) != bytes:
         raise TypeError("pickle_key must be bytes or hexadecimal str")
 
-    def _memo_factory_pickle(args):
+    def _memo_factory_pickle(args: Any) -> IMemo:
         return PickleMemo(args, pickle_key)
 
     return _memo_factory_pickle
-
-
-def _memo_factory_str_hash(args):
-    return StrHashMemo(args)

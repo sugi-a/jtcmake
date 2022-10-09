@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from typing import Any, Callable, Mapping
 
 
 class NestKey(tuple):
@@ -18,21 +18,21 @@ class NestKey(tuple):
         return f"NestKey({super().__repr__()})"
 
 
-def nest_get(nest, nest_key):
+def nest_get(nest: Any, nest_key: NestKey):
     for k in nest_key:
         nest = nest[k]
 
     return nest
 
 
-def _raise_structure_unmatch(i):
+def _raise_structure_unmatch(i: int):
     raise TypeError(
         f"Structure of the 0-th nest does not match that of the {i}-th nest"
     )
 
 
 def map_structure(
-    map_fn,
+    map_fn: Callable,
     *nests,
     seq_factory={list: list, tuple: tuple},
     map_factory={dict: dict},
@@ -79,7 +79,7 @@ def map_structure(
 
 
 def ordered_map_structure(
-    map_fn,
+    map_fn: Callable,
     nest,
     seq_factory={list: list, tuple: tuple},
     map_factory={(dict, Mapping): dict},

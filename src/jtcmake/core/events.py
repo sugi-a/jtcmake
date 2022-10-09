@@ -3,19 +3,19 @@ from .abc import IEvent, IRule
 
 
 class RuleEvent(IEvent):
-    def __init__(self, rule):
+    def __init__(self, rule: IRule):
         self._rule = rule
 
     @property
-    def rule(self):
+    def rule(self) -> IRule:
         return self._rule
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.rule})"
 
 
 class ErrorRuleEvent(RuleEvent):
-    def __init__(self, rule, err):
+    def __init__(self, rule: IRule, err: BaseException):
         """
         Args:
             err (BaseException):
@@ -30,7 +30,7 @@ class ErrorRuleEvent(RuleEvent):
 
 
 class Skip(RuleEvent):
-    def __init__(self, rule, is_direct_target):
+    def __init__(self, rule: IRule, is_direct_target: bool):
         super().__init__(rule)
         self.is_direct_target = is_direct_target
 
@@ -52,7 +52,7 @@ class StopOnFail(IEvent):
 
 
 class UpdateInfeasible(RuleEvent):
-    def __init__(self, rule, reason):
+    def __init__(self, rule: IRule, reason: str):
         super().__init__(rule)
         self.reason = reason
 

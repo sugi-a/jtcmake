@@ -1,44 +1,83 @@
-import abc
-import enum
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from typing import Any, Callable, Union, Set
+from typing_extensions import TypeAlias
+
+
+class UpToDate:
+    ...
+
+
+class Necessary:
+    ...
+
+
+class PossiblyNecessary:
+    # dry_run only
+    ...
+
+
+class Infeasible:
+    def __init__(self, reason):
+        """
+        Args:
+            reason (str): reason
+        """
+        self.reason = reason
+
+
+class UpdateResults:
+    UpToDate = UpToDate
+    Necessary = Necessary
+    PossiblyNecessary = PossiblyNecessary
+    Infeasible = Infeasible
+
+
+TUpdateResult: TypeAlias = Union[
+    UpToDate, Necessary, PossiblyNecessary, Infeasible
+]
 
 
 class IEvent:
     ...
 
 
-class IRule(abc.ABC):
-    @abc.abstractmethod
-    def check_update(self, par_updated, dry_run):
-        """
-        Returns:
-            check_update_result.IResult
-        """
+_Callback = Callable[[IEvent], None]
+
+class IRule(metaclass=ABCMeta):
+    @abstractmethod
+    def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
         ...
 
-    @abc.abstractmethod
-    def preprocess(self, callback):
+    @abstractmethod
+    def preprocess(self, callback: _Callback) -> None:
         ...
 
-    @abc.abstractmethod
-    def postprocess(self, callback, succ):
-        ...
-
-    @property
-    @abc.abstractmethod
-    def method(self):
+    @abstractmethod
+    def postprocess(self, callback: _Callback, succ: bool) -> None:
         ...
 
     @property
-    @abc.abstractmethod
-    def args(self):
+    @abstractmethod
+    def method(self) -> Callable:
         ...
 
     @property
-    @abc.abstractmethod
-    def kwargs(self):
+    @abstractmethod
+    def args(self) -> Any:
         ...
 
     @property
-    @abc.abstractmethod
-    def deplist(self):
+    @abstractmethod
+    def kwargs(self) -> Any:
+        ...
+
+    @property
+    @abstractmethod
+    def deps(self) -> Set[int]:
+        ...
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
         ...

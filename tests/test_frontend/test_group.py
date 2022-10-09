@@ -1,6 +1,6 @@
-import sys, os, shutil, glob, time, inspect
-from pathlib import Path, PurePath
-from collections.abc import Sequence
+import os, inspect
+from pathlib import Path
+from typing import Sequence
 
 import pytest
 
@@ -8,8 +8,6 @@ from jtcmake.frontend.group import create_group, SELF, Group, Rule as RuleNode
 from jtcmake.rule.file import File, VFile, IFile
 from jtcmake.rule.rule import Rule as _RawRule
 from jtcmake.utils.nest import map_structure
-import jtcmake
-
 
 class _PathLike:
     def __init__(self, p):
@@ -360,12 +358,14 @@ def test__add_basic(mocker, ftype, use_abs):
         .arguments
     )
 
+
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
+
     assert _params["xfiles"] == []
     assert _params["xfile_is_orig"] == []
-    assert _params["deplist"] == []
+    assert _params["deplist"] == set()
     assert _params["method"] == _fn
-    print((_params["args"], _params["kwargs"]))
+
     map_structure(
         _assert_eq_path,
         (_params["args"], _params["kwargs"]),
@@ -405,7 +405,7 @@ def test__add_basic(mocker, ftype, use_abs):
         _assert_eq_path_strict, _params["xfiles"], [g._files.a, File("c.txt")]
     )
     assert _params["xfile_is_orig"] == [False, True]
-    assert _params["deplist"] == [0]
+    assert _params["deplist"] == {0}
     map_structure(
         _assert_eq_path,
         (_params["args"], _params["kwargs"]),

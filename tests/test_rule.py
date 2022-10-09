@@ -1,15 +1,9 @@
-import sys, os, shutil, glob, time
+import os, time
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from jtcmake.core.check_update_result import (
-    Necessary,
-    PossiblyNecessary,
-    UpToDate,
-    Infeasible,
-)
+from jtcmake.core.abc import UpdateResults
 
 from jtcmake.rule.rule import Rule
 
@@ -17,6 +11,10 @@ from jtcmake.rule.file import File, VFile, IFile
 
 from jtcmake.rule.memo import IMemo, StrHashMemo
 
+Necessary = UpdateResults.Necessary
+PossiblyNecessary = UpdateResults.PossiblyNecessary
+UpToDate = UpdateResults.UpToDate
+Infeasible = UpdateResults.Infeasible
 
 _args = (object(),)
 _kwargs = {"a": object()}
@@ -47,29 +45,10 @@ def test_metadata_fname(mocker):
     """
     y1, y2 = File(Path("a/b.c")), File(Path("d/e.f"))
     memo = mocker.MagicMock()
-    r = Rule([y1, y2], [], [], [], _method, _args, _kwargs, memo)
+    r = Rule([y1, y2], [], [], set(), _method, _args, _kwargs, memo)
     assert os.path.abspath(r.metadata_fname) == os.path.abspath(
         "a/.jtcmake/b.c"
     )
-
-
-def test_update_memo(tmp_path, mocker):
-    import pickle
-
-    mock_memo = mocker.MagicMock(IMemo)
-    mock_memo.memo = 0
-
-    y1, y2 = File(tmp_path / "f1"), VFile(tmp_path / "f2")
-    x1, x2 = (File(tmp_path / f"x{i}") for i in (1, 2))
-    ys = [y1, y2]
-    xs = [x1, x2]
-    xisorig = [True, True]
-
-    r = Rule(ys, xs, xisorig, [], _method, _args, _kwargs, mock_memo)
-
-    r.update_memo()
-
-    mock_memo.save_memo.assert_called_once_with(r.metadata_fname)
 
 
 def test_rule_check_update(tmp_path, mocker):
@@ -99,16 +78,11 @@ def test_rule_check_update(tmp_path, mocker):
     y1, y2 = File(tmp_path / "y1"), VFile(tmp_path / "y2")
     x1, x2 = File(tmp_path / "x1"), VFile(tmp_path / "x2")
 
-    ys = [y1, y2]
-    xs = [x1, x2]
-    xisorig = [True, True]
-
     def _Rule(ys, xs, xisorig, memo_no_change):
         mock_memo = mocker.MagicMock(IMemo)
-        mock_memo.compare_to_saved.return_value = memo_no_change
-        mock_memo.memo = 0
+        mock_memo.memo.compare.return_value = memo_no_change
 
-        return Rule(ys, xs, xisorig, [], lambda x: None, [], {}, mock_memo)
+        return Rule(ys, xs, xisorig, set(), lambda x: None, [], {}, mock_memo)
 
     # case 1 (dry_run, x1 is original)
     r = _Rule([y1, y2], [x1, x2], [True, False], True)
@@ -186,7 +160,7 @@ def test_rule_check_update(tmp_path, mocker):
     r = _Rule([y1, y2], [x1, x2], [True, False], True)
     for dry_run in (False, True):
         t = time.time()
-        # input IVFile is newer than output files
+        # input VFile is newer than output files
         touch(x1, t=t - 2)
         touch(y1, t=t - 1)
         touch(y2, t=t - 1)
@@ -214,7 +188,7 @@ def test_preprocess(tmp_path, mocker):
     """Rule.preprocess(callaback) should make dirs for all its output files."""
     mock_memo = mocker.MagicMock(IMemo)
     y = File(tmp_path / "a")
-    r = Rule([y], [], [], [], _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [], [], set(), _method, _args, _kwargs, mock_memo)
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.parent)
     assert os.path.isdir(y.parent)
@@ -235,11 +209,11 @@ def test_postprocess(tmp_path, mocker):
     x2 = VFile(tmp_path / "x2")
     xisorig = [True, True]
 
-    r = Rule([y], [x1, x2], xisorig, [], _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [x1, x2], xisorig, set(), _method, _args, _kwargs, mock_memo)
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)
 
-    mock_memo.save_memo.assert_called_once_with(r.metadata_fname)
+    mock_memo.memo.save.assert_called_once_with(r.metadata_fname)
 
     # TODO: test
