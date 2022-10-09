@@ -1,5 +1,5 @@
-import sys, os, shutil, glob, time, inspect
-from pathlib import Path, PurePath
+import os, inspect
+from pathlib import Path
 from typing import Sequence
 
 import pytest
@@ -8,8 +8,6 @@ from jtcmake.frontend.group import create_group, SELF, Group, Rule as RuleNode
 from jtcmake.rule.file import File, VFile, IFile
 from jtcmake.rule.rule import Rule as _RawRule
 from jtcmake.utils.nest import map_structure
-import jtcmake
-
 
 class _PathLike:
     def __init__(self, p):
@@ -360,7 +358,6 @@ def test__add_basic(mocker, ftype, use_abs):
         .arguments
     )
 
-    print(_params)
 
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
 

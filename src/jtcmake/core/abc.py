@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Generic, Union, Set
-from typing_extensions import ParamSpec, TypeAlias
+from typing import Any, Callable, Union, Set
+from typing_extensions import TypeAlias
 
 
 class UpToDate:
@@ -43,10 +43,8 @@ class IEvent:
 
 
 _Callback = Callable[[IEvent], None]
-P = ParamSpec("P")
 
-
-class IRule(Generic[P], metaclass=ABCMeta):
+class IRule(metaclass=ABCMeta):
     @abstractmethod
     def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
         ...
@@ -61,7 +59,7 @@ class IRule(Generic[P], metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def method(self) -> Callable[P, Any]:
+    def method(self) -> Callable:
         ...
 
     @property
