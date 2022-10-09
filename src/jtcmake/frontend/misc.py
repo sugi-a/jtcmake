@@ -1,9 +1,11 @@
 import sys, os
+
+from jtcmake.core.abc import IRule
 from ..logwriter.writer import term_is_jupyter, create_html, create_color_str
 from .event_logger import tostrs_func_call
 
 
-def print_method(rule):
+def print_method(rule: IRule):
     rule = rule._rrule
     sl = []
     tostrs_func_call(sl, rule.method, rule.args, rule.kwargs)

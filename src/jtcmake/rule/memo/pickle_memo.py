@@ -1,57 +1,91 @@
-import sys, os, hashlib, json, pickle, hashlib, hmac
+from __future__ import annotations
+import pickle, hmac
 
-from ...utils.nest import ordered_map_structure
-from .abc import IMemo
+from typing import Any, Optional, Tuple
+
+from .abc import IMemo, IMemoInstance
 from .str_hash_memo import unwrap_atom
 
 
-_TYPE = "pickle"
-
-
 class PickleMemo(IMemo):
-    def __init__(self, args, key):
+    def __init__(self, args: Any, key: bytes):
         args, lazy_values = unwrap_atom(args)
 
         code, digest = pickle_encode(args, key)
+        self.code = code
+        self.digest = digest
 
-        self.code = {"value": code.hex(), "digest": digest.hex()}
         self.key = key
         self.lazy_values = lazy_values
 
-    def compare(self, other_memo):
-        assert_type_pickle(other_memo["type"])
-        return compare_memo(self.memo, other_memo, self.key)
-
     @property
-    def memo(self):
+    def memo(self) -> PickleMemoInstance:
         lcode, ldigest = pickle_encode(
             [v() for v in self.lazy_values], self.key
         )
 
+        return PickleMemoInstance(
+            self.code, self.digest, lcode, ldigest, self.key
+        )
+
+
+class PickleMemoInstance(IMemoInstance):
+    @classmethod
+    def get_type(cls) -> str:
+        return "pickle_memo"
+
+    def __init__(
+        self,
+        code: bytes,
+        digest: bytes,
+        lcode: bytes,
+        ldigest: bytes,
+        key: Optional[bytes] = None,
+    ):
+        self.code = code
+        self.digest = digest
+        self.lcode = lcode
+        self.ldigest = ldigest
+        self.key = key
+
+    def to_obj(self) -> Any:
         return {
-            "type": _TYPE,
-            "code": self.code,
-            "lazy": {"value": lcode.hex(), "digest": ldigest.hex()},
+            "code": self.code.hex(),
+            "digest": self.digest.hex(),
+            "lcode": self.lcode.hex(),
+            "ldigest": self.ldigest.hex(),
         }
 
+    @classmethod
+    def from_obj(cls, data: Any) -> PickleMemoInstance:
+        return PickleMemoInstance(
+            bytes.fromhex(data["code"]),
+            bytes.fromhex(data["digest"]),
+            bytes.fromhex(data["lcode"]),
+            bytes.fromhex(data["ldigest"]),
+        )
 
-def assert_type_pickle(type_):
-    if type_ != _TYPE:
-        raise Exception(f"{_TYPE} memo was expected. Given {type_} memo.")
+    def compare(self, other: Any) -> bool:
+        if not isinstance(other, PickleMemoInstance):
+            return False
 
+        k1_, k2_ = (self.key, other.key)
 
-def compare_memo(a, b, key):
-    return compare_code(a["code"], b["code"], key) and compare_code(
-        a["lazy"], b["lazy"], key
-    )
+        if k1_ is None and k2_ is not None:
+            k1, k2 = k2_, k2_
+        elif k1_ is not None and k2_ is None:
+            k1, k2 = k1_, k1_
+        elif k1_ is not None and k2_ is not None:
+            k1, k2 = k1_, k2_
+        else:
+            raise Exception(f"Either side must have picke key")
 
+        v11 = pickle_decode(self.code, self.digest, k1)
+        v12 = pickle_decode(self.lcode, self.ldigest, k1)
+        v21 = pickle_decode(other.code, other.digest, k2)
+        v22 = pickle_decode(other.lcode, other.ldigest, k2)
 
-def compare_code(a, b, key):
-    fromhex = bytes.fromhex
-    a = pickle_decode(fromhex(a["value"]), fromhex(a["digest"]), key)
-    b = pickle_decode(fromhex(b["value"]), fromhex(b["digest"]), key)
-
-    return a == b
+        return (v11, v12) == (v21, v22)
 
 
 _encode_error_message = (
@@ -71,7 +105,7 @@ _encode_error_message = (
 )
 
 
-def pickle_encode(obj, key):
+def pickle_encode(obj: Any, key: bytes) -> Tuple[bytes, bytes]:
     try:
         code = pickle.dumps(obj)
     except pickle.PicklingError as e:
@@ -83,7 +117,7 @@ def pickle_encode(obj, key):
     return code, create_digest(code, key)
 
 
-def pickle_decode(code, digest, key):
+def pickle_decode(code: bytes, digest: bytes, key: bytes):
     if not validate_digest(code, digest, key):
         raise Exception(
             "Authentication error: pickle data was rejected for invalid HMAC"
@@ -92,11 +126,11 @@ def pickle_decode(code, digest, key):
     return pickle.loads(code)
 
 
-def create_digest(data, key):
+def create_digest(data: bytes, key: bytes) -> bytes:
     return hmac.new(key, data, "sha256").digest()
 
 
-def validate_digest(data, digest, key):
+def validate_digest(data: bytes, digest: bytes, key: bytes) -> bool:
     """return if digest is valid"""
     ref_digest = create_digest(data, key)
     return hmac.compare_digest(digest, ref_digest)

@@ -1,8 +1,6 @@
-import sys, os, shutil
 import pytest
 
-from jtcmake.core.abc import IEvent, IRule
-from jtcmake.core import check_update_result
+from jtcmake.core.abc import IEvent, IRule, UpdateResults
 from jtcmake.core.make import make, MakeSummary
 from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
@@ -50,7 +48,7 @@ class MockRule(IRule):
         args,
         kwargs,
         method,
-        check_update=check_update_result.Necessary(),
+        check_update=UpdateResults.Necessary(),
         preprocess_err=None,
         postprocess_err=None,
     ):
@@ -91,8 +89,12 @@ class MockRule(IRule):
         return self._kwargs
 
     @property
-    def deplist(self):
+    def deps(self):
         return self._deplist
+
+    @property
+    def name(self):
+        return "mock"
 
 
 @pytest.mark.parametrize("mp", [False, True])
@@ -211,8 +213,8 @@ def test_skip(mp):
 
     # skip both
     log.clear()
-    r1._check_update = check_update_result.UpToDate()
-    r2._check_update = check_update_result.UpToDate()
+    r1._check_update = UpdateResults.UpToDate()
+    r2._check_update = UpdateResults.UpToDate()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -229,8 +231,8 @@ def test_skip(mp):
 
     # skip r1
     log.clear()
-    r1._check_update = check_update_result.UpToDate()
-    r2._check_update = check_update_result.Necessary()
+    r1._check_update = UpdateResults.UpToDate()
+    r2._check_update = UpdateResults.Necessary()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -273,9 +275,7 @@ def test_dryrun(mp):
     res = make_(id2rule, [1], True, False, callback)
 
     assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
-    assert_same_log(
-        log, [("check_update", r1, False, True), events.DryRun(r1)]
-    )
+    assert_same_log(log, [("check_update", r1, False, True), events.DryRun(r1)])
 
     # dry-run r2
     log.clear()

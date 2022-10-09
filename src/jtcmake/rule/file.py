@@ -1,16 +1,23 @@
+from __future__ import annotations
 import os, sys
-from abc import ABC, abstractmethod
-import os, time, hashlib, base64
-from pathlib import Path, WindowsPath, PosixPath
+from os import PathLike
+from abc import abstractmethod
+import os, hashlib, base64
+import pathlib
+from typing import Any, Dict, Tuple, Union
+from typing_extensions import Self
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
-_Path = WindowsPath if sys.platform == "win32" else PosixPath
+if sys.platform == "win32":
+    _Path = pathlib.WindowsPath
+else:
+    _Path = pathlib.PosixPath
 
 
 class IFile(_Path, IMemoAtom):
     @abstractmethod
-    def replace(self, path):
+    def replace(self, path: Union[str, PathLike]) -> IFile:
         ...
 
 
@@ -26,19 +33,19 @@ class File(IFile):
     updated.
     """
 
-    def replace(self, path):
+    def replace(self, path: Union[str, PathLike]) -> File:
         return File(path)
 
     @property
-    def memo_value(self):
+    def memo_value(self) -> Any:
         return None
 
 
 class _ContentHash(ILazyMemoValue):
-    def __init__(self, path):
+    def __init__(self, path: Union[str, PathLike]):
         self.path = path
 
-    def __call__(self):
+    def __call__(self) -> str:
         return get_hash(self.path)
 
 
@@ -58,17 +65,17 @@ class VFile(IFile):
         self._memo_value = _ContentHash(path)
 
     @property
-    def memo_value(self):
+    def memo_value(self) -> Any:
         return self._memo_value
 
-    def replace(self, path):
+    def replace(self, path) -> VFile:
         return VFile(path)
 
 
-_hash_cache = {}
+_hash_cache: Dict[str, Tuple[float, str]] = {}
 
 
-def get_hash(fname):
+def get_hash(fname: Union[str, PathLike]) -> str:
     fname = os.path.realpath(fname)
 
     if fname in _hash_cache:

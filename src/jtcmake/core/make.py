@@ -1,10 +1,10 @@
-import os, sys, re, traceback, inspect, abc, time, enum
-from threading import Condition, Thread
-from collections import defaultdict, deque, namedtuple
+from collections.abc import Sequence
+import traceback, enum
+from collections import namedtuple
+from typing import Callable, List, Set
 
 from . import events
-from .abc import IRule
-from . import check_update_result
+from .abc import IRule, IEvent, UpdateResults
 
 
 class Result(enum.Enum):
@@ -26,17 +26,19 @@ MakeSummary = namedtuple(
 )
 
 
-def _toplogical_sort(id2rule, seed_ids):
-    added = set()
-    res = []
+def _toplogical_sort(
+    id2rule: Sequence[IRule], seed_ids: Sequence[int]
+) -> List[int]:
+    added: Set[int] = set()
+    res: List[int] = []
 
-    def rec(i):
+    def rec(i: int):
         if i in added:
             return
 
         added.add(i)
 
-        for dep in id2rule[i].deplist:
+        for dep in id2rule[i].deps:
             rec(dep)
 
         res.append(i)
@@ -48,11 +50,11 @@ def _toplogical_sort(id2rule, seed_ids):
 
 
 def make(
-    id2rule,
-    ids,
-    dry_run,
-    keep_going,
-    callback,
+    id2rule: Sequence[IRule],
+    ids: Sequence[int],
+    dry_run: bool,
+    keep_going: bool,
+    callback: Callable[[IEvent], None],
 ):
     if len(ids) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
@@ -61,19 +63,19 @@ def make(
 
     taskq = _toplogical_sort(id2rule, ids)
 
-    failed_ids = set()  # includes discarded ones
-    updated_ids = set()
-    nskips = 0  # for stats report
-    nfails = 0  # for stats report
+    failed_ids: Set[int] = set()  # includes discarded ones
+    updated_ids: Set[int] = set()
+    nskips: int = 0  # for stats report
+    nfails: int = 0  # for stats report
 
     for i in taskq:
         r = id2rule[i]
 
-        if any(dep in failed_ids for dep in r.deplist):
+        if any(dep in failed_ids for dep in r.deps):
             failed_ids.add(i)
             continue
 
-        par_updated = any(dep in updated_ids for dep in r.deplist)
+        par_updated = any(dep in updated_ids for dep in r.deps)
 
         try:
             result = process_rule(
@@ -115,23 +117,25 @@ def make(
     )
 
 
-def process_rule(rule, dry_run, par_updated, is_main, callback):
+def process_rule(
+    rule: IRule,
+    dry_run: bool,
+    par_updated: bool,
+    is_main: bool,
+    callback: Callable[[IEvent], None],
+):
     if dry_run:
         res = rule.check_update(par_updated, True)
 
-        if isinstance(res, check_update_result.Infeasible):
+        if isinstance(res, UpdateResults.Infeasible):
             callback(events.UpdateInfeasible(rule, res.reason))
             return Result.Fail
         elif isinstance(
-            res,
-            (
-                check_update_result.Necessary,
-                check_update_result.PossiblyNecessary,
-            ),
+            res, (UpdateResults.Necessary, UpdateResults.PossiblyNecessary)
         ):
             callback(events.DryRun(rule))
             return Result.Update
-        elif isinstance(res, check_update_result.UpToDate):
+        elif isinstance(res, UpdateResults.UpToDate):
             callback(events.Skip(rule, is_main))
             return Result.Skip
         else:
@@ -139,13 +143,13 @@ def process_rule(rule, dry_run, par_updated, is_main, callback):
 
     res = rule.check_update(par_updated, False)
 
-    if isinstance(res, check_update_result.Infeasible):
+    if isinstance(res, UpdateResults.Infeasible):
         callback(events.UpdateInfeasible(rule, res.reason))
         return Result.Fail
-    elif isinstance(res, check_update_result.UpToDate):
+    elif isinstance(res, UpdateResults.UpToDate):
         callback(events.Skip(rule, is_main))
         return Result.Skip
-    elif not isinstance(res, check_update_result.Necessary):
+    elif not isinstance(res, UpdateResults.Necessary):
         raise Exception(f"Internal error: unexpected result {res}")
 
     callback(events.Start(rule))

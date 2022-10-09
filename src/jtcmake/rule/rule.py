@@ -1,24 +1,25 @@
-import sys, os, hashlib, json, pickle, hashlib, hmac
-from pathlib import Path, PurePath
-from collections import namedtuple
+import os
+from pathlib import Path
+from typing import Any, Callable, Sequence, Set
 
-from ..core.abc import IRule
-from ..core import check_update_result
-from .file import File, VFile
+from jtcmake.rule.memo.abc import IMemo
+
+from ..core.abc import IRule, UpdateResults, TUpdateResult
+from .file import File, IFile
 
 
 class Rule(IRule):
     def __init__(
         self,
-        yfiles,
-        xfiles,
-        xfile_is_orig,
-        deplist,
-        method,
-        args,
-        kwargs,
-        memo,
-        name=None,
+        yfiles: Sequence[IFile],
+        xfiles: Sequence[IFile],
+        xfile_is_orig: Sequence[bool],
+        deplist: Set[int],
+        method: Callable,
+        args: Any,
+        kwargs: Any,
+        memo: IMemo,
+        name: str = "",
     ):
         assert len(xfiles) == len(xfile_is_orig)
 
@@ -29,48 +30,49 @@ class Rule(IRule):
         self._method = method
         self._args = args
         self._kwargs = kwargs
-        self.name = name
+        self._name = name
         self.memo = memo
 
-    def check_update(self, par_updated, dry_run):
+    def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
         for f, is_orig in zip(self.xfiles, self.xfile_is_orig):
             if not f.exists():
                 if not dry_run or is_orig:
-                    return check_update_result.Infeasible(
+                    return UpdateResults.Infeasible(
                         f"Input file {f} is missing"
                     )
             elif os.path.getmtime(f) == 0:
                 if not dry_run or is_orig:
-                    return check_update_result.Infeasible(
+                    return UpdateResults.Infeasible(
                         f"Input file {f} has mtime of 0. Input files"
                         " with mtime of 0 are considered to be invalid."
                     )
 
         if any(not f.exists() for f in self.yfiles):
-            return check_update_result.Necessary()
+            return UpdateResults.Necessary()
 
         oldest_y = min(os.path.getmtime(f) for f in self.yfiles)
 
         if oldest_y <= 0:
-            return check_update_result.Necessary()
+            return UpdateResults.Necessary()
 
         if dry_run and par_updated:
-            return check_update_result.PossiblyNecessary()
+            return UpdateResults.PossiblyNecessary()
 
         for f in self.xfiles:
             if isinstance(f, File) and os.path.getmtime(f) > oldest_y:
-                return check_update_result.Necessary()
+                return UpdateResults.Necessary()
 
-        if not self.memo.compare_to_saved(self.metadata_fname):
-            return check_update_result.Necessary()
+        memo = self.memo.memo
+        if not memo.compare(memo.load(self.metadata_fname)):
+            return UpdateResults.Necessary()
 
-        return check_update_result.UpToDate()
+        return UpdateResults.UpToDate()
 
     def preprocess(self, callback):
         for f in self.yfiles:
             try:
                 os.makedirs(f.parent, exist_ok=True)
-            except:
+            except Exception:
                 pass
 
     def postprocess(self, callback, succ):
@@ -81,22 +83,23 @@ class Rule(IRule):
             for f in self.yfiles:
                 try:
                     os.utime(f, (0, 0))
-                except:
+                except Exception:
                     pass
 
             # delete vfile cache
             try:
                 os.remove(self.metadata_fname)
-            except:
+            except Exception:
                 pass
 
     @property
-    def metadata_fname(self):
-        p = PurePath(self.yfiles[0])
+    def metadata_fname(self) -> Path:
+        p = Path(self.yfiles[0])
         return p.parent / ".jtcmake" / p.name
 
     def update_memo(self):
-        self.memo.save_memo(self.metadata_fname)
+        os.makedirs(os.path.dirname(self.metadata_fname), exist_ok=True)
+        self.memo.memo.save(self.metadata_fname)
 
     @property
     def method(self):
@@ -111,5 +114,9 @@ class Rule(IRule):
         return self._kwargs
 
     @property
-    def deplist(self):
+    def deps(self):
         return self._deplist
+
+    @property
+    def name(self) -> str:
+        return self._name

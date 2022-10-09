@@ -1,41 +1,54 @@
+from __future__ import annotations
 from pathlib import PurePath
 from hashlib import sha256
 from numbers import Complex
+from typing import Any, Tuple, List
 
 from ...utils.nest import ordered_map_structure
-from .abc import IMemo, IMemoAtom, ILazyMemoValue
-from ...frontend.atom import Atom
-
-_TYPE = "str-hash"
+from .abc import IMemo, IMemoAtom, ILazyMemoValue, IMemoInstance
 
 
 class StrHashMemo(IMemo):
     def __init__(self, args):
         args, lazy_values = unwrap_atom(args)
-
         self.code = hash_fn(stringify(args))
         self.lazy_values = lazy_values
 
-    def compare(self, memo):
-        if memo["type"] != _TYPE:
-            raise Exception(
-                f'Expected {_TYPE} memo. Given {memo["type"]} memo. '
-            )
-
-        return memo == self.memo
-
     @property
-    def memo(self):
+    def memo(self) -> StrHashMemoInstance:
         s = stringify([v() for v in self.lazy_values])
         lazy_code = hash_fn(s)
-        res = {"type": _TYPE, "code": self.code, "lazy": lazy_code}
-        return res
+        return StrHashMemoInstance(self.code, lazy_code)
 
 
-def unwrap_atom(args):
-    lazy_values = []
+class StrHashMemoInstance(IMemoInstance):
+    @classmethod
+    def get_type(cls) -> str:
+        return "str_hash_memo"
 
-    def _unwrap_atom(atom):
+    def __init__(self, code: str, lazy_code: str):
+        self.code = code
+        self.lazy_code = lazy_code
+
+    def to_obj(self) -> Any:
+        return [self.code, self.lazy_code]
+
+    @classmethod
+    def from_obj(cls, data: Any) -> StrHashMemoInstance:
+        code, lazy_code = data
+        return StrHashMemoInstance(code, lazy_code)
+
+    def compare(self, other: Any) -> bool:
+        if not isinstance(other, StrHashMemoInstance):
+            return False
+
+        return (self.code, self.lazy_code) == (other.code, other.lazy_code)
+
+
+def unwrap_atom(args: Any) -> Tuple[Any, List[ILazyMemoValue]]:
+    lazy_values: List[ILazyMemoValue] = []
+
+    def _unwrap_atom(atom: Any):
         if isinstance(atom, IMemoAtom):
             v = atom.memo_value
             if isinstance(v, ILazyMemoValue):
@@ -51,7 +64,7 @@ def unwrap_atom(args):
     return args, lazy_values
 
 
-def hash_fn(s):
+def hash_fn(s: str):
     return sha256(s.encode("utf8")).digest().hex()
 
 
@@ -64,7 +77,7 @@ _AUTO_STRINGIFIED_BASE_TYPES = (
 )
 
 
-def stringify(nest):
+def stringify(nest: Any) -> str:
     sl = []
     visited = set()
 

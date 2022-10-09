@@ -1,11 +1,15 @@
 from collections.abc import Mapping
+from typing import TypeVar, Any
+
+K = TypeVar("K")
+V = TypeVar("V")
 
 
-class FrozenDict(Mapping):
-    def __init__(self, dic):
+class FrozenDict(Mapping[K, V]):
+    def __init__(self, dic: Mapping[K, V]):
         self._dic = dic
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: K) -> V:
         return self._dic[key]
 
     def __iter__(self):
@@ -20,5 +24,5 @@ class FrozenDict(Mapping):
     def __repr__(self):
         return f"FrozenDict{dict(self)}"
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: Any) -> V:
         return self._dic[key]

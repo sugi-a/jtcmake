@@ -1,26 +1,30 @@
-import os, sys, re, traceback, inspect, abc, time, enum, queue, pickle
+from multiprocessing.context import SpawnContext
+import sys, traceback, queue, pickle
 from multiprocessing import get_context
 from threading import Thread, Condition, Lock
 
 from collections import defaultdict
+from typing import Any, Dict, Optional, Set, Tuple, Callable, List, Union
 
 from . import events
-from .abc import IRule
-from .make import process_rule, Result, MakeSummary
+from .abc import IRule, IEvent
+from .make import Sequence, process_rule, Result, MakeSummary
 
 
-def _collect_rules(id2rule, seed_ids):
+def _collect_rules(
+    id2rule: Sequence[IRule], seed_ids: Sequence[int]
+) -> Tuple[List[int], Dict[int, Set[int]]]:
     """collect rules on which seed rules depend"""
-    ids = set()  # set<ID>
-    b2a = defaultdict(set)  # dict<ID, ID> before to after
+    ids: Set[int] = set()
+    b2a: Dict[int, Set[int]] = defaultdict(set)  # dict<ID, ID> before to after
 
-    def find_deps(i):
+    def find_deps(i: int):
         if i in ids:
             return
 
         ids.add(i)
 
-        for dep in id2rule[i].deplist:
+        for dep in id2rule[i].deps:
             find_deps(dep)
             b2a[dep].add(i)
 
@@ -30,7 +34,14 @@ def _collect_rules(id2rule, seed_ids):
     return list(ids), b2a
 
 
-def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
+def make_mp_spawn(
+    id2rule: Sequence[IRule],
+    ids: Sequence[int],
+    dry_run: bool,
+    keep_going: bool,
+    callback: Callable[[IEvent], None],
+    njobs: int,
+):
     if len(ids) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
@@ -48,7 +59,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     main_ids = ids
     ids, b2a = _collect_rules(id2rule, main_ids)
 
-    dep_cnt = {i: len(id2rule[i].deplist) for i in ids}
+    dep_cnt = {i: len(id2rule[i].deps) for i in ids}
 
     # Check inter-process transferability
     rules = [id2rule[i] for i in ids]
@@ -57,12 +68,12 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
     sendable = {ids[j]: sendable[j] for j in range(len(ids))}
 
     # state vars
-    updated_ids = set()  # rules processed and not skipped
+    updated_ids: Set[int] = set()  # rules processed and not skipped
 
     nskips = 0  # for stats report
     nfails = 0  # for stats report
 
-    job_q = []  # FIFO: visit nodes in depth-first order
+    job_q: List[int] = []  # FIFO: visit nodes in depth-first order
 
     nidles = njobs  # #idle slots
 
@@ -78,7 +89,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         if dep_cnt[i] == 0:
             job_q.append(i)
 
-    def get_job():
+    def get_job() -> Union[int, None]:
         nonlocal nidles
 
         with cv:
@@ -94,7 +105,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
 
                 cv.wait()
 
-    def set_result(i, res):
+    def set_result(i: int, res: Union[Result, None]):
         nonlocal stop, nidles, nskips, nfails
 
         with cv:
@@ -127,7 +138,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
         with cb_lock:
             callback(*args, **kwargs)
 
-    def event_q_handler(workers):
+    def event_q_handler(workers: Sequence[Thread]):
         # workers: list[Thread]
         while True:
             if all(not t.is_alive() for t in workers):
@@ -135,7 +146,7 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
 
             try:
                 callback_(event_q.get(True, 1))
-            except queue.Empty as e:
+            except queue.Empty:
                 pass
             except Exception:
                 traceback.print_exc()
@@ -183,17 +194,17 @@ def make_mp_spawn(id2rule, ids, dry_run, keep_going, callback, njobs):
 
 
 def worker(
-    ctx,
-    get_job,
-    set_result,
-    event_q,  # for process only
-    id2rule,
-    updated_ids,
-    main_ids,
-    sendable,
-    dry_run,
-    callback,
-    name,
+    ctx: SpawnContext,
+    get_job: Callable[[], Union[int, None]],
+    set_result: Callable[[int, Union[Result, None]], None],
+    event_q: queue.Queue[IEvent],  # for process only
+    id2rule: List[IRule],
+    updated_ids: Set[int],
+    main_ids: Set[int],
+    sendable: Sequence[int],
+    dry_run: bool,
+    callback: Callable[[IEvent], None],
+    name: Any,
 ):
     name = f"worker{name}"
     with ctx.Pool(1, _init_event_q, (event_q,)) as pool:
@@ -208,7 +219,7 @@ def worker(
             res = None
 
             try:
-                par_updated = any(dep in updated_ids for dep in rule.deplist)
+                par_updated = any(dep in updated_ids for dep in rule.deps)
                 args = (rule, dry_run, par_updated, i in main_ids)
 
                 if sendable[i]:
@@ -225,27 +236,32 @@ def worker(
                     return
 
 
-_event_q = None  # used by worker Processes
+_event_q: Optional[queue.Queue] = None  # used by worker Processes
 
 
-def _init_event_q(q):
+def _init_event_q(q: queue.Queue):
     global _event_q
     assert _event_q is None
     _event_q = q
 
 
-def process_worker(rule, dry_run, par_updated, is_main):
-    def cb(e):
-        _event_q.put(e)  # type: ignore
+def process_worker(
+    rule: IRule, dry_run: bool, par_updated: bool, is_main: bool
+):
+    def cb(e: IEvent):
+        assert _event_q is not None
+        _event_q.put(e)
 
     return process_rule(rule, dry_run, par_updated, is_main, cb)
 
 
-def _test_interproc_portabability(objs, ctx):
+def _test_interproc_portabability(
+    objs: List[Any], ctx: SpawnContext
+) -> List[bool]:
     n = len(objs)
     picklable = [True] * n
 
-    codes = [None] * n
+    codes: List[Optional[bytes]] = [None] * n
 
     sys.stderr.write("Checking picklability\n")
 
@@ -257,31 +273,23 @@ def _test_interproc_portabability(objs, ctx):
 
     sys.stderr.write("Checking inter-process portability\n")
 
-    par, child = ctx.Pipe()
+    with ctx.Pool(1) as pool:
+        for i, code in enumerate(codes):
+            if code is not None:
+                picklable[i] = pool.apply(_test_transferability, (code,))
 
-    p = ctx.Process(target=_test_unpicklable, args=(codes, child))
-    p.start()
-
-    unpicklable = par.recv()
-
-    p.join()
-
-    return [a and b for a, b in zip(picklable, unpicklable)]
+    return picklable
 
 
-def _test_unpicklable(codes, conn):
-    res = [True] * len(codes)
-
-    for i, c in enumerate(codes):
-        try:
-            pickle.loads(c)
-        except:
-            res[i] = False
-
-    conn.send(res)
+def _test_transferability(pickle_code: bytes) -> bool:
+    try:
+        pickle.loads(pickle_code)
+        return True
+    except pickle.UnpicklingError:
+        return False
 
 
-def _log_sendable_stats(sendables):
+def _log_sendable_stats(sendables: Sequence[bool]):
     n = len(sendables)
     ok = sum(1 for x in sendables if x)
     ng = n - ok
