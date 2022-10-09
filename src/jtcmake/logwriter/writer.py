@@ -113,7 +113,7 @@ class WritersWrapper(IWriter):
 
 
 class WritableProtocol(Protocol):
-    def write(self, t: str, /) -> Any:
+    def write(self, __t: str) -> Any:
         ...
 
 

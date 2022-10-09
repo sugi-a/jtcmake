@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections.abc import Set
 from typing import Any, Callable, Generic, Union
