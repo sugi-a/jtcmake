@@ -8,7 +8,7 @@ from .str_hash_memo import unwrap_atom
 
 
 class PickleMemo(IMemo):
-    def __init__(self, args: Any, key: bytes):
+    def __init__(self, args: object, key: bytes):
         args, lazy_values = unwrap_atom(args)
 
         code, digest = pickle_encode(args, key)
@@ -57,15 +57,15 @@ class PickleMemoInstance(IMemoInstance):
         }
 
     @classmethod
-    def from_obj(cls, data: Any) -> PickleMemoInstance:
+    def from_obj(cls, obj: Any) -> PickleMemoInstance:
         return PickleMemoInstance(
-            bytes.fromhex(data["code"]),
-            bytes.fromhex(data["digest"]),
-            bytes.fromhex(data["lcode"]),
-            bytes.fromhex(data["ldigest"]),
+            bytes.fromhex(obj["code"]),
+            bytes.fromhex(obj["digest"]),
+            bytes.fromhex(obj["lcode"]),
+            bytes.fromhex(obj["ldigest"]),
         )
 
-    def compare(self, other: Any) -> bool:
+    def compare(self, other: object) -> bool:
         if not isinstance(other, PickleMemoInstance):
             return False
 
@@ -105,7 +105,7 @@ _encode_error_message = (
 )
 
 
-def pickle_encode(obj: Any, key: bytes) -> Tuple[bytes, bytes]:
+def pickle_encode(obj: object, key: bytes) -> Tuple[bytes, bytes]:
     try:
         code = pickle.dumps(obj)
     except pickle.PicklingError as e:

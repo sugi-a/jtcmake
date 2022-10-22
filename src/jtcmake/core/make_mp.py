@@ -135,9 +135,9 @@ def make_mp_spawn(
 
             cv.notify_all()
 
-    def callback_(*args, **kwargs):
+    def callback_(e: IEvent):
         with cb_lock:
-            callback(*args, **kwargs)
+            callback(e)
 
     def event_q_handler(workers: Sequence[Thread]):
         # workers: list[Thread]
@@ -237,10 +237,10 @@ def worker(
                     return
 
 
-_event_q: Optional[queue.Queue] = None  # used by worker Processes
+_event_q: Optional[queue.Queue[IEvent]] = None  # used by worker Processes
 
 
-def _init_event_q(q: queue.Queue):
+def _init_event_q(q: queue.Queue[IEvent]):
     global _event_q
     assert _event_q is None
     _event_q = q

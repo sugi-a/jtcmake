@@ -1,13 +1,13 @@
 from __future__ import annotations
 import os, sys
-from os import PathLike
 from abc import abstractmethod
-import os, hashlib, base64
+import hashlib, base64
 import pathlib
 from typing import Any, Dict, Tuple, Union
-from typing_extensions import Self
 
 from .memo.abc import IMemoAtom, ILazyMemoValue
+
+StrOrPath = Union[str, os.PathLike[Any]]
 
 if sys.platform == "win32":
     _Path = pathlib.WindowsPath
@@ -17,7 +17,7 @@ else:
 
 class IFile(_Path, IMemoAtom):
     @abstractmethod
-    def replace(self, path: Union[str, PathLike]) -> IFile:
+    def copy_with(self, path: StrOrPath) -> IFile:
         ...
 
 
@@ -33,7 +33,7 @@ class File(IFile):
     updated.
     """
 
-    def replace(self, path: Union[str, PathLike]) -> File:
+    def copy_with(self, path: StrOrPath) -> File:
         return File(path)
 
     @property
@@ -42,7 +42,9 @@ class File(IFile):
 
 
 class _ContentHash(ILazyMemoValue):
-    def __init__(self, path: Union[str, PathLike]):
+    __slots__ = ["path"]
+
+    def __init__(self, path: StrOrPath):
         self.path = path
 
     def __call__(self) -> str:
@@ -61,21 +63,23 @@ class VFile(IFile):
     updated.
     """
 
-    def __init__(self, path):
+    __slots__ = ["_memo_value"]
+
+    def __init__(self, path: StrOrPath):
         self._memo_value = _ContentHash(path)
 
     @property
     def memo_value(self) -> Any:
         return self._memo_value
 
-    def replace(self, path) -> VFile:
+    def copy_with(self, path: StrOrPath) -> VFile:
         return VFile(path)
 
 
 _hash_cache: Dict[str, Tuple[float, str]] = {}
 
 
-def get_hash(fname: Union[str, PathLike]) -> str:
+def get_hash(fname: StrOrPath) -> str:
     fname = os.path.realpath(fname)
 
     if fname in _hash_cache:
@@ -87,6 +91,6 @@ def get_hash(fname: Union[str, PathLike]) -> str:
     with open(fname, "rb") as f:
         res = base64.b64encode(hashlib.md5(f.read()).digest()).decode()
 
-    _hash_cache[fname] = (mtime, res)
+    _hash_cache[os.path.abspath(fname)] = (mtime, res)
 
     return res

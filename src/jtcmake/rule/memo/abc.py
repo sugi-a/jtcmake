@@ -3,6 +3,9 @@ import json
 import os
 from abc import ABCMeta, abstractmethod
 from typing import Any, Union
+from typing_extensions import Self
+
+StrOrPath = Union[str, os.PathLike[Any]]
 
 
 class IMemo(metaclass=ABCMeta):
@@ -24,11 +27,11 @@ class IMemoInstance(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def from_obj(cls, obj: Any) -> IMemoInstance:
+    def from_obj(cls, obj: Any) -> Self:
         ...
 
     @classmethod
-    def load(cls, fname: Union[str, os.PathLike]) -> IMemoInstance:
+    def load(cls, fname: StrOrPath) -> IMemoInstance:
         with open(fname) as f:
             data = json.load(f)
             t = data["type"]
@@ -38,7 +41,7 @@ class IMemoInstance(metaclass=ABCMeta):
                 )
             return cls.from_obj(data["data"])
 
-    def save(self, fname: Union[str, os.PathLike]):
+    def save(self, fname: StrOrPath):
         with open(fname, "w") as f:
             data = {"type": self.get_type(), "data": self.to_obj()}
             json.dump(data, f)
@@ -61,7 +64,7 @@ class IMemoAtom(metaclass=ABCMeta):
 
 class ILazyMemoValue(metaclass=ABCMeta):
     @abstractmethod
-    def __call__(self):
+    def __call__(self) -> object:
         """
         Returns:
             object to be memoized.

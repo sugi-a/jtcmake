@@ -1,20 +1,14 @@
-import sys, os
-
-from jtcmake.core.abc import IRule
-from ..logwriter.writer import term_is_jupyter, create_html, create_color_str
+from .group_common import IRule
+from .group_base import create_default_logwriter
 from .event_logger import tostrs_func_call
 
 
 def print_method(rule: IRule):
-    rule = rule._rrule
+    info = rule._get_info()  # pyright: ignore [reportPrivateUsage]
+    raw_rule = info.rule_store.rules[rule.raw_rule_id]
     sl = []
-    tostrs_func_call(sl, rule.method, rule.args, rule.kwargs)
+    tostrs_func_call(sl, raw_rule.method, raw_rule.args, raw_rule.kwargs)
 
-    if term_is_jupyter():
-        from IPython.display import display, HTML
+    a = create_default_logwriter("debug")
+    a.debug(*sl)
 
-        display(HTML("<pre>" + create_html(sl, os.getcwd()) + "</pre>"))
-    elif sys.stderr.isatty():
-        sys.stderr.write(create_color_str(sl))
-    else:
-        sys.stderr.write("".join(sl))
