@@ -34,6 +34,9 @@ line-length = 80
 [tool.pyright]
 include = ["src/jtcmake"]
 pythonVersion = "3.10"
+typeCheckingMode = "strict"
+reportUnknownArgumentType = "none"
+
 
 [tool.pytest.ini_options]
 testpaths = [ "tests" ]
