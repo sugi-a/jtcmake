@@ -3,7 +3,7 @@ from abc import ABCMeta
 from typing import List, Sequence, Literal, TypeVar, Union, Tuple, Any
 
 from ...rule.file import IFile
-from ..group_common import IGroup, IRule
+from ..core import IGroup, IRule
 
 SelectorKind = Literal["group", "rule", "file"]
 

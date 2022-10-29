@@ -1,5 +1,5 @@
-from .group_common import IRule
-from .group_base import create_default_logwriter
+from .core import IRule
+from .group_mixins.basic import create_default_logwriter
 from .event_logger import tostrs_func_call
 
 

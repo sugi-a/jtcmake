@@ -5,16 +5,29 @@ from typing import (
     Any, Callable, Optional, TypeVar, Union, 
     Literal, Sequence, List
 )
-from ..core.make import MakeSummary
+from ...core.make import MakeSummary
 
-from .group_mixins.memo import MemoMixin
-from .group_mixins.selector import SelectorMixin
+from .memo import MemoMixin
+from .selector import SelectorMixin
 
-from ..rule.memo.abc import IMemo
-from ..rule.memo.pickle_memo import PickleMemo
-from ..rule.memo.str_hash_memo import StrHashMemo
-from .. import logwriter
-from .group_common import IGroup, GroupTreeInfo, make
+from ...rule.memo.abc import IMemo
+from ...rule.memo.pickle_memo import PickleMemo
+from ...rule.memo.str_hash_memo import StrHashMemo
+from ...logwriter import (
+    Loglevel,
+    WritableProtocol,
+    HTMLJupyterWriter,
+    IWriter,
+    WritersWrapper,
+    HTMLFileWriterOpenOnDemand,
+    TextFileWriterOpenOnDemand,
+    LoggerWriter,
+    ColorTextWriter,
+    TextWriter,
+    typeguard_loglevel,
+    term_is_jupyter
+)
+from ..core import IGroup, GroupTreeInfo, make
 
 StrOrPath = Union[str, os.PathLike[Any]]
 
@@ -22,7 +35,7 @@ TMemoKind = Literal["str_hash", "pickle"]
 
 T = TypeVar("T")
 
-class GroupBase(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
+class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
     @property
     @abstractmethod
     def name(self) -> str:
@@ -39,11 +52,11 @@ class GroupBase(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
         dirname: Optional[StrOrPath] = None,
         prefix: Optional[StrOrPath] = None,
         *,
-        loglevel: Optional[logwriter.Loglevel] = None,
+        loglevel: Optional[Loglevel] = None,
         use_default_logger: bool = True,
         logfile: Union[
-            None, StrOrPath, Logger, logwriter.WritableProtocol,
-            Sequence[Union[StrOrPath, Logger, logwriter.WritableProtocol]],
+            None, StrOrPath, Logger, WritableProtocol,
+            Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
         memo_kind: TMemoKind = "str_hash",
         pickle_key: Union[None, str, bytes] = None,
@@ -103,9 +116,9 @@ class GroupBase(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
 
 def _staticgroup__init__parse_logwriter(
     loglevel: object, use_default_logger: object, logfile: object
-) -> logwriter.IWriter:
-    if not logwriter.typeguard_loglevel(loglevel):
-        raise TypeError(f"loglevel must be {logwriter.Loglevel}. Given {loglevel}")
+) -> IWriter:
+    if not typeguard_loglevel(loglevel):
+        raise TypeError(f"loglevel must be {Loglevel}. Given {loglevel}")
 
     if not (isinstance(use_default_logger, bool) or use_default_logger is None):
         raise TypeError(
@@ -116,32 +129,32 @@ def _staticgroup__init__parse_logwriter(
     logfile_: Sequence[object] = \
         logfile if isinstance(logfile, Sequence) else [logfile]
 
-    writers: List[logwriter.IWriter] = \
+    writers: List[IWriter] = \
         [_create_logwriter(f, loglevel) for f in logfile_]
 
     if use_default_logger:
         writers.append(create_default_logwriter(loglevel))
 
-    return logwriter.WritersWrapper(writers)
+    return WritersWrapper(writers)
 
 
-def _create_logwriter(f: object, loglevel: logwriter.Loglevel) -> logwriter.IWriter:
+def _create_logwriter(f: object, loglevel: Loglevel) -> IWriter:
     if isinstance(f, (str, os.PathLike)):
         fname = str(f)
         if fname[-5:] == ".html":
-            return logwriter.HTMLFileWriterOpenOnDemand(loglevel, fname)
+            return HTMLFileWriterOpenOnDemand(loglevel, fname)
         else:
-            return logwriter.TextFileWriterOpenOnDemand(loglevel, fname)
+            return TextFileWriterOpenOnDemand(loglevel, fname)
 
     if isinstance(f, Logger):
-        return logwriter.LoggerWriter(f)
+        return LoggerWriter(f)
 
-    if isinstance(f, logwriter.WritableProtocol):
+    if isinstance(f, WritableProtocol):
         _isatty = getattr(f, "isatty", None)
         if callable(_isatty) and _isatty():
-            return logwriter.ColorTextWriter(f, loglevel)
+            return ColorTextWriter(f, loglevel)
 
-        return logwriter.TextWriter(f, loglevel)
+        return TextWriter(f, loglevel)
 
     raise TypeError(
         "Logging target must be either str (file name), os.PathLike, "
@@ -150,13 +163,13 @@ def _create_logwriter(f: object, loglevel: logwriter.Loglevel) -> logwriter.IWri
     )
 
 
-def create_default_logwriter(loglevel: logwriter.Loglevel) -> logwriter.IWriter:
-    if logwriter.term_is_jupyter():
-        return logwriter.HTMLJupyterWriter(loglevel, os.getcwd())
+def create_default_logwriter(loglevel: Loglevel) -> IWriter:
+    if term_is_jupyter():
+        return HTMLJupyterWriter(loglevel, os.getcwd())
     elif sys.stderr.isatty():
-        return logwriter.ColorTextWriter(sys.stderr, loglevel)
+        return ColorTextWriter(sys.stderr, loglevel)
     else:
-        return logwriter.TextWriter(sys.stderr, loglevel)
+        return TextWriter(sys.stderr, loglevel)
 
 def _staticgroup__init__args_memo_factory(
     kind: object, pickle_key: object

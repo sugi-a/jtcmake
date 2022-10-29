@@ -15,7 +15,7 @@ from ..utils.frozen_dict import FrozenDict
 from ..utils.nest import map_structure_with_set
 from .atom import Atom
 from ..rule.file import File, IFile
-from .group_common import IRule, GroupTreeInfo, IGroup, require_tree_init, make
+from .core import IRule, GroupTreeInfo, IGroup, require_tree_init, make
 
 StrOrPath = Union[str, os.PathLike[Any]]
 

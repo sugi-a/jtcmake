@@ -1,5 +1,5 @@
 from typing import TypeVar
-from ..group_common import IGroup
+from ..core import IGroup
 from ..atom import Atom
 
 T = TypeVar("T")

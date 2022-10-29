@@ -3,7 +3,7 @@ from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from .group_common import IGroup, IRule
+from .core import IGroup, IRule
 from ..logwriter import term_is_jupyter
 
 StrOrPath = Union[str, os.PathLike[Any]]

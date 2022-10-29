@@ -5,12 +5,10 @@ from typing import (
     Literal, Sequence, get_type_hints, Callable
 )
 
-from .group_mixins.child_adder import DynamicRuleContainer
-
-
-from .group_common import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap
+from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap
 from .rule import Rule
-from .group_base import GroupBase
+from .group_mixins.basic import BasicMixin
+from .group_mixins.dynamic_container import DynamicRuleContainerMixin
 
 StrOrPath = Union[str, PathLike[str]]
 
@@ -18,7 +16,7 @@ TMemoKind = Literal["str_hash", "pickle"]
 
 V = TypeVar("V")
 
-class StaticGroupBase(GroupBase):
+class StaticGroupBase(BasicMixin):
     _info: GroupTreeInfo
     _name: Sequence[str]
     _groups: ItemMap[IGroup]
@@ -98,7 +96,7 @@ class StaticGroupBase(GroupBase):
 
 T_Child = TypeVar("T_Child", bound=IGroup)
 
-class GroupOfGroups(GroupBase, Generic[T_Child]):
+class GroupOfGroups(BasicMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -172,7 +170,7 @@ class GroupOfGroups(GroupBase, Generic[T_Child]):
         return self[k]
 
 
-class GroupOfRules(DynamicRuleContainer, GroupBase):
+class GroupOfRules(DynamicRuleContainerMixin, BasicMixin):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -240,7 +238,7 @@ class GroupOfRules(DynamicRuleContainer, GroupBase):
         return self[k]
 
 
-class UntypedGroup(GroupBase, DynamicRuleContainer):
+class UntypedGroup(BasicMixin, DynamicRuleContainerMixin):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo

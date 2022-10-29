@@ -2,8 +2,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable, Generic, Sequence, Set, TypeVar
 
-from jtcmake.rule.memo.abc import IMemo
-
+from ..rule.memo.abc import IMemo
 from ..core.abc import IRule, UpdateResults, TUpdateResult, Callback
 from .file import File, IFile
 

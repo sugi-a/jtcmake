@@ -5,7 +5,7 @@ from typing import Dict, Sequence, TypeVar, Union, Tuple, Any, overload, Mapping
 from typing_extensions import ParamSpec
 
 from ...rule.file import IFile, File
-from ..group_common import IGroup
+from ..core import IGroup
 from ..rule import normalize_output_files, Rule_init_parse_deco_func, Rule
 
 StrOrPath = Union[str, PathLike[str]]
@@ -13,7 +13,7 @@ StrOrPath = Union[str, PathLike[str]]
 P = ParamSpec("P")
 K = TypeVar("K", bound=str)
 
-class DynamicRuleContainer(IGroup, metaclass=ABCMeta):
+class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
     @overload
     def add(
         self,
