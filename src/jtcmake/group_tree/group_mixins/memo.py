@@ -4,6 +4,7 @@ from ..atom import Atom
 
 T = TypeVar("T")
 
+
 class MemoMixin(IGroup):
     def mem(self, value: T, memoized_value: object) -> T:
         self._get_info().memo_store[id(value)] = Atom(value, memoized_value)
@@ -14,5 +15,3 @@ class MemoMixin(IGroup):
 
     def memnone(self, value: T) -> T:
         return self.mem(value, None)
-
-

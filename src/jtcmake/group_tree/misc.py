@@ -11,4 +11,3 @@ def print_method(rule: IRule):
 
     a = create_default_logwriter("debug")
     a.debug(*sl)
-

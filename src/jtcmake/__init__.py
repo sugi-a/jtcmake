@@ -1,4 +1,9 @@
-from .group_tree.groups import UntypedGroup, StaticGroupBase, GroupOfGroups, GroupOfRules
+from .group_tree.groups import (
+    UntypedGroup,
+    StaticGroupBase,
+    GroupOfGroups,
+    GroupOfRules,
+)
 from .group_tree.core import make
 from .group_tree.atom import Atom
 from .rule.file import File, VFile

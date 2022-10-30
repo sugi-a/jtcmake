@@ -10,6 +10,7 @@ StrOrPath = Union[str, os.PathLike[Any]]
 
 RankDir = Literal["TD", "LR"]
 
+
 def print_graphviz(
     group: IGroup,
     output_file: Optional[StrOrPath] = None,
@@ -67,11 +68,11 @@ def print_graphviz(
 
 
 def gen_dot_code(
-    group: IGroup,
-    basedir: Optional[StrOrPath]=None,
-    rankdir: RankDir = "LR"
+    group: IGroup, basedir: Optional[StrOrPath] = None, rankdir: RankDir = "LR"
 ):
-    if not isinstance(group, IGroup):  # pyright: ignore [reportUnnecessaryIsInstance]
+    if not isinstance(
+        group, IGroup
+    ):  # pyright: ignore [reportUnnecessaryIsInstance]
         raise TypeError("argument group must be Group")
 
     if rankdir not in {"TB", "LR"}:
@@ -160,8 +161,7 @@ def gen_dot_code(
                 )
 
             res.append(
-                f"  f{fid[xf]} -> f{fid[f0]} "
-                f"[lhead=cluster_r_{rid[r]}];"
+                f"  f{fid[xf]} -> f{fid[f0]} " f"[lhead=cluster_r_{rid[r]}];"
             )
 
     res.append("}")

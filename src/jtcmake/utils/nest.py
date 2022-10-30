@@ -1,4 +1,14 @@
-from typing import Any, Callable, Iterable, List, Mapping, Optional, Set, Type, Sequence
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Type,
+    Sequence,
+)
 
 
 def _raise_structure_unmatch(i: int):
@@ -7,8 +17,12 @@ def _raise_structure_unmatch(i: int):
     )
 
 
-T_Seq_Factory = Mapping[Type[Sequence[Any]], Callable[[Iterable[Any]], Sequence[Any]]]
-T_Map_Factory = Mapping[Type[Mapping[Any, Any]], Callable[[Mapping[Any, Any]], Mapping[Any, Any]]]
+T_Seq_Factory = Mapping[
+    Type[Sequence[Any]], Callable[[Iterable[Any]], Sequence[Any]]
+]
+T_Map_Factory = Mapping[
+    Type[Mapping[Any, Any]], Callable[[Mapping[Any, Any]], Mapping[Any, Any]]
+]
 T_Set_Factory = Mapping[Type[Set[Any]], Callable[[Iterable[Any]], Set[Any]]]
 
 
@@ -75,9 +89,9 @@ def ordered_map_structure(
 def map_structure_with_set(
     map_fn: Callable[[Any], Any],
     nest: Any,
-    seq_factory: T_Seq_Factory = { list: list, tuple: tuple },
-    map_factory: T_Map_Factory = { dict: dict },
-    set_factory: T_Set_Factory = { set: set },
+    seq_factory: T_Seq_Factory = {list: list, tuple: tuple},
+    map_factory: T_Map_Factory = {dict: dict},
+    set_factory: T_Set_Factory = {set: set},
 ):
     assert callable(map_fn)
 

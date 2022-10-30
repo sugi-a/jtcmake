@@ -96,19 +96,19 @@ def stringify(nest: object) -> str:
                 sl.append(")" if isinstance(nest, tuple) else "]")
             elif isinstance(nest, set):
                 try:
-                    ordered = sorted(nest)  # pyright: ignore [reportUnknownVariableType]
+                    ordered: List[object] = sorted(nest)
                 except TypeError as e:
                     raise TypeError(
                         "set in memoization values must have sortable values"
                     ) from e
                 sl.append("{")
-                for v in ordered:  # pyright: ignore [reportUnknownVariableType]
+                for v in ordered:
                     rec(v)
                     sl.append(",")
                 sl.append(")")
             else:
                 try:
-                    keys = sorted(nest)  # pyright: ignore [reportUnknownVariableType]
+                    keys: List[object] = sorted(nest)
                 except TypeError as e:
                     raise TypeError(
                         "dict in memoization values must have sortable keys"

@@ -3,9 +3,22 @@ import os, inspect, time
 from pathlib import Path
 from os import PathLike
 from typing import (
-    Any, Callable, Mapping, Optional, Tuple, Dict, Generic, Union,
-    overload, Sequence, List, TypeVar, ParamSpec, TypeGuard,
-    Collection, Container
+    Any,
+    Callable,
+    Mapping,
+    Optional,
+    Tuple,
+    Dict,
+    Generic,
+    Union,
+    overload,
+    Sequence,
+    List,
+    TypeVar,
+    ParamSpec,
+    TypeGuard,
+    Collection,
+    Container,
 )
 from typing_extensions import Self
 
@@ -51,7 +64,6 @@ class SelfRule:
 SELF: Any = SelfRule()
 
 
-
 class Rule(IRule, Generic[K]):
     _raw_rule_id: int
     _info: GroupTreeInfo
@@ -77,7 +89,6 @@ class Rule(IRule, Generic[K]):
 
         self._info.rules_to_be_init.add(name)
 
-
     def __init_full__(
         self,
         yfiles: Dict[K, IFile],
@@ -87,7 +98,6 @@ class Rule(IRule, Generic[K]):
     ):
         self._init_main(yfiles, method, args, kwargs)
         self._info.rules_to_be_init.remove(self._name)
-
 
     def __init_at_once__(
         self,
@@ -108,21 +118,17 @@ class Rule(IRule, Generic[K]):
 
         return self
 
-
     @property
     def initialized(self) -> bool:
         return self._name in self._info.rules_to_be_init
-
 
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
 
-
     @require_tree_init
     def __getattr__(self, key: K) -> IFile:
         return self.__getitem__(key)
-
 
     @require_tree_init
     def __getitem__(self, key: Union[int, K]) -> IFile:
@@ -161,7 +167,6 @@ class Rule(IRule, Generic[K]):
         if memo:
             self._info.rule_store.rules[self.raw_rule_id].update_memo()
 
-
     def clean(self) -> None:
         logwriter = self._info.logwriter
 
@@ -172,10 +177,9 @@ class Rule(IRule, Generic[K]):
             try:
                 f.unlink(missing_ok=False)
             except Exception as e:
-                logwriter.warning(f'Failed to remove {f}. {e}')
+                logwriter.warning(f"Failed to remove {f}. {e}")
             else:
                 logwriter.info(f"Delete {f}")
-
 
     def _init_main(
         self,
@@ -196,13 +200,13 @@ class Rule(IRule, Generic[K]):
         }
 
         # (Abspath of output) => (IFile of output)
-        yp2f = { os.path.abspath(f): f for f in yfiles.values() }
+        yp2f = {os.path.abspath(f): f for f in yfiles.values()}
 
         # Replace reserved objects by Atoms
         args_ = _replace_obj_by_atom_in_structure(self._info.memo_store, args_)
 
         # Replace SELFs
-        args_ = _replace_self({ k: v for k, v in yfiles.items() }, args_)
+        args_ = _replace_self({k: v for k, v in yfiles.items()}, args_)
 
         # Assert that all outputs are included in the arguments
         _assert_all_yfiles_used_in_args(yp2f, args_)
@@ -220,10 +224,10 @@ class Rule(IRule, Generic[K]):
             raise TypeError(f"method must be callable. Given {method}")
 
         _assert_signature_match(method, method_args, method_kwargs)
-        
+
         # Create memo
         memo = self._info.memo_factory(args_)
-    
+
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
             yp2f, xp2f, method, method_args, method_kwargs, memo, self._name
@@ -237,44 +241,52 @@ class Rule(IRule, Generic[K]):
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
-
     @overload
     def init(
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]], K, PathLike[Any]
+            Sequence[Union[K, PathLike[Any]]],
+            K,
+            PathLike[Any],
         ],
-        method: Callable[P, object]
+        method: Callable[P, object],
     ) -> Callable[P, None]:
         ...
 
-
     @overload
     def init(
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]], K, PathLike[Any]
+            Sequence[Union[K, PathLike[Any]]],
+            K,
+            PathLike[Any],
         ],
     ) -> Callable[[Callable[[], object]], None]:
         ...
 
     def init(
-        self, output_files: object, method: object = None,
+        self,
+        output_files: object,
+        method: object = None,
     ) -> Callable[..., None]:
         if self.initialized:
             raise RuntimeError("Already initialized")
 
-        yfiles = normalize_output_files(self._file_keys_hint, output_files, File)
+        yfiles = normalize_output_files(
+            self._file_keys_hint, output_files, File
+        )
 
         if method is None:
+
             def _deco(method: object):
                 args, kwargs = Rule_init_parse_deco_func(method)
                 self.__init_full__(yfiles, method, args, kwargs)
 
             return _deco
         else:
+
             def _init(*args: object, **kwargs: object):
                 self.__init_full__(yfiles, method, args, kwargs)
 
@@ -327,10 +339,10 @@ class Rule(IRule, Generic[K]):
     @require_tree_init
     def files(self) -> Mapping[K, IFile]:
         return self._files
-        
+
 
 def Rule_init_parse_deco_func(
-    method: object
+    method: object,
 ) -> Tuple[Tuple[object, ...], Dict[str, object]]:
     if not callable(method):
         raise TypeError(f"method must be callable. Given {method}")
@@ -339,7 +351,8 @@ def Rule_init_parse_deco_func(
     params = sig.parameters
 
     nodefaults = [
-        name for name, p in params.items()
+        name
+        for name, p in params.items()
         if p.default is inspect.Parameter.empty
     ]
 
@@ -356,7 +369,7 @@ def Rule_init_parse_deco_func(
                 f"{name} is a positonal only argument."
             )
 
-    kwargs = { k: v.default for k, v in params.items() }
+    kwargs = {k: v.default for k, v in params.items()}
 
     return (), kwargs
 
@@ -364,15 +377,15 @@ def Rule_init_parse_deco_func(
 def normalize_output_files(
     keys: Optional[Sequence[K]],
     output_files: object,
-    IFile_factory: Callable[[StrOrPath], IFile]
+    IFile_factory: Callable[[StrOrPath], IFile],
 ) -> Dict[K, IFile]:
     if isinstance(output_files, (tuple, list)):
         outs: Dict[str, object] = {
-            str(v): v for
-            v in output_files  # pyright: ignore [reportUnknownVariableType]
+            str(v): v
+            for v in output_files  # pyright: ignore [reportUnknownVariableType]
         }
     elif isinstance(output_files, (str, os.PathLike)):
-        outs = { str(output_files): output_files }
+        outs = {str(output_files): output_files}
     elif isinstance(output_files, Mapping):
         outs = dict(output_files)
     else:
@@ -390,7 +403,7 @@ def normalize_output_files(
 
         raise TypeError(f"Output file must be str or PathLike. Given {f}")
 
-    outs_ = { k: _to_IFile(v) for k, v in outs.items() }
+    outs_ = {k: _to_IFile(v) for k, v in outs.items()}
 
     if not _check_file_keys(outs_, keys):
         raise TypeError(
@@ -409,6 +422,7 @@ def _check_file_keys(
 
     return all(a == b for a, b in zip(files, ref))
 
+
 def _normalize_path(p: str, pfx: str) -> str:
     if os.name == "posix":
         p = os.path.expanduser(p)
@@ -422,6 +436,7 @@ def _normalize_path(p: str, pfx: str) -> str:
     except Exception:
         return p
 
+
 def _replace_obj_by_atom_in_structure(
     memo_store: Mapping[int, Atom], args: object
 ) -> object:
@@ -429,7 +444,10 @@ def _replace_obj_by_atom_in_structure(
         if id(o) in memo_store:
             return memo_store[id(o)]
         elif isinstance(o, dict):
-            return {k: _rec(v) for k, v in o.items() }  # pyright: ignore [reportUnknownVariableType]
+            return {
+                k: _rec(v)
+                for k, v in o.items()  # pyright: ignore [reportUnknownVariableType]
+            }
         elif isinstance(o, tuple):
             return tuple(map(_rec, o))
         elif isinstance(o, list):
@@ -465,12 +483,13 @@ def _replace_self(files: Mapping[str, IFile], args: object) -> object:
 
 def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
     unused = set(ypaths)
+
     def check(v: object):
         if isinstance(v, IFile):
             absp = os.path.abspath((v))
             if absp in unused:
                 unused.remove(absp)
-            
+
     map_structure_with_set(check, args)
 
     if len(unused) > 0:
@@ -480,7 +499,9 @@ def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
         )
 
 
-def _find_xfiles_in_args(ypaths: Container[str], args: object) -> Dict[str, IFile]:
+def _find_xfiles_in_args(
+    ypaths: Container[str], args: object
+) -> Dict[str, IFile]:
     res: Dict[str, IFile] = {}
 
     def check(v: object):
@@ -488,7 +509,7 @@ def _find_xfiles_in_args(ypaths: Container[str], args: object) -> Dict[str, IFil
             absp = os.path.abspath(v)
             if absp not in ypaths:
                 res[absp] = v
-    
+
     map_structure_with_set(check, args)
 
     return res
@@ -509,7 +530,7 @@ def _replace_Atom_and_IFile(args: object) -> object:
 def _assert_signature_match(
     func: Callable[..., object],
     args: Sequence[object],
-    kwargs: Dict[str, object]
+    kwargs: Dict[str, object],
 ):
     try:
         inspect.signature(func).bind(*args, **kwargs)
@@ -517,6 +538,3 @@ def _assert_signature_match(
         raise Exception(
             f"Signature of the method does not match the arguments"
         ) from e
-
-
-

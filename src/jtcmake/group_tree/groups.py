@@ -2,15 +2,34 @@ from __future__ import annotations
 from logging import Logger
 from os import PathLike
 from typing import (
-    Mapping, Optional, Tuple, Type, TypeVar, Generic, Union, List,
-    Literal, Sequence, get_args, get_origin, get_type_hints, Callable
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Generic,
+    Union,
+    List,
+    Literal,
+    Sequence,
+    get_args,
+    get_origin,
+    get_type_hints,
+    Callable,
 )
 from typing_extensions import Self
 
 from ..logwriter import Loglevel, WritableProtocol
 from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap
 from .rule import Rule
-from .group_mixins.basic import BasicMixin, BasicInitMixin, MemoKind, basic_init_create_memo_factory, basic_init_create_logwriter, basic_init_create_prefix
+from .group_mixins.basic import (
+    BasicMixin,
+    BasicInitMixin,
+    MemoKind,
+    basic_init_create_memo_factory,
+    basic_init_create_logwriter,
+    basic_init_create_prefix,
+)
 from .group_mixins.dynamic_container import DynamicRuleContainerMixin
 from .group_mixins.memo import MemoMixin
 from .group_mixins.selector import SelectorMixin
@@ -22,6 +41,7 @@ TMemoKind = Literal["str_hash", "pickle"]
 
 V = TypeVar("V")
 
+
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
     _name: Sequence[str]
@@ -29,20 +49,18 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _rules: ItemMap[Rule[str]]
     _parent: IGroup
 
-
     @classmethod
     def __create_as_child__(
         cls,
         type_hint: Type[Self],
         info: GroupTreeInfo,
         parent: IGroup,
-        name: Tuple[str, ...]
+        name: Tuple[str, ...],
     ) -> Self:
         del type_hint
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
         return g
-
 
     def __init_as_child__(
         self,
@@ -57,7 +75,9 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         self._groups = ItemMap()
         self._rules = ItemMap()
 
-        for child_name, tp in get_type_hints(type(self).__annotations__).items():
+        for child_name, tp in get_type_hints(
+            type(self).__annotations__
+        ).items():
             fqcname = (*self._name, child_name)
 
             if tp == Rule:
@@ -79,29 +99,24 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 setattr(self, child_name, g)
                 priv_add_to_itemmap(self._groups, child_name, g)
 
-
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
 
-
     @property
     def name(self) -> str:
         if len(self._name) == 0:
-            return ''
+            return ""
         else:
             return self._name[-1]
-
 
     @property
     def namefq(self) -> str:
         return "/".join(self._name)
 
-
     @property
     def parent(self) -> IGroup:
         return self._parent
-
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
@@ -114,9 +129,8 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 T_Child = TypeVar("T_Child", bound=IGroup)
 
-class GroupOfGroups(
-    BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]
-):
+
+class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -132,7 +146,10 @@ class GroupOfGroups(
         loglevel: Optional[Loglevel] = None,
         use_default_logger: bool = True,
         logfile: Union[
-            None, StrOrPath, Logger, WritableProtocol,
+            None,
+            StrOrPath,
+            Logger,
+            WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
         memo_kind: MemoKind = "str_hash",
@@ -156,7 +173,7 @@ class GroupOfGroups(
         type_hint: Type[Self],
         info: GroupTreeInfo,
         parent: IGroup,
-        name: Tuple[str, ...]
+        name: Tuple[str, ...],
     ) -> Self:
         g = cls.__new__(cls)
 
@@ -168,7 +185,7 @@ class GroupOfGroups(
                 "Type hint for GroupOfGroups must be like GroupOfGroups[...]. "
                 f"Given {type_hint}"
             )
-        
+
         type_args = get_args(type_hint)
 
         if len(type_args) != 1:
@@ -194,12 +211,14 @@ class GroupOfGroups(
         self._name = name
         self._groups = ItemMap()
 
-        self._child_type_hint = \
-            _validate_child_group_type(type_hint)  # pyright: ignore
-
+        self._child_type_hint = _validate_child_group_type(
+            type_hint
+        )  # pyright: ignore
 
     def add(self, name: str) -> T_Child:
-        if not isinstance(name, str):  # pyright: ignore [reportUnnecessaryIsInstance]
+        if not isinstance(
+            name, str
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
             raise TypeError("name must be str")
 
         if name in self._groups:
@@ -217,30 +236,25 @@ class GroupOfGroups(
             setattr(self, name, g)
 
         return g
-        
 
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
 
-
     @property
     def name(self) -> str:
         if len(self._name) == 0:
-            return ''
+            return ""
         else:
             return self._name[-1]
-
 
     @property
     def namefq(self) -> str:
         return "/".join(self._name)
 
-
     @property
     def parent(self) -> IGroup:
         return self._parent
-
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
@@ -262,7 +276,7 @@ class GroupOfRules(
     BasicMixin,
     BasicInitMixin,
     SelectorMixin,
-    MemoMixin
+    MemoMixin,
 ):
     _name: Tuple[str, ...]
     _parent: IGroup
@@ -275,7 +289,7 @@ class GroupOfRules(
         type_hint: Type[Self],
         info: GroupTreeInfo,
         parent: IGroup,
-        name: Tuple[str, ...]
+        name: Tuple[str, ...],
     ) -> Self:
         del type_hint
         g = cls.__new__(cls)
@@ -283,16 +297,12 @@ class GroupOfRules(
         return g
 
     def __init_as_child__(
-        self,
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...]
+        self, info: GroupTreeInfo, parent: IGroup, name: Tuple[str, ...]
     ):
         self._info = info
         self._parent = parent
         self._name = name
         self._rules = ItemMap()
-
 
     def _add_rule_lazy(
         self, name: str, rule_factory: Callable[[], Rule[str]]
@@ -309,24 +319,20 @@ class GroupOfRules(
 
         return r
 
-
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
 
-
     @property
     def name(self) -> str:
         if len(self._name) == 0:
-            return ''
+            return ""
         else:
             return self._name[-1]
-
 
     @property
     def namefq(self) -> str:
         return "/".join(self._name)
-
 
     @property
     def parent(self) -> IGroup:
@@ -352,7 +358,7 @@ class UntypedGroup(
     DynamicRuleContainerMixin,
     BasicInitMixin,
     SelectorMixin,
-    MemoMixin
+    MemoMixin,
 ):
     _name: Tuple[str, ...]
     _parent: IGroup
@@ -366,24 +372,20 @@ class UntypedGroup(
         type_hint: Type[Self],
         info: GroupTreeInfo,
         parent: IGroup,
-        name: Tuple[str, ...]
+        name: Tuple[str, ...],
     ) -> Self:
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
         return g
 
     def __init_as_child__(
-        self,
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...]
+        self, info: GroupTreeInfo, parent: IGroup, name: Tuple[str, ...]
     ):
         self._info = info
         self._parent = parent
         self._name = name
         self._groups = ItemMap()
         self._rules = ItemMap()
-
 
     def _add_rule_lazy(
         self, name: str, rule_factory: Callable[[], Rule[str]]
@@ -404,7 +406,9 @@ class UntypedGroup(
         if not issubclass(child_group_class, IGroup):
             raise TypeError("child_group_class must be subclass of IGroup")
 
-        if not isinstance(name, str):  # pyright: ignore [reportUnnecessaryIsInstance]
+        if not isinstance(
+            name, str
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
             raise TypeError("name must be str")
 
         if name in self._groups:
@@ -418,32 +422,27 @@ class UntypedGroup(
 
         if name.isidentifier() and name[0] != "_" and not hasattr(self, name):
             setattr(self, name, g)
-        
-        return g
 
+        return g
 
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
 
-
     @property
     def name(self) -> str:
         if len(self._name) == 0:
-            return ''
+            return ""
         else:
             return self._name[-1]
-
 
     @property
     def namefq(self) -> str:
         return "/".join(self._name)
 
-
     @property
     def parent(self) -> IGroup:
         return self._parent
-
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
@@ -461,7 +460,6 @@ class UntypedGroup(
         return self._name
 
 
-
 def _parse_rule_generic_args(
     args: Tuple[object, ...]
 ) -> Union[None, List[str]]:
@@ -475,7 +473,6 @@ def _parse_rule_generic_args(
 
     if isinstance(arg, type) and issubclass(arg, str):
         return None
-
 
     origin_t = getattr(arg, "__origin__", None)
 
@@ -500,14 +497,13 @@ def _assert_isstr(o: object) -> str:
         raise TypeError("Expected str, given {o}")
 
 
-
 def _validate_child_group_type(tp: object) -> Type[IGroup]:
     dummy_g = UntypedGroup()
     dummy_info = dummy_g._get_info()  # pyright: ignore [reportPrivateUsage]
 
     if isinstance(tp, type):
         if issubclass(tp, IGroup):
-            tp.__create_as_child__(tp, dummy_info, dummy_g, ('dummy',))
+            tp.__create_as_child__(tp, dummy_info, dummy_g, ("dummy",))
         else:
             raise TypeError("Type of child groups must be a subclass of IGroup")
 
@@ -519,9 +515,7 @@ def _validate_child_group_type(tp: object) -> Type[IGroup]:
         raise TypeError("Invalid type hint {tp}.")
     else:
         origin.__create_as_child__(
-            tp,  # pyright: ignore
-            dummy_info, dummy_g, ('dummy',)
+            tp, dummy_info, dummy_g, ("dummy",)  # pyright: ignore
         )
 
     return tp  # pyright: ignore
-

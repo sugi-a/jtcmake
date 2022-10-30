@@ -66,6 +66,7 @@ class RichStr(str):
 
 Loglevel = Literal["debug", "info", "warning", "error"]
 
+
 def typeguard_loglevel(loglevel: object) -> TypeGuard[Loglevel]:
     return loglevel in {"debug", "info", "warning", "error"}
 
@@ -211,8 +212,12 @@ HTML_COLOR_MAP: Dict[Loglevel, Tuple[int, int, int]] = {
 class HTMLFileWriterOpenOnDemand(IWriter):
     basedir: Optional[Path]
     fname: Path
+
     def __init__(
-        self, loglevel: Loglevel, fname: StrOrPath, basedir: Optional[Path]=None
+        self,
+        loglevel: Loglevel,
+        fname: StrOrPath,
+        basedir: Optional[Path] = None,
     ):
         super().__init__(loglevel)
 
@@ -239,15 +244,17 @@ class HTMLFileWriterOpenOnDemand(IWriter):
 
 class HTMLJupyterWriter(IWriter):
     basedir: Optional[Path]
+
     def __init__(self, loglevel: Loglevel, basedir: Optional[StrOrPath] = None):
         super().__init__(loglevel)
         from IPython.display import display, HTML  # pyright: ignore
+
         del display, HTML
 
         self.basedir = Path(basedir) if basedir else None
 
     def _write(self, *args: str, level: Loglevel):
-        from IPython.display import display, HTML  # pyright: ignore [reportUnknownVariableType, reportMissingTypeStubs]
+        from IPython.display import display, HTML  # pyright: ignore
 
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]
@@ -263,9 +270,7 @@ class HTMLJupyterWriter(IWriter):
         )
 
 
-def create_html(
-    sl: Sequence[str], basedir: Optional[StrOrPath] = None
-) -> str:
+def create_html(sl: Sequence[str], basedir: Optional[StrOrPath] = None) -> str:
     sl = [x if isinstance(x, RichStr) else RichStr(x) for x in sl]
     groups: List[List[RichStr]] = []
     for s in sl:
@@ -356,9 +361,9 @@ def _comp_8bit_term_color(r: int, g: int, b: int) -> int:
 
 def term_is_jupyter() -> bool:
     try:
-        from IPython.core.getipython import get_ipython  # pyright: ignore [reportMissingTypeStubs, reportUnknownVariableType]
+        from IPython.core.getipython import get_ipython  # pyright: ignore
 
-        return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # pyright: ignore
+        name = get_ipython().__class__.__name__  # pyright: ignore
+        return name == "ZMQInteractiveShell"  # pyright: ignore
     except:
         return False
-

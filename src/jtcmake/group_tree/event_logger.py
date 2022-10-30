@@ -16,7 +16,7 @@ def get_rule_name(r: IRule, id2name: Callable[[int], str]):
             "Internal Error: an event of unnamed Rule has been emitted."
         )
         return "<unknown>"
-    
+
 
 def log_make_event(w: IWriter, e: IEvent, id2name: Callable[[int], str]):
     if isinstance(e, events.ErrorRuleEvent):
@@ -115,7 +115,7 @@ def tostrs_func_call(
     dst: List[str],
     f: Callable[..., object],
     args: Tuple[object, ...],
-    kwargs: Dict[str, object]
+    kwargs: Dict[str, object],
 ):
     bn = inspect.signature(f).bind(*args, **kwargs)
     bn.apply_defaults()
@@ -151,7 +151,10 @@ def _tostrs_obj(dst: List[str], o: object, capacity: int) -> int:
         return capacity
     elif isinstance(o, Mapping):
         dst.append("{")
-        for i, (k, v) in enumerate(o.items()):  # pyright: ignore [reportUnknownVariableType]
+        for i, (
+            k,  # pyright: ignore [reportUnknownVariableType]
+            v,  # pyright: ignore [reportUnknownVariableType]
+        ) in enumerate(o.items()):
             if capacity <= 0:
                 dst.append(", ... ")
                 capacity -= 5

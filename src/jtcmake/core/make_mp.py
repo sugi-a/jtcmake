@@ -5,7 +5,17 @@ from multiprocessing import get_context
 from threading import Thread, Condition, Lock
 
 from collections import defaultdict
-from typing import Any, Dict, Optional, Set, Tuple, Callable, List, Union, Sequence
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Set,
+    Tuple,
+    Callable,
+    List,
+    Union,
+    Sequence,
+)
 
 from . import events
 from .abc import IRule, IEvent

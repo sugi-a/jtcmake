@@ -9,6 +9,7 @@ SelectorKind = Literal["group", "rule", "file"]
 
 SEP = ";"
 
+
 def get_offspring_groups(
     root: IGroup, dst: Optional[List[IGroup]] = None
 ) -> List[IGroup]:
@@ -22,7 +23,9 @@ def get_offspring_groups(
 
     return dst
 
+
 T = TypeVar("T", IGroup, IRule, IFile)
+
 
 class SelectorMixin(IGroup, metaclass=ABCMeta):
     def _select_wrapper(
@@ -46,7 +49,6 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
             raise TypeError("Pattern must be str or sequence of str")
 
         return self._select(pattern, kind)
-
 
     def _select(self, pattern: Sequence[str], kind: SelectorKind) -> List[Any]:
         rxs: List[str] = []
@@ -111,7 +113,6 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
             return _search(target_files, target_names)
         else:
             raise Exception("unreachable")
-
 
     def select_rules(self, pattern: Union[str, Sequence[str]]) -> List[IRule]:
         return self._select_wrapper(pattern, "rule")
@@ -189,6 +190,3 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
                 g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
         """
         return self._select_wrapper(pattern, "group")
-
-
-

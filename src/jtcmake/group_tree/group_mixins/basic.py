@@ -2,8 +2,15 @@ import os, sys, time
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import (
-    Any, Callable, Optional, Tuple, TypeVar, Union, 
-    Literal, Sequence, List
+    Any,
+    Callable,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    Literal,
+    Sequence,
+    List,
 )
 from ...core.make import MakeSummary
 
@@ -24,7 +31,7 @@ from ...logwriter import (
     ColorTextWriter,
     TextWriter,
     typeguard_loglevel,
-    term_is_jupyter
+    term_is_jupyter,
 )
 from ..core import IGroup, GroupTreeInfo, make
 
@@ -33,6 +40,7 @@ StrOrPath = Union[str, os.PathLike[Any]]
 MemoKind = Literal["str_hash", "pickle"]
 
 T = TypeVar("T")
+
 
 class BasicInitMixin(IGroup, metaclass=ABCMeta):
     def __init__(
@@ -43,7 +51,10 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
         loglevel: Optional[Loglevel] = None,
         use_default_logger: bool = True,
         logfile: Union[
-            None, StrOrPath, Logger, WritableProtocol,
+            None,
+            StrOrPath,
+            Logger,
+            WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
         memo_kind: MemoKind = "str_hash",
@@ -61,7 +72,6 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
 
         self.set_prefix(basic_init_create_prefix(dirname, prefix))
 
-
     @abstractmethod
     def __init_as_child__(
         self,
@@ -78,13 +88,12 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
             for r in g.rules.values():
                 r.clean()
 
-
     def touch(
         self,
         file: bool = True,
         memo: bool = True,
         create: bool = True,
-        t: Optional[float] = None
+        t: Optional[float] = None,
     ) -> None:
         if t is None:
             t = time.time()
@@ -92,7 +101,6 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
         for g in get_offspring_groups(self):
             for r in g.rules.values():
                 r.touch(file, memo, create, t)
-
 
     def make(
         self,
@@ -126,7 +134,6 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
         )
 
 
-
 def basic_init_create_logwriter(
     loglevel: object, use_default_logger: object, logfile: object
 ) -> IWriter:
@@ -139,11 +146,11 @@ def basic_init_create_logwriter(
             f"Given {use_default_logger}"
         )
 
-    logfile_: Sequence[object] = \
+    logfile_: Sequence[object] = (
         logfile if isinstance(logfile, Sequence) else [logfile]
+    )
 
-    writers: List[IWriter] = \
-        [_create_logwriter(f, loglevel) for f in logfile_]
+    writers: List[IWriter] = [_create_logwriter(f, loglevel) for f in logfile_]
 
     if use_default_logger:
         writers.append(create_default_logwriter(loglevel))
@@ -184,20 +191,20 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
     else:
         return TextWriter(sys.stderr, loglevel)
 
+
 def basic_init_create_memo_factory(
     kind: object, pickle_key: object
 ) -> Callable[[object], IMemo]:
     if kind == "str_hash":
         if pickle_key is not None:
             raise TypeError(
-                "pickle_key must not be specified for "
-                "str_hash memoization"
+                "pickle_key must not be specified for " "str_hash memoization"
             )
         return StrHashMemo
     elif kind == "pickle":
         if pickle_key is None:
             raise TypeError("pickle_key must be specified")
-        
+
         if isinstance(pickle_key, str):
             try:
                 pickle_key_ = bytes.fromhex(pickle_key)
@@ -215,7 +222,7 @@ def basic_init_create_memo_factory(
 
         return _memo_factory_pickle
     else:
-        raise TypeError("memo kind must be \"str_hash\" or \"pickle\"")
+        raise TypeError('memo kind must be "str_hash" or "pickle"')
 
 
 def basic_init_create_prefix(dirname: object, prefix: object) -> str:
@@ -238,4 +245,3 @@ def basic_init_create_prefix(dirname: object, prefix: object) -> str:
             raise TypeError("prefix must be str or PathLike")
 
     return prefix_
-

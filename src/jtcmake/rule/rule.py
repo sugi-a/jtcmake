@@ -8,6 +8,7 @@ from .file import File, IFile
 
 TId = TypeVar("TId")
 
+
 class Rule(IRule, Generic[TId]):
     __slots__ = [
         "yfiles",

@@ -3,8 +3,20 @@ from abc import ABCMeta, abstractmethod
 import os
 from os import PathLike
 from typing import (
-    Callable, Concatenate, Mapping, Optional, Tuple, Type, TypeVar, Dict, Union, 
-    overload, Sequence, List, Set, final
+    Callable,
+    Concatenate,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Dict,
+    Union,
+    overload,
+    Sequence,
+    List,
+    Set,
+    final,
 )
 from typing_extensions import ParamSpec, Self
 
@@ -19,6 +31,7 @@ from ..logwriter import IWriter
 from .event_logger import log_make_event
 
 StrOrPath = Union[str, PathLike[str]]
+
 
 class INode(metaclass=ABCMeta):
     @property
@@ -51,7 +64,7 @@ class IGroup(INode, metaclass=ABCMeta):
         type_hint: Type[Self],
         info: GroupTreeInfo,
         parent: IGroup,
-        name: Tuple[str, ...]
+        name: Tuple[str, ...],
     ) -> Self:
         ...
 
@@ -69,7 +82,7 @@ class IGroup(INode, metaclass=ABCMeta):
     ) -> Self:
         if self.__prefix is not None:
             raise Exception(
-                f"Prefix is already set (to \"{self.__prefix}\") and "
+                f'Prefix is already set (to "{self.__prefix}") and '
                 "may not be overwritten. Make sure to call set_prefix "
                 "before initializing child groups and rules. "
             )
@@ -94,12 +107,10 @@ class IGroup(INode, metaclass=ABCMeta):
         else:
             return self.__prefix
 
-
     @property
     @abstractmethod
     def groups(self) -> Mapping[str, IGroup]:
         ...
-
 
     @property
     @abstractmethod
@@ -117,7 +128,6 @@ class IRule(INode, metaclass=ABCMeta):
     @abstractmethod
     def files(self) -> Mapping[str, IFile]:
         ...
-
 
     @property
     @abstractmethod
@@ -156,7 +166,6 @@ class RuleStore:
         self.idx2xpaths = {}
         self.path2file = {}
         self.idx2name = {}
-
 
     def add(
         self,
@@ -197,7 +206,7 @@ class RuleStore:
             args=method_args,
             kwargs=method_kwargs,
             memo=memo,
-            id=id
+            id=id,
         )
 
         # Update stores
@@ -226,7 +235,7 @@ class GroupTreeInfo:
         "logwriter",
         "memo_factory",
         "memo_store",
-        "rules_to_be_init"
+        "rules_to_be_init",
     )
 
     rule_store: RuleStore
@@ -261,7 +270,6 @@ def require_tree_init(
         return method(self, *args, **kwargs)
 
     return _method
-
 
 
 def make(
@@ -316,7 +324,7 @@ def make(
 
     def callback_(event: IEvent):
         def id2name(i: int) -> str:
-            return '/'.join(info.rule_store.idx2name[i])
+            return "/".join(info.rule_store.idx2name[i])
 
         log_make_event(info.logwriter, event, id2name)
 
@@ -326,6 +334,7 @@ def make(
         )
     else:
         return _make(info.rule_store.rules, ids, dry_run, keep_going, callback_)
+
 
 def gather_rrule_ids(
     group_or_rules: Sequence[Union[IGroup, IRule]]
@@ -339,12 +348,14 @@ def gather_rrule_ids(
                 "All Groups/Rules must belong to the same Group tree. "
             )
 
-        if not isinstance(node, (IGroup, IRule)):  # pyright: ignore [reportUnnecessaryIsInstance]
+        if not isinstance(
+            node, (IGroup, IRule)
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
             raise TypeError("Invalid node {node}")
 
     ids: List[int] = []
     visited: Set[INode] = set()
-    
+
     stack = list(reversed(group_or_rules))
 
     while stack:
@@ -384,7 +395,9 @@ def _staticgroup__init__parse_prefix(dirname: object, prefix: object) -> str:
 
     return prefix_
 
+
 V = TypeVar("V")
+
 
 class ItemMap(Mapping[str, V]):
     __slots__ = ["_dic"]
@@ -411,4 +424,3 @@ class ItemMap(Mapping[str, V]):
 
 def priv_add_to_itemmap(itemmap: ItemMap[V], k: str, v: V):
     itemmap._add(k, v)  # pyright: ignore [reportPrivateUsage]
-

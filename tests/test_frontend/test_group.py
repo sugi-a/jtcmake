@@ -9,6 +9,7 @@ from jtcmake.rule.file import File, VFile, IFile
 from jtcmake.rule.rule import Rule as _RawRule
 from jtcmake.utils.nest import map_structure
 
+
 class _PathLike:
     def __init__(self, p):
         self.p = str(p)
@@ -357,7 +358,6 @@ def test__add_basic(mocker, ftype, use_abs):
         .bind(*_rule_call_params[0], **_rule_call_params[1])
         .arguments
     )
-
 
     map_structure(_assert_eq_path_strict, _params["yfiles"], [g._files.a])
 

@@ -44,6 +44,7 @@ class IEvent:
 
 Callback = Callable[[IEvent], None]
 
+
 class IRule(metaclass=ABCMeta):
     @abstractmethod
     def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
