@@ -6,10 +6,16 @@ from pathlib import Path
 import pytest
 
 from jtcmake.group_tree.core import (
+    GroupTreeInfo,
+    IGroup,
+    INode,
+    IRule,
     ItemMap,
+    get_group_info_of_nodes,
     parse_args_prefix,
     concat_prefix,
-    priv_add_to_itemmap
+    priv_add_to_itemmap,
+    gather_raw_rule_ids
 )
 
 
@@ -45,3 +51,33 @@ def test_ItemMap():
     priv_add_to_itemmap(m, "a", 1)
 
     assert list(m.items()) == [("a", 1)]
+
+
+def test_gather_raw_rule_ids(mocker):
+    r1 = mocker.MagicMock(IRule, raw_rule_id=1)
+    g1 = mocker.MagicMock(IGroup, rules={"r1": r1})
+
+    assert gather_raw_rule_ids([r1]) == [1]
+    assert gather_raw_rule_ids([g1]) == [1]
+    assert gather_raw_rule_ids([g1, g1, r1, r1]) == [1]
+
+
+def test_get_group_info_of_nodes(mocker):
+    n1 = mocker.MagicMock(INode)
+    n2 = mocker.MagicMock(INode)
+
+    info1 = mocker.MagicMock(GroupTreeInfo)
+    info2 = mocker.MagicMock(GroupTreeInfo)
+
+    # same tree
+    n1._get_info.return_value = info1
+    n2._get_info.return_value = info1
+
+    assert get_group_info_of_nodes([n1, n2]) == info1
+
+    # different trees
+    n1._get_info.return_value = info1
+    n2._get_info.return_value = info2
+
+    with pytest.raises(ValueError):
+        get_group_info_of_nodes([n1, n2])
