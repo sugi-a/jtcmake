@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 import os
 from os import PathLike
 from typing import (
-    Callable, Concatenate, Mapping, Optional, Tuple, TypeVar, Dict, Union, 
+    Callable, Concatenate, Mapping, Optional, Tuple, Type, TypeVar, Dict, Union, 
     overload, Sequence, List, Set, final
 )
 from typing_extensions import ParamSpec, Self
@@ -44,10 +44,15 @@ class INode(metaclass=ABCMeta):
 class IGroup(INode, metaclass=ABCMeta):
     __prefix: Union[None, str]
 
+    @classmethod
     @abstractmethod
-    def __init_as_child__(
-        self, info: GroupTreeInfo, parent: IGroup, name: Tuple[str, ...]
-    ):
+    def __create_as_child__(
+        cls,
+        type_hint: Type[Self],
+        info: GroupTreeInfo,
+        parent: IGroup,
+        name: Tuple[str, ...]
+    ) -> Self:
         ...
 
     @overload

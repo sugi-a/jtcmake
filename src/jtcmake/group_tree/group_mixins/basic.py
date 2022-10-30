@@ -2,13 +2,12 @@ import os, sys, time
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import (
-    Any, Callable, Optional, TypeVar, Union, 
+    Any, Callable, Optional, Tuple, TypeVar, Union, 
     Literal, Sequence, List
 )
 from ...core.make import MakeSummary
 
-from .memo import MemoMixin
-from .selector import SelectorMixin, get_offspring_groups
+from .selector import get_offspring_groups
 
 from ...rule.memo.abc import IMemo
 from ...rule.memo.pickle_memo import PickleMemo
@@ -35,18 +34,7 @@ MemoKind = Literal["str_hash", "pickle"]
 
 T = TypeVar("T")
 
-class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        ...
-
-    @property
-    @abstractmethod
-    def namefq(self) -> str:
-        ...
-
-    # mixin methods
+class BasicInitMixin(IGroup, metaclass=ABCMeta):
     def __init__(
         self,
         dirname: Optional[StrOrPath] = None,
@@ -61,20 +49,30 @@ class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
         memo_kind: MemoKind = "str_hash",
         pickle_key: Union[None, str, bytes] = None,
     ):
-        writer = _staticgroup__init__parse_logwriter(
+        writer = basic_init_create_logwriter(
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = \
-            _staticgroup__init__args_memo_factory(memo_kind, pickle_key)
+        memo_factory = basic_init_create_memo_factory(memo_kind, pickle_key)
 
         info = GroupTreeInfo(writer, memo_factory)
 
         self.__init_as_child__(info, self, ())
 
-        self.set_prefix(_staticgroup__init__parse_prefix(dirname, prefix))
+        self.set_prefix(basic_init_create_prefix(dirname, prefix))
 
 
+    @abstractmethod
+    def __init_as_child__(
+        self,
+        info: GroupTreeInfo,
+        parent: IGroup,
+        name: Tuple[str, ...],
+    ):
+        ...
+
+
+class BasicMixin(IGroup, metaclass=ABCMeta):
     def clean(self) -> None:
         for g in get_offspring_groups(self):
             for r in g.rules.values():
@@ -129,7 +127,7 @@ class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
 
 
 
-def _staticgroup__init__parse_logwriter(
+def basic_init_create_logwriter(
     loglevel: object, use_default_logger: object, logfile: object
 ) -> IWriter:
     if not typeguard_loglevel(loglevel):
@@ -186,7 +184,7 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
     else:
         return TextWriter(sys.stderr, loglevel)
 
-def _staticgroup__init__args_memo_factory(
+def basic_init_create_memo_factory(
     kind: object, pickle_key: object
 ) -> Callable[[object], IMemo]:
     if kind == "str_hash":
@@ -220,7 +218,7 @@ def _staticgroup__init__args_memo_factory(
         raise TypeError("memo kind must be \"str_hash\" or \"pickle\"")
 
 
-def _staticgroup__init__parse_prefix(dirname: object, prefix: object) -> str:
+def basic_init_create_prefix(dirname: object, prefix: object) -> str:
     if dirname is not None and prefix is not None:
         raise TypeError(
             "Either dirname or prefix, but not both must be specified"
