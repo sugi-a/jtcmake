@@ -33,7 +33,7 @@ from ...logwriter import (
     typeguard_loglevel,
     term_is_jupyter,
 )
-from ..core import IGroup, GroupTreeInfo, make
+from ..core import IGroup, GroupTreeInfo, make, parse_args_prefix
 
 StrOrPath = Union[str, os.PathLike[Any]]
 
@@ -70,7 +70,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
 
         self.__init_as_child__(info, self, ())
 
-        self.set_prefix(basic_init_create_prefix(dirname, prefix))
+        self.set_prefix(parse_args_prefix(dirname, prefix))
 
     @abstractmethod
     def __init_as_child__(
@@ -224,24 +224,3 @@ def basic_init_create_memo_factory(
     else:
         raise TypeError('memo kind must be "str_hash" or "pickle"')
 
-
-def basic_init_create_prefix(dirname: object, prefix: object) -> str:
-    if dirname is not None and prefix is not None:
-        raise TypeError(
-            "Either dirname or prefix, but not both must be specified"
-        )
-
-    if dirname is not None:
-        if not isinstance(dirname, (str, os.PathLike)):
-            raise TypeError("dirname must be str or PathLike")
-
-        prefix_ = str(dirname) + os.path.sep
-    else:
-        if prefix is None:
-            prefix_ = ""
-        elif isinstance(prefix, (str, os.PathLike)):
-            prefix_ = str(prefix)
-        else:
-            raise TypeError("prefix must be str or PathLike")
-
-    return prefix_

@@ -28,7 +28,7 @@ from ..utils.frozen_dict import FrozenDict
 from ..utils.nest import map_structure_with_set
 from .atom import Atom
 from ..rule.file import File, IFile
-from .core import IRule, GroupTreeInfo, IGroup, require_tree_init, make
+from .core import IRule, GroupTreeInfo, IGroup, concat_prefix, require_tree_init, make
 
 StrOrPath = Union[str, os.PathLike[Any]]
 
@@ -424,11 +424,7 @@ def _check_file_keys(
 
 
 def _normalize_path(p: str, pfx: str) -> str:
-    if os.name == "posix":
-        p = os.path.expanduser(p)
-
-    if not os.path.isabs(p):
-        p = pfx + p
+    p = concat_prefix(p, pfx)
 
     try:
         rel = os.path.relpath(p, os.getcwd())

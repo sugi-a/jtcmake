@@ -87,9 +87,8 @@ class IGroup(INode, metaclass=ABCMeta):
                 "before initializing child groups and rules. "
             )
 
-        p = _staticgroup__init__parse_prefix(dirname, prefix)
-        p = os.path.expanduser(p)
-        p = p if os.path.isabs(p) else self.parent.prefix + p
+        p = parse_args_prefix(dirname, prefix)
+        p = concat_prefix(p, self.parent.prefix)
         self.__prefix = p
 
         return self
@@ -374,7 +373,7 @@ def gather_rrule_ids(
     return ids, info
 
 
-def _staticgroup__init__parse_prefix(dirname: object, prefix: object) -> str:
+def parse_args_prefix(dirname: object, prefix: object) -> str:
     if dirname is not None and prefix is not None:
         raise TypeError(
             "Either dirname or prefix, but not both must be specified"
@@ -394,6 +393,11 @@ def _staticgroup__init__parse_prefix(dirname: object, prefix: object) -> str:
             raise TypeError("prefix must be str or PathLike")
 
     return prefix_
+
+
+def concat_prefix(base: str, prefix: str) -> str:
+    base = os.path.expanduser(base)
+    return base if os.path.isabs(base) else prefix + base
 
 
 V = TypeVar("V")

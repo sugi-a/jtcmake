@@ -20,7 +20,7 @@ from typing import (
 from typing_extensions import Self
 
 from ..logwriter import Loglevel, WritableProtocol
-from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap
+from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap, parse_args_prefix
 from .rule import Rule
 from .group_mixins.basic import (
     BasicMixin,
@@ -28,7 +28,6 @@ from .group_mixins.basic import (
     MemoKind,
     basic_init_create_memo_factory,
     basic_init_create_logwriter,
-    basic_init_create_prefix,
 )
 from .group_mixins.dynamic_container import DynamicRuleContainerMixin
 from .group_mixins.memo import MemoMixin
@@ -165,7 +164,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
 
         self.__init_as_child__(child_group_type, info, self, ())
 
-        self.set_prefix(basic_init_create_prefix(dirname, prefix))
+        self.set_prefix(parse_args_prefix(dirname, prefix))
 
     @classmethod
     def __create_as_child__(
