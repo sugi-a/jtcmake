@@ -6,8 +6,10 @@ from pathlib import Path
 import pytest
 
 from jtcmake.group_tree.core import (
+    ItemMap,
     parse_args_prefix,
-    concat_prefix
+    concat_prefix,
+    priv_add_to_itemmap
 )
 
 
@@ -35,4 +37,11 @@ def test_concat_prefix(base, prefix, expect):
     concat_prefix(base, prefix) == expect
 
 
+def test_ItemMap():
+    m = ItemMap()
 
+    assert list(m.items()) == []
+    
+    priv_add_to_itemmap(m, "a", 1)
+
+    assert list(m.items()) == [("a", 1)]
