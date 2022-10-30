@@ -2,7 +2,6 @@ import os, sys, time
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import (
-    Any,
     Callable,
     Optional,
     Tuple,
@@ -12,6 +11,8 @@ from typing import (
     Sequence,
     List,
 )
+from typing_extensions import TypeAlias
+
 from ...core.make import MakeSummary
 
 from .selector import get_offspring_groups
@@ -35,7 +36,7 @@ from ...logwriter import (
 )
 from ..core import IGroup, GroupTreeInfo, make, parse_args_prefix
 
-StrOrPath = Union[str, os.PathLike[Any]]
+StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
 MemoKind = Literal["str_hash", "pickle"]
 
@@ -137,6 +138,8 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
 def basic_init_create_logwriter(
     loglevel: object, use_default_logger: object, logfile: object
 ) -> IWriter:
+    loglevel = loglevel or "info"
+
     if not typeguard_loglevel(loglevel):
         raise TypeError(f"loglevel must be {Loglevel}. Given {loglevel}")
 
@@ -146,9 +149,12 @@ def basic_init_create_logwriter(
             f"Given {use_default_logger}"
         )
 
-    logfile_: Sequence[object] = (
-        logfile if isinstance(logfile, Sequence) else [logfile]
-    )
+    if logfile is None:
+        logfile_: Sequence[object] = []
+    else:
+        logfile_: Sequence[object] = (
+            logfile if isinstance(logfile, Sequence) else [logfile]
+        )
 
     writers: List[IWriter] = [_create_logwriter(f, loglevel) for f in logfile_]
 

@@ -4,7 +4,6 @@ import os
 from os import PathLike
 from typing import (
     Callable,
-    Concatenate,
     Mapping,
     Optional,
     Tuple,
@@ -18,7 +17,7 @@ from typing import (
     Set,
     final,
 )
-from typing_extensions import ParamSpec, Self
+from typing_extensions import ParamSpec, Self, Concatenate, TypeAlias
 
 from .atom import Atom
 from ..rule.memo.abc import IMemo
@@ -30,7 +29,7 @@ from ..core.abc import IEvent
 from ..logwriter import IWriter
 from .event_logger import log_make_event
 
-StrOrPath = Union[str, PathLike[str]]
+StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 
 class INode(metaclass=ABCMeta):
@@ -55,7 +54,7 @@ class INode(metaclass=ABCMeta):
 
 
 class IGroup(INode, metaclass=ABCMeta):
-    __prefix: Union[None, str]
+    __prefix: Union[None, str] = None
 
     @classmethod
     @abstractmethod
@@ -88,8 +87,11 @@ class IGroup(INode, metaclass=ABCMeta):
             )
 
         p = parse_args_prefix(dirname, prefix)
-        p = concat_prefix(p, self.parent.prefix)
-        self.__prefix = p
+
+        if self.parent == self:
+            self.__prefix = p
+        else:
+            self.__prefix = concat_prefix(p, self.parent.prefix)
 
         return self
 

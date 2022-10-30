@@ -5,9 +5,11 @@ import hashlib, base64
 import pathlib
 from typing import Any, Dict, Tuple, Union
 
+from typing_extensions import TypeAlias
+
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
-StrOrPath = Union[str, os.PathLike[Any]]
+StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
 if sys.platform == "win32":
     _Path = pathlib.WindowsPath

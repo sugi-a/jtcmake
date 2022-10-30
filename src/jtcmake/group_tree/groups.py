@@ -17,7 +17,7 @@ from typing import (
     get_type_hints,
     Callable,
 )
-from typing_extensions import Self
+from typing_extensions import Self, TypeAlias
 
 from ..logwriter import Loglevel, WritableProtocol
 from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap, parse_args_prefix
@@ -34,7 +34,7 @@ from .group_mixins.memo import MemoMixin
 from .group_mixins.selector import SelectorMixin
 
 
-StrOrPath = Union[str, PathLike[str]]
+StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 TMemoKind = Literal["str_hash", "pickle"]
 
@@ -43,7 +43,7 @@ V = TypeVar("V")
 
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
-    _name: Sequence[str]
+    _name: Tuple[str, ...]
     _groups: ItemMap[IGroup]
     _rules: ItemMap[Rule[str]]
     _parent: IGroup
@@ -67,16 +67,16 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         parent: IGroup,
         name: Tuple[str, ...],
     ):
+        print([self, parent])
         self._parent = parent
+        print([self._parent, 1])
         self._info = info
         self._name = name
 
         self._groups = ItemMap()
         self._rules = ItemMap()
 
-        for child_name, tp in get_type_hints(
-            type(self).__annotations__
-        ).items():
+        for child_name, tp in get_type_hints(type(self)).items():
             fqcname = (*self._name, child_name)
 
             if tp == Rule:
@@ -92,12 +92,13 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 r.__init_partial__(fqcname, self._info, keys, self)
                 setattr(self, child_name, r)
                 priv_add_to_itemmap(self._rules, child_name, r)
-            elif issubclass(tp, IGroup):
+            elif isinstance(tp, type) and issubclass(tp, IGroup) and tp != IGroup:
                 # StaticGroup
                 g = tp.__create_as_child__(tp, self._info, self, fqcname)
                 setattr(self, child_name, g)
                 priv_add_to_itemmap(self._groups, child_name, g)
 
+        print([self._parent, 2])
     @property
     def initialized_whole_tree(self) -> bool:
         return len(self._info.rules_to_be_init) == 0
@@ -115,6 +116,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     @property
     def parent(self) -> IGroup:
+        print([self, "aaa", self._parent])
         return self._parent
 
     @property
@@ -124,6 +126,13 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     @property
     def rules(self) -> Mapping[str, IRule]:
         return self._rules
+
+    @property
+    def name_tuple(self) -> Tuple[str, ...]:
+        return self._name
+
+    def _get_info(self) -> GroupTreeInfo:
+        return self._info
 
 
 T_Child = TypeVar("T_Child", bound=IGroup)
@@ -269,6 +278,13 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     def __getattr__(self, k: str) -> IGroup:
         return self[k]
 
+    @property
+    def name_tuple(self) -> Tuple[str, ...]:
+        return self._name
+
+    def _get_info(self) -> GroupTreeInfo:
+        return self._info
+
 
 class GroupOfRules(
     DynamicRuleContainerMixin,
@@ -350,6 +366,13 @@ class GroupOfRules(
 
     def __getattr__(self, k: str) -> Rule[str]:
         return self[k]
+
+    @property
+    def name_tuple(self) -> Tuple[str, ...]:
+        return self._name
+
+    def _get_info(self) -> GroupTreeInfo:
+        return self._info
 
 
 class UntypedGroup(

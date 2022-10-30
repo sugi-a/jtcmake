@@ -15,12 +15,10 @@ from typing import (
     Sequence,
     List,
     TypeVar,
-    ParamSpec,
-    TypeGuard,
     Collection,
     Container,
 )
-from typing_extensions import Self
+from typing_extensions import Self, TypeGuard, TypeAlias, ParamSpec
 
 from ..core.make import MakeSummary
 
@@ -30,7 +28,7 @@ from .atom import Atom
 from ..rule.file import File, IFile
 from .core import IRule, GroupTreeInfo, IGroup, concat_prefix, require_tree_init, make
 
-StrOrPath = Union[str, os.PathLike[Any]]
+StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")

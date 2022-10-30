@@ -1,3 +1,4 @@
+from __future__ import annotations
 from os import PathLike
 from abc import ABCMeta, abstractmethod
 from typing import (
@@ -12,13 +13,13 @@ from typing import (
     Callable,
 )
 
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, TypeAlias
 
 from ...rule.file import IFile, File
 from ..core import IGroup
 from ..rule import normalize_output_files, Rule_init_parse_deco_func, Rule
 
-StrOrPath = Union[str, PathLike[str]]
+StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 P = ParamSpec("P")
 K = TypeVar("K", bound=str)

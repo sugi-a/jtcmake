@@ -1,4 +1,5 @@
 import html, abc, os
+from os import PathLike
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -10,14 +11,13 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    TypeGuard,
     TypeVar,
     Union,
 )
 
-from typing_extensions import Literal, Protocol, runtime_checkable
+from typing_extensions import Literal, Protocol, runtime_checkable, TypeGuard, TypeAlias
 
-StrOrPath = Union[str, os.PathLike[str]]
+StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 T = TypeVar("T")
 
 

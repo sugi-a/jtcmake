@@ -3,9 +3,9 @@ import json
 import os
 from abc import ABCMeta, abstractmethod
 from typing import Any, Union
-from typing_extensions import Self
+from typing_extensions import Self, TypeAlias
 
-StrOrPath = Union[str, os.PathLike[Any]]
+StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
 
 class IMemo(metaclass=ABCMeta):
