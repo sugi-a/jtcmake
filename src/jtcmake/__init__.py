@@ -6,6 +6,7 @@ from .group_tree.groups import (
 )
 from .group_tree.core import make
 from .group_tree.atom import Atom
+from .group_tree.rule import Rule
 from .rule.file import File, VFile
 from .group_tree.graphviz import print_graphviz
 from .group_tree.misc import print_method
@@ -25,4 +26,5 @@ __all__ = [
     "print_graphviz",
     "print_method",
     "MakeSummary",
+    "Rule",
 ]
