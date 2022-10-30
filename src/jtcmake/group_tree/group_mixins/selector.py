@@ -1,6 +1,6 @@
 import re
 from abc import ABCMeta
-from typing import List, Sequence, Literal, TypeVar, Union, Tuple, Any
+from typing import List, Optional, Sequence, Literal, TypeVar, Union, Tuple, Any
 
 from ...rule.file import IFile
 from ..core import IGroup, IRule
@@ -9,10 +9,18 @@ SelectorKind = Literal["group", "rule", "file"]
 
 SEP = ";"
 
-def get_offspring_groups(root: IGroup, dst: List[IGroup]):
+def get_offspring_groups(
+    root: IGroup, dst: Optional[List[IGroup]] = None
+) -> List[IGroup]:
+    if dst is None:
+        dst = []
+
+    dst.append(root)
+
     for c in root.groups.values():
-        dst.append(c)
         get_offspring_groups(c, dst)
+
+    return dst
 
 T = TypeVar("T", IGroup, IRule, IFile)
 
@@ -67,8 +75,7 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
 
         regex = re.compile("^" + "".join(rxs) + "$")
 
-        offspring_groups: List[IGroup] = [self]
-        get_offspring_groups(self, offspring_groups)
+        offspring_groups = get_offspring_groups(self)
 
         def _search(
             targets: List[T], target_names: List[Tuple[str, ...]]

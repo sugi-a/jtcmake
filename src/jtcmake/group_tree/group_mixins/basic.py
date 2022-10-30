@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, time
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import (
@@ -8,7 +8,7 @@ from typing import (
 from ...core.make import MakeSummary
 
 from .memo import MemoMixin
-from .selector import SelectorMixin
+from .selector import SelectorMixin, get_offspring_groups
 
 from ...rule.memo.abc import IMemo
 from ...rule.memo.pickle_memo import PickleMemo
@@ -31,7 +31,7 @@ from ..core import IGroup, GroupTreeInfo, make
 
 StrOrPath = Union[str, os.PathLike[Any]]
 
-TMemoKind = Literal["str_hash", "pickle"]
+MemoKind = Literal["str_hash", "pickle"]
 
 T = TypeVar("T")
 
@@ -58,7 +58,7 @@ class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
             None, StrOrPath, Logger, WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
-        memo_kind: TMemoKind = "str_hash",
+        memo_kind: MemoKind = "str_hash",
         pickle_key: Union[None, str, bytes] = None,
     ):
         writer = _staticgroup__init__parse_logwriter(
@@ -76,10 +76,25 @@ class BasicMixin(SelectorMixin, MemoMixin, IGroup, metaclass=ABCMeta):
 
 
     def clean(self) -> None:
-        raise NotImplementedError()
+        for g in get_offspring_groups(self):
+            for r in g.rules.values():
+                r.clean()
 
-    def touch(self) -> None:
-        raise NotImplementedError()
+
+    def touch(
+        self,
+        file: bool = True,
+        memo: bool = True,
+        create: bool = True,
+        t: Optional[float] = None
+    ) -> None:
+        if t is None:
+            t = time.time()
+
+        for g in get_offspring_groups(self):
+            for r in g.rules.values():
+                r.touch(file, memo, create, t)
+
 
     def make(
         self,

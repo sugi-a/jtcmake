@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, inspect
+import os, inspect, time
 from pathlib import Path
 from os import PathLike
 from typing import (
@@ -135,14 +135,47 @@ class Rule(IRule, Generic[K]):
     def parent(self) -> IGroup:
         return self._parent
 
-    def touch(self) -> None:
-        raise NotImplementedError()
+    def touch(
+        self,
+        file: bool = True,
+        memo: bool = True,
+        create: bool = True,
+        t: Union[float, None] = None,
+    ) -> None:
+        logwriter = self._info.logwriter
 
-    def touch_memo(self) -> None:
-        raise NotImplementedError()
+        if t is None:
+            t = time.time()
+
+        if file:
+            for f in self.files.values():
+                if not f.exists():
+                    if not create:
+                        continue
+
+                    f.touch()
+
+                os.utime(f, (t, t))
+                logwriter.info(f"touch {f}")
+
+        if memo:
+            self._info.rule_store.rules[self.raw_rule_id].update_memo()
+
 
     def clean(self) -> None:
-        raise NotImplementedError()
+        logwriter = self._info.logwriter
+
+        for f in self.files.values():
+            if not f.exists():
+                continue
+
+            try:
+                f.unlink(missing_ok=False)
+            except Exception as e:
+                logwriter.warning(f'Failed to remove {f}. {e}')
+            else:
+                logwriter.info(f"Delete {f}")
+
 
     def _init_main(
         self,

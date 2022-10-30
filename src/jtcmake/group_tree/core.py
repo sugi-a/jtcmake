@@ -4,7 +4,7 @@ import os
 from os import PathLike
 from typing import (
     Callable, Concatenate, Mapping, Optional, Tuple, TypeVar, Dict, Union, 
-    overload, Literal, Sequence, List, Set, final
+    overload, Sequence, List, Set, final
 )
 from typing_extensions import ParamSpec, Self
 
@@ -19,9 +19,6 @@ from ..logwriter import IWriter
 from .event_logger import log_make_event
 
 StrOrPath = Union[str, PathLike[str]]
-
-TMemoKind = Literal["str_hash", "pickle"]
-
 
 class INode(metaclass=ABCMeta):
     @property
@@ -120,6 +117,16 @@ class IRule(INode, metaclass=ABCMeta):
     @property
     @abstractmethod
     def xfiles(self) -> Mapping[str, IFile]:
+        ...
+
+    @abstractmethod
+    def clean(self) -> None:
+        ...
+
+    @abstractmethod
+    def touch(
+        self, file: bool, memo: bool, create: bool, t: Union[float, None]
+    ) -> None:
         ...
 
 
