@@ -318,7 +318,15 @@ def make(
     if len(rule_or_groups) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
-    ids, info = gather_rrule_ids(rule_or_groups)
+    for node in rule_or_groups:
+        if not isinstance(
+            node, (IGroup, IRule)
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
+            raise TypeError("Invalid node {node}")
+
+    info = get_group_info_of_nodes(rule_or_groups)
+
+    ids = gather_raw_rule_ids(rule_or_groups)
 
     def callback_(event: IEvent):
         def id2name(i: int) -> str:
@@ -334,23 +342,24 @@ def make(
         return _make(info.rule_store.rules, ids, dry_run, keep_going, callback_)
 
 
-def gather_rrule_ids(
-    group_or_rules: Sequence[Union[IGroup, IRule]]
-) -> Tuple[List[int], GroupTreeInfo]:
-    info = group_or_rules[0]._get_info()  # pyright: ignore [reportPrivateUsage]
+def get_group_info_of_nodes(nodes: Sequence[INode]) -> GroupTreeInfo:
+    if len(nodes) == 0:
+        raise Exception("Internal error: nodes must not be empty")
 
-    for node in group_or_rules:
+    info = nodes[0]._get_info()  # pyright: ignore [reportPrivateUsage]
+
+    for node in nodes:
         _info = node._get_info()  # pyright: ignore [reportPrivateUsage]
         if _info is not info:
             raise ValueError(
                 "All Groups/Rules must belong to the same Group tree. "
             )
 
-        if not isinstance(
-            node, (IGroup, IRule)
-        ):  # pyright: ignore [reportUnnecessaryIsInstance]
-            raise TypeError("Invalid node {node}")
+    return info
 
+def gather_raw_rule_ids(
+    group_or_rules: Sequence[Union[IGroup, IRule]]
+) -> List[int]:
     ids: List[int] = []
     visited: Set[INode] = set()
 
@@ -369,7 +378,7 @@ def gather_rrule_ids(
             stack.extend(node.groups.values())
             stack.extend(node.rules.values())
 
-    return ids, info
+    return ids
 
 
 def parse_args_prefix(dirname: object, prefix: object) -> str:
