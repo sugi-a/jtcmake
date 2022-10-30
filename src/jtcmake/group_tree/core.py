@@ -35,11 +35,6 @@ StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 class INode(metaclass=ABCMeta):
     @property
     @abstractmethod
-    def initialized_whole_tree(self) -> bool:
-        ...
-
-    @property
-    @abstractmethod
     def parent(self) -> IGroup:
         ...
 
@@ -264,7 +259,9 @@ def require_tree_init(
     method: Callable[Concatenate[T_INode, P], T]
 ) -> Callable[Concatenate[T_INode, P], T]:
     def _method(self: T_INode, *args: P.args, **kwargs: P.kwargs) -> T:
-        if not self.initialized_whole_tree:
+        info = self._get_info()  # pyright: ignore [reportPrivateUsage]
+
+        if len(info.rules_to_be_init) != 0:
             raise RuntimeError(
                 "Rule must be initialized before calling this method"
             )

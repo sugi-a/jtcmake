@@ -120,10 +120,6 @@ class Rule(IRule, Generic[K]):
     def initialized(self) -> bool:
         return self._name in self._info.rules_to_be_init
 
-    @property
-    def initialized_whole_tree(self) -> bool:
-        return len(self._info.rules_to_be_init) == 0
-
     @require_tree_init
     def __getattr__(self, key: K) -> IFile:
         return self.__getitem__(key)

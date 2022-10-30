@@ -67,9 +67,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         parent: IGroup,
         name: Tuple[str, ...],
     ):
-        print([self, parent])
         self._parent = parent
-        print([self._parent, 1])
         self._info = info
         self._name = name
 
@@ -98,10 +96,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 setattr(self, child_name, g)
                 priv_add_to_itemmap(self._groups, child_name, g)
 
-        print([self._parent, 2])
-    @property
-    def initialized_whole_tree(self) -> bool:
-        return len(self._info.rules_to_be_init) == 0
 
     @property
     def name(self) -> str:
@@ -116,7 +110,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     @property
     def parent(self) -> IGroup:
-        print([self, "aaa", self._parent])
         return self._parent
 
     @property
@@ -245,9 +238,6 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
 
         return g
 
-    @property
-    def initialized_whole_tree(self) -> bool:
-        return len(self._info.rules_to_be_init) == 0
 
     @property
     def name(self) -> str:
@@ -334,9 +324,6 @@ class GroupOfRules(
 
         return r
 
-    @property
-    def initialized_whole_tree(self) -> bool:
-        return len(self._info.rules_to_be_init) == 0
 
     @property
     def name(self) -> str:
@@ -447,9 +434,6 @@ class UntypedGroup(
 
         return g
 
-    @property
-    def initialized_whole_tree(self) -> bool:
-        return len(self._info.rules_to_be_init) == 0
 
     @property
     def name(self) -> str:
