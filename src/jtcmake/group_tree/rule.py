@@ -11,7 +11,6 @@ from typing import (
     Dict,
     Generic,
     Union,
-    overload,
     Sequence,
     List,
     TypeVar,
@@ -235,7 +234,6 @@ class Rule(IRule, Generic[K]):
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
-    @overload
     def init(
         self,
         output_files: Union[
@@ -246,10 +244,19 @@ class Rule(IRule, Generic[K]):
         ],
         method: Callable[P, object],
     ) -> Callable[P, None]:
-        ...
+        if self.initialized:
+            raise RuntimeError("Already initialized")
 
-    @overload
-    def init(
+        yfiles = parse_args_output_files(
+            self._file_keys_hint, output_files, File
+        )
+
+        def _init(*args: P.args, **kwargs: P.kwargs):
+            self.__init_full__(yfiles, method, args, kwargs)
+
+        return _init
+
+    def init_deco(
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
@@ -258,13 +265,6 @@ class Rule(IRule, Generic[K]):
             PathLike[Any],
         ],
     ) -> Callable[[Callable[[], object]], None]:
-        ...
-
-    def init(
-        self,
-        output_files: object,
-        method: object = None,
-    ) -> Callable[..., None]:
         if self.initialized:
             raise RuntimeError("Already initialized")
 
@@ -272,19 +272,11 @@ class Rule(IRule, Generic[K]):
             self._file_keys_hint, output_files, File
         )
 
-        if method is None:
+        def decorator(method: object):
+            args, kwargs = Rule_init_parse_deco_func(method)
+            self.__init_full__(yfiles, method, args, kwargs)
 
-            def _deco(method: object):
-                args, kwargs = Rule_init_parse_deco_func(method)
-                self.__init_full__(yfiles, method, args, kwargs)
-
-            return _deco
-        else:
-
-            def _init(*args: object, **kwargs: object):
-                self.__init_full__(yfiles, method, args, kwargs)
-
-            return _init
+        return decorator
 
     def _get_info(self) -> GroupTreeInfo:
         return self._info
