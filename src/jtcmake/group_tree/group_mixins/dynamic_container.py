@@ -3,6 +3,7 @@ from os import PathLike
 from abc import ABCMeta, abstractmethod
 from typing import (
     Dict,
+    Optional,
     Sequence,
     TypeVar,
     Union,
@@ -43,44 +44,48 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
     @overload
     def add(
-        self,
-        name: StrOrPath,
-        output_files: Union[
-            Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]],
-            K,
-            PathLike[Any],
-        ],
-        /,
-    ) -> Callable[[Callable[[], object]], None]:
-        ...
-
-    @overload
-    def add(
         self, name: StrOrPath, method: Callable[P, object], /
     ) -> Callable[P, None]:
         ...
 
-    @overload
-    def add(self, name: StrOrPath, /) -> Callable[[Callable[[], object]], None]:
-        ...
-
-    def add(self, name: object, *args: object) -> Callable[..., Any]:
-        name_, outs, method = _parse_args(name, args, File)
-
+    def add(
+        self, name: object, outs: object, method: object = None
+    ) -> Callable[..., Any]:
         if method is None:
+            outs = name
+            method = outs
 
-            def _deco(method: object):
-                args, kwargs = Rule_init_parse_deco_func(method)
-                self._add_rule(name_, outs, method, args, kwargs)
+        outs_: Dict[str, IFile] = parse_args_output_files(None, outs, File)
 
-            return _deco
-        else:
+        def _add(*args: object, **kwargs: object):
+            self._add_rule(str(name), outs_, method, args, kwargs)
 
-            def _add(*args: object, **kwargs: object):
-                self._add_rule(name_, outs, method, args, kwargs)
+        return _add
 
-            return _add
+
+    def add_deco(
+        self,
+        name: StrOrPath,
+        output_files: Optional[Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[str, PathLike[str]]],
+            str,
+            PathLike[str],
+        ]] = None,
+        /,
+    ) -> Callable[[Callable[[], object]], None]:
+        if output_files is None:
+            output_files = name
+
+        output_files_: Dict[str, IFile] = \
+            parse_args_output_files(None, output_files, File)
+
+        def decorator(method: object):
+            args, kwargs = Rule_init_parse_deco_func(method)
+            self._add_rule(str(name), output_files_, method, args, kwargs)
+
+        return decorator
+
 
     def _add_rule(
         self,
@@ -116,44 +121,3 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
     ) -> Rule[str]:
         ...
 
-
-def _parse_args(
-    name: object,
-    args: Tuple[object, ...],
-    IFile_factory: Callable[[StrOrPath], IFile],
-) -> Tuple[str, Dict[str, IFile], Union[None, Callable[..., object]]]:
-    if not isinstance(name, (str, PathLike)):
-        raise TypeError(f"name must be str or PathLike")
-
-    if len(args) == 0:
-        return (
-            str(name),
-            parse_args_output_files(None, name, IFile_factory),
-            None,
-        )
-
-    if len(args) == 1:
-        if callable(args[0]):
-            return (
-                str(name),
-                parse_args_output_files(None, name, IFile_factory),
-                args[0],
-            )
-        else:
-            return (
-                str(name),
-                parse_args_output_files(None, args[0], IFile_factory),
-                None,
-            )
-
-    if len(args) == 2:
-        if not callable(args[1]):
-            raise TypeError(f"method must be callable. Given {args[1]}")
-
-        return (
-            str(name),
-            parse_args_output_files(None, args[0], IFile_factory),
-            args[1],
-        )
-
-    raise TypeError(f"Too many arguments.")
