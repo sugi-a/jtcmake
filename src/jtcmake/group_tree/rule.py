@@ -37,12 +37,12 @@ T = TypeVar("T")
 
 class SelfRule:
     __slots__ = ["_key"]
-    _key: Optional[str]
+    _key: Union[str, int, None]
 
-    def __init__(self, key: Optional[str] = None):
+    def __init__(self, key: Union[None, str, int] = None):
         self._key = key
 
-    def __getitem__(self, key: str) -> SelfRule:
+    def __getitem__(self, key: Union[str, int]) -> SelfRule:
         return SelfRule(key)
 
     def __getattr__(self, key: str) -> SelfRule:
@@ -55,7 +55,7 @@ class SelfRule:
             return f"{self.__class__.__name__}({self._key})"
 
     @property
-    def key(self) -> Optional[str]:
+    def key(self) -> Union[None, str, int]:
         return self._key
 
 
@@ -268,7 +268,7 @@ class Rule(IRule, Generic[K]):
         if self.initialized:
             raise RuntimeError("Already initialized")
 
-        yfiles = normalize_output_files(
+        yfiles = parse_args_output_files(
             self._file_keys_hint, output_files, File
         )
 
@@ -368,7 +368,7 @@ def Rule_init_parse_deco_func(
     return (), kwargs
 
 
-def normalize_output_files(
+def parse_args_output_files(
     keys: Optional[Sequence[K]],
     output_files: object,
     IFile_factory: Callable[[StrOrPath], IFile],
@@ -414,7 +414,7 @@ def _check_file_keys(
     if ref is None:
         return True
 
-    return all(a == b for a, b in zip(files, ref))
+    return len(files) == len(ref) and all(a == b for a, b in zip(files, ref))
 
 
 def _normalize_path(p: str, pfx: str) -> str:
@@ -461,6 +461,13 @@ def _replace_self(files: Mapping[str, IFile], args: object) -> object:
                     )
 
                 return next(iter(files.values()))
+            elif isinstance(o.key, int):
+                if o.key >= len(files):
+                    raise IndexError(
+                        f"SELF index is {o.key} but the rule "
+                        f"has only {len(files)} output files"
+                    )
+                return list(files.values())[o.key]
             else:
                 if o.key not in files:
                     raise KeyError(f"Failed to resolve SELF: {o.key}")
@@ -483,7 +490,7 @@ def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
     map_structure_with_set(check, args)
 
     if len(unused) > 0:
-        raise Exception(
+        raise ValueError(
             f"All the output files must appear in the method arguments. "
             f"Unused ones are: {unused}"
         )
@@ -525,6 +532,6 @@ def _assert_signature_match(
     try:
         inspect.signature(func).bind(*args, **kwargs)
     except Exception as e:
-        raise Exception(
+        raise TypeError(
             f"Signature of the method does not match the arguments"
         ) from e

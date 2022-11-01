@@ -17,7 +17,7 @@ from typing_extensions import ParamSpec, TypeAlias
 
 from ...rule.file import IFile, File
 from ..core import IGroup
-from ..rule import normalize_output_files, Rule_init_parse_deco_func, Rule
+from ..rule import parse_args_output_files, Rule_init_parse_deco_func, Rule
 
 StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
@@ -128,7 +128,7 @@ def _parse_args(
     if len(args) == 0:
         return (
             str(name),
-            normalize_output_files(None, name, IFile_factory),
+            parse_args_output_files(None, name, IFile_factory),
             None,
         )
 
@@ -136,13 +136,13 @@ def _parse_args(
         if callable(args[0]):
             return (
                 str(name),
-                normalize_output_files(None, name, IFile_factory),
+                parse_args_output_files(None, name, IFile_factory),
                 args[0],
             )
         else:
             return (
                 str(name),
-                normalize_output_files(None, args[0], IFile_factory),
+                parse_args_output_files(None, args[0], IFile_factory),
                 None,
             )
 
@@ -152,7 +152,7 @@ def _parse_args(
 
         return (
             str(name),
-            normalize_output_files(None, args[0], IFile_factory),
+            parse_args_output_files(None, args[0], IFile_factory),
             args[1],
         )
 
