@@ -1,5 +1,6 @@
 import os, sys, time
 from abc import ABCMeta, abstractmethod
+from pathlib import Path
 from logging import Logger
 from typing import (
     Callable,
@@ -65,7 +66,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = basic_init_create_memo_factory(memo_kind, pickle_key)
+        memo_factory = parse_args_create_memo_factory(memo_kind, pickle_key)
 
         info = GroupTreeInfo(writer, memo_factory)
 
@@ -156,7 +157,7 @@ def basic_init_create_logwriter(
             logfile if isinstance(logfile, Sequence) else [logfile]
         )
 
-    writers: List[IWriter] = [_create_logwriter(f, loglevel) for f in logfile_]
+    writers: List[IWriter] = [create_logwriter(f, loglevel) for f in logfile_]
 
     if use_default_logger:
         writers.append(create_default_logwriter(loglevel))
@@ -164,13 +165,16 @@ def basic_init_create_logwriter(
     return WritersWrapper(writers)
 
 
-def _create_logwriter(f: object, loglevel: Loglevel) -> IWriter:
+def create_logwriter(f: object, loglevel: Loglevel) -> IWriter:
+    """
+    Args:
+        f (str|PathLike|Logger|WritableProtocol): logging destination
+    """
     if isinstance(f, (str, os.PathLike)):
-        fname = str(f)
-        if fname[-5:] == ".html":
-            return HTMLFileWriterOpenOnDemand(loglevel, fname)
+        if Path(f).suffix == ".html":
+            return HTMLFileWriterOpenOnDemand(loglevel, f)
         else:
-            return TextFileWriterOpenOnDemand(loglevel, fname)
+            return TextFileWriterOpenOnDemand(loglevel, f)
 
     if isinstance(f, Logger):
         return LoggerWriter(f)
@@ -198,7 +202,7 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
         return TextWriter(sys.stderr, loglevel)
 
 
-def basic_init_create_memo_factory(
+def parse_args_create_memo_factory(
     kind: object, pickle_key: object
 ) -> Callable[[object], IMemo]:
     if kind == "str_hash":

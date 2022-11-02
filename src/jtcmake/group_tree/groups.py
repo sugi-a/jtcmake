@@ -26,7 +26,7 @@ from .group_mixins.basic import (
     BasicMixin,
     BasicInitMixin,
     MemoKind,
-    basic_init_create_memo_factory,
+    parse_args_create_memo_factory,
     basic_init_create_logwriter,
 )
 from .group_mixins.dynamic_container import DynamicRuleContainerMixin
@@ -160,7 +160,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = basic_init_create_memo_factory(memo_kind, pickle_key)
+        memo_factory = parse_args_create_memo_factory(memo_kind, pickle_key)
 
         info = GroupTreeInfo(writer, memo_factory)
 
