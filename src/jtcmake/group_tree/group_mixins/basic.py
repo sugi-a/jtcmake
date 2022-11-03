@@ -72,7 +72,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
 
         self.__init_as_child__(info, self, ())
 
-        self.set_prefix(parse_args_prefix(dirname, prefix))
+        self.set_prefix(prefix=parse_args_prefix(dirname, prefix))
 
     @abstractmethod
     def __init_as_child__(

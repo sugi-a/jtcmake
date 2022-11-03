@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 from abc import ABCMeta
 from typing import List, Optional, Sequence, Literal, TypeVar, Union, Tuple, Any

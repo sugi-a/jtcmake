@@ -52,8 +52,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         self, name: object, outs: object, method: object = None
     ) -> Callable[..., Any]:
         if method is None:
-            outs = name
-            method = outs
+            outs, method = name, outs
 
         if not isinstance(name, str):
             raise TypeError("name must be str or os.PathLike")

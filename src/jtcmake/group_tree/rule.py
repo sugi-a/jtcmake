@@ -227,8 +227,6 @@ class Rule(IRule, Generic[K]):
             yp2f, xp2f, method, method_args, method_kwargs, memo, self._name
         )
 
-        self._info.rules_to_be_init.remove(self._name)
-
         # Update self
         self._raw_rule_id = raw_rule.id
         self._files = FrozenDict(yfiles)
@@ -326,6 +324,11 @@ class Rule(IRule, Generic[K]):
     @require_tree_init
     def files(self) -> Mapping[K, IFile]:
         return self._files
+
+    @property
+    @require_tree_init
+    def xfiles(self) -> Collection[str]:
+        return self._xfiles
 
 
 def Rule_init_parse_deco_func(
@@ -579,7 +582,6 @@ NAME_REF_FILE = "{F}"
 def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     def _repl(m: re.Match[str]) -> str:
         r = m.group(0)
-        print(r, r == NAME_REF_RULE, rule_name)
         if r == NAME_REF_RULE:
             return rule_name
         else:
@@ -594,5 +596,4 @@ def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     pattern = f"{re.escape(NAME_REF_RULE)}|{re.escape(NAME_REF_FILE)}"
 
     a = re.sub(pattern, _repl, src)
-    print(a)
     return a 

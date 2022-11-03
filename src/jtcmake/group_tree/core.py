@@ -4,6 +4,7 @@ import os
 from os import PathLike
 from typing import (
     Callable,
+    Collection,
     Mapping,
     Optional,
     Tuple,
@@ -127,7 +128,7 @@ class IRule(INode, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def xfiles(self) -> Mapping[str, IFile]:
+    def xfiles(self) -> Collection[str]:
         ...
 
     @abstractmethod

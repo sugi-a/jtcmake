@@ -411,8 +411,16 @@ class UntypedGroup(
 
         return r
 
-    def add_group(self, name: str, child_group_class: Type[T_Child]) -> IGroup:
-        if not issubclass(child_group_class, IGroup):
+    def add_group(
+		self, name: str, child_group_class: Optional[Type[IGroup]] = None
+	) -> IGroup:
+        # This is necessary for Pyright
+        def _as_igroup(a: Type[IGroup]) -> Type[IGroup]:
+            return a
+
+        child_group_class_ = _as_igroup(child_group_class or UntypedGroup)
+
+        if not issubclass(child_group_class_, IGroup):
             raise TypeError("child_group_class must be subclass of IGroup")
 
         if not isinstance(
@@ -423,8 +431,8 @@ class UntypedGroup(
         if name in self._groups:
             raise KeyError(f"Child group {name} already exists")
 
-        g = child_group_class.__create_as_child__(
-            child_group_class, self._info, self, (*self._name, name)
+        g = child_group_class_.__create_as_child__(
+            child_group_class_, self._info, self, (*self._name, name)
         )
 
         priv_add_to_itemmap(self._groups, name, g)
@@ -456,7 +464,7 @@ class UntypedGroup(
 
     @property
     def rules(self) -> Mapping[str, IRule]:
-        return {}
+        return self._rules
 
     def _get_info(self) -> GroupTreeInfo:
         return self._info
@@ -464,6 +472,14 @@ class UntypedGroup(
     @property
     def name_tuple(self) -> Tuple[str, ...]:
         return self._name
+
+
+    def __getitem__(self, k: str) -> Union[IGroup, IRule]:
+        if k in self.groups:
+            return self.groups[k]
+
+        else:
+            return self.rules[k]
 
 
 def _parse_rule_generic_args(

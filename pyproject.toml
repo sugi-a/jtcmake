@@ -33,16 +33,16 @@ line-length = 80
 
 [tool.pyright]
 include = ["src/jtcmake"]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 typeCheckingMode = "strict"
 reportUnknownArgumentType = "none"
-
+reportUnnecessaryIsInstance = "information"
 
 [tool.pytest.ini_options]
 testpaths = [ "tests" ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 files = ["src/jtcmake"]
 
 [[tool.mypy.overrides]]
