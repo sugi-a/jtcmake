@@ -18,17 +18,16 @@ from typing import (
     Collection,
     Container,
 )
-from typing_extensions import Self, TypeGuard, TypeAlias, ParamSpec
+from typing_extensions import Self, TypeGuard, ParamSpec
 
 from ..core.make import MakeSummary
 
 from ..utils.frozen_dict import FrozenDict
 from ..utils.nest import map_structure_with_set
+from ..utils.strpath import StrOrPath
 from .atom import Atom
 from ..rule.file import File, IFile
 from .core import IRule, GroupTreeInfo, IGroup, concat_prefix, require_tree_init, make
-
-StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")

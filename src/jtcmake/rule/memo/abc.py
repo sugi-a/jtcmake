@@ -1,11 +1,10 @@
 from __future__ import annotations
 import json
-import os
 from abc import ABCMeta, abstractmethod
-from typing import Any, Union
-from typing_extensions import Self, TypeAlias
+from typing import Any
+from typing_extensions import Self
 
-StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
+from ...utils.strpath import StrOrPath
 
 
 class IMemo(metaclass=ABCMeta):

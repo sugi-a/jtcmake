@@ -12,7 +12,6 @@ from typing import (
     Sequence,
     List,
 )
-from typing_extensions import TypeAlias
 
 from ...core.make import MakeSummary
 
@@ -36,8 +35,8 @@ from ...logwriter import (
     term_is_jupyter,
 )
 from ..core import IGroup, GroupTreeInfo, make, parse_args_prefix
+from ...utils.strpath import StrOrPath
 
-StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
 MemoKind = Literal["str_hash", "pickle"]
 

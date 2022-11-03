@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 import os
-from os import PathLike
 from typing import (
     Callable,
     Collection,
@@ -18,7 +17,7 @@ from typing import (
     Set,
     final,
 )
-from typing_extensions import ParamSpec, Self, Concatenate, TypeAlias
+from typing_extensions import ParamSpec, Self, Concatenate
 
 from .atom import Atom
 from ..rule.memo.abc import IMemo
@@ -29,8 +28,7 @@ from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
 from ..logwriter import IWriter
 from .event_logger import log_make_event
-
-StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
+from ..utils.strpath import StrOrPath, fspath2str
 
 
 class INode(metaclass=ABCMeta):
@@ -392,12 +390,12 @@ def parse_args_prefix(dirname: object, prefix: object) -> str:
         if not isinstance(dirname, (str, os.PathLike)):
             raise TypeError("dirname must be str or PathLike")
 
-        prefix_ = str(dirname) + os.path.sep
+        prefix_ = fspath2str(dirname) + os.path.sep
     else:
         if prefix is None:
             prefix_ = ""
         elif isinstance(prefix, (str, os.PathLike)):
-            prefix_ = str(prefix)
+            prefix_ = fspath2str(prefix)
         else:
             raise TypeError("prefix must be str or PathLike")
 

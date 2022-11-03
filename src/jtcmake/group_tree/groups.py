@@ -1,6 +1,5 @@
 from __future__ import annotations
 from logging import Logger
-from os import PathLike
 from typing import (
     Mapping,
     Optional,
@@ -17,8 +16,9 @@ from typing import (
     get_type_hints,
     Callable,
 )
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self
 
+from ..utils.strpath import StrOrPath
 from ..logwriter import Loglevel, WritableProtocol
 from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap, parse_args_prefix
 from .rule import Rule
@@ -33,8 +33,6 @@ from .group_mixins.dynamic_container import DynamicRuleContainerMixin
 from .group_mixins.memo import MemoMixin
 from .group_mixins.selector import SelectorMixin
 
-
-StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
 TMemoKind = Literal["str_hash", "pickle"]
 

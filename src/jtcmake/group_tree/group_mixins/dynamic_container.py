@@ -14,13 +14,12 @@ from typing import (
     Callable,
 )
 
-from typing_extensions import ParamSpec, TypeAlias
+from typing_extensions import ParamSpec
 
 from ...rule.file import IFile, File
 from ..core import IGroup
 from ..rule import parse_args_output_files, Rule_init_parse_deco_func, Rule
-
-StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
+from ...utils.strpath import StrOrPath
 
 P = ParamSpec("P")
 K = TypeVar("K", bound=str)

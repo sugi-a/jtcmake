@@ -3,13 +3,11 @@ import os, sys
 from abc import abstractmethod
 import hashlib, base64
 import pathlib
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
 
-from typing_extensions import TypeAlias
-
+from ..utils.strpath import StrOrPath
 from .memo.abc import IMemoAtom, ILazyMemoValue
 
-StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
 if sys.platform == "win32":
     _Path = pathlib.WindowsPath

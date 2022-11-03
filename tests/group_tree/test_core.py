@@ -1,7 +1,6 @@
 # type: ignore
 
 import os
-from pathlib import Path
 
 import pytest
 
@@ -19,11 +18,20 @@ from jtcmake.group_tree.core import (
 )
 
 
+class Path_:
+    """Dummy object to represent an os.PathLike object"""
+    def __init__(self, p):
+        self.p = p
+
+    def __fspath__(self):
+        return self.p
+
+
 @pytest.mark.parametrize("dirname,prefix,expect", [
     (None, "a", "a"),
-    (None, Path("a"), "a"),
+    (None, Path_("a"), "a"),
     ("a", None, "a" + os.path.sep),
-    (Path("a"), None, "a" + os.path.sep),
+    (Path_("a"), None, "a" + os.path.sep),
     ("a", "a", TypeError),
 ])
 def test_parse_args_prefix(dirname, prefix, expect):
