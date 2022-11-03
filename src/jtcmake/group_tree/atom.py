@@ -54,7 +54,7 @@ class Atom(IMemoAtom):
         return f"Atom(value={v}, memo_value={m})"
 
 
-def Memstr(arg) -> Atom:
+def Memstr(arg: object) -> Atom:
     """
     Alias for `Atom(arg, str(arg))`.
     Use str(arg) as the value for memoization of arg
@@ -62,7 +62,7 @@ def Memstr(arg) -> Atom:
     return Atom(arg, str(arg))
 
 
-def Nomem(arg) -> Atom:
+def Nomem(arg: object) -> Atom:
     """
     Alias for `Atom(arg, "")`.
     Let arg be not memoized.

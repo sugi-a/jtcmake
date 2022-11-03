@@ -1,12 +1,24 @@
-import os, sys, re, json, subprocess, shutil
+import os, shutil, subprocess, sys
 from html import escape
 from pathlib import Path
+from typing import Dict, List, Literal, Optional, Union
 
-from .group import Group
-from ..logwriter.writer import term_is_jupyter
+from typing_extensions import TypeAlias
+
+from .core import IGroup, IRule
+from ..logwriter import term_is_jupyter
+
+StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
+
+RankDir = Literal["TD", "LR"]
 
 
-def print_graphviz(group, output_file=None, *, rankdir=None):
+def print_graphviz(
+    group: IGroup,
+    output_file: Optional[StrOrPath] = None,
+    *,
+    rankdir: RankDir = "LR",
+):
     """Visualize the dependency graph using Graphviz
     Args:
         group (Group): Group node whose Rules will be visualized
@@ -21,7 +33,7 @@ def print_graphviz(group, output_file=None, *, rankdir=None):
     """
     if output_file is None:
         if term_is_jupyter():
-            from IPython.display import display, SVG
+            from IPython.display import display, SVG  # type: ignore
 
             dot_code = gen_dot_code(group, rankdir=rankdir)
             svg = convert(dot_code, "svg").decode()
@@ -57,35 +69,37 @@ def print_graphviz(group, output_file=None, *, rankdir=None):
             f.write(data)
 
 
-def gen_dot_code(group, basedir=None, rankdir=None):
-    if not isinstance(group, Group):
+def gen_dot_code(
+    group: IGroup, basedir: Optional[StrOrPath] = None, rankdir: RankDir = "LR"
+):
+    if not isinstance(
+        group, IGroup
+    ):  # pyright: ignore [reportUnnecessaryIsInstance]
         raise TypeError("argument group must be Group")
-
-    rankdir = rankdir or "TB"
 
     if rankdir not in {"TB", "LR"}:
         raise ValueError(f"rankdir must be TB or LR. Given: {rankdir}")
 
-    gid = {}
-    rid = {}
-    fid = {}
+    gid: Dict[IGroup, int] = {}
+    rid: Dict[IRule, int] = {}
+    fid: Dict[str, int] = {}
 
-    res = []
+    res: List[str] = []
     res.append("digraph {")
     res.append("  compound=true;")
     res.append(f"  rankdir={rankdir};")
 
-    def rec_group(g, idt, par_prefix):
+    def rec_group(g: IGroup, idt: str, par_prefix: str):
         gid[g] = len(gid)
 
-        name = "<ROOT>" if len(g._name) == 0 else g._name[-1]
+        name = "<ROOT>" if len(g.name_tuple) == 0 else g.name_tuple[-1]
 
         if par_prefix == "":
-            prefix = g._prefix
-        elif g._prefix[: len(par_prefix)] == par_prefix:
-            prefix = "... " + g._prefix[len(par_prefix) :]
+            prefix = g.prefix
+        elif g.prefix[: len(par_prefix)] == par_prefix:
+            prefix = "... " + g.prefix[len(par_prefix) :]
         else:
-            prefix = g._prefix
+            prefix = g.prefix
 
         res.append(idt + f"subgraph cluster{gid[g]} {{")
         res.append(
@@ -94,16 +108,15 @@ def gen_dot_code(group, basedir=None, rankdir=None):
         )
         res.append(idt + f'  style = "rounded";')
 
-        for child_group in g.G.values():
-            rec_group(child_group, idt + "  ", g._prefix)
+        for child_group in g.groups.values():
+            rec_group(child_group, idt + "  ", g.prefix)
 
-        for name, child_rule in g.R.items():
-            proc_rulew(child_rule, name, idt + "  ", g._prefix)
+        for name, child_rule in g.rules.items():
+            proc_rulew(child_rule, name, idt + "  ", g.prefix)
 
         res.append(idt + "};")
 
-    def proc_rulew(rw, name, idt, par_prefix):
-        r = rw._rrule
+    def proc_rulew(r: IRule, name: str, idt: str, par_prefix: str):
         rid[r] = len(rid)
 
         res.append(idt + f"subgraph cluster_r_{rid[r]} {{")
@@ -112,8 +125,8 @@ def gen_dot_code(group, basedir=None, rankdir=None):
 
         par_prefix = os.path.abspath(par_prefix + "_")[:-1]
 
-        for yf in r.yfiles:
-            fid[yf] = len(fid)
+        for yf in r.files.values():
+            fid[str(yf)] = len(fid)
 
             p = os.path.abspath(yf)
             if par_prefix != "" and p[: len(par_prefix)] == par_prefix:
@@ -122,7 +135,7 @@ def gen_dot_code(group, basedir=None, rankdir=None):
                 p = str(yf)
 
             res.append(
-                idt + f"  f{fid[yf]} ["
+                idt + f"  f{fid[str(yf)]} ["
                 f'label=<<FONT FACE="monospace">{escape(p)}</FONT>>; '
                 f"style=filled; "
                 f"color=white; "
@@ -135,7 +148,8 @@ def gen_dot_code(group, basedir=None, rankdir=None):
 
     rec_group(group, "  ", "")
 
-    for r, i in rid.items():
+    for r in rid.keys():
+        f0 = str(next(iter(r.files.values())))
         for xf in r.xfiles:
             if xf not in fid:
                 fid[xf] = len(fid)
@@ -149,8 +163,7 @@ def gen_dot_code(group, basedir=None, rankdir=None):
                 )
 
             res.append(
-                f"  f{fid[xf]} -> f{fid[r.yfiles[0]]} "
-                f"[lhead=cluster_r_{rid[r]}];"
+                f"  f{fid[xf]} -> f{fid[f0]} " f"[lhead=cluster_r_{rid[r]}];"
             )
 
     res.append("}")
@@ -158,7 +171,7 @@ def gen_dot_code(group, basedir=None, rankdir=None):
     return "\n".join(res) + "\n"
 
 
-def convert(dot_code, t="svg"):
+def convert(dot_code: str, t: str = "svg"):
     if shutil.which("dot") is None:
         raise Exception(
             "Graphviz is required. dot executable was not found in PATH."
@@ -180,12 +193,12 @@ def convert(dot_code, t="svg"):
     return p.stdout
 
 
-def save_to_file(dot_code, fname, t="svg"):
+def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
     with open(fname, "wb") as f:
         f.write(convert(dot_code, t))
 
 
-def _mk_link(p, basedir):
+def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
     basedir = basedir or os.getcwd()
 
     try:

@@ -1,7 +1,7 @@
+# type: ignore
+
 import os, time
 from pathlib import Path
-
-import pytest
 
 from jtcmake.core.abc import UpdateResults
 
@@ -45,7 +45,7 @@ def test_metadata_fname(mocker):
     """
     y1, y2 = File(Path("a/b.c")), File(Path("d/e.f"))
     memo = mocker.MagicMock()
-    r = Rule([y1, y2], [], [], set(), _method, _args, _kwargs, memo)
+    r = Rule([y1, y2], [], [], set(), _method, _args, _kwargs, memo, 0)
     assert os.path.abspath(r.metadata_fname) == os.path.abspath(
         "a/.jtcmake/b.c"
     )
@@ -82,7 +82,7 @@ def test_rule_check_update(tmp_path, mocker):
         mock_memo = mocker.MagicMock(IMemo)
         mock_memo.memo.compare.return_value = memo_no_change
 
-        return Rule(ys, xs, xisorig, set(), lambda x: None, [], {}, mock_memo)
+        return Rule(ys, xs, xisorig, set(), lambda x: None, [], {}, mock_memo, 0)
 
     # case 1 (dry_run, x1 is original)
     r = _Rule([y1, y2], [x1, x2], [True, False], True)
@@ -188,7 +188,7 @@ def test_preprocess(tmp_path, mocker):
     """Rule.preprocess(callaback) should make dirs for all its output files."""
     mock_memo = mocker.MagicMock(IMemo)
     y = File(tmp_path / "a")
-    r = Rule([y], [], [], set(), _method, _args, _kwargs, mock_memo)
+    r = Rule([y], [], [], set(), _method, _args, _kwargs, mock_memo, 0)
     r.preprocess(lambda *_: None)
     assert os.path.exists(y.parent)
     assert os.path.isdir(y.parent)
@@ -209,7 +209,9 @@ def test_postprocess(tmp_path, mocker):
     x2 = VFile(tmp_path / "x2")
     xisorig = [True, True]
 
-    r = Rule([y], [x1, x2], xisorig, set(), _method, _args, _kwargs, mock_memo)
+    r = Rule(
+        [y], [x1, x2], xisorig, set(), _method, _args, _kwargs, mock_memo, 0
+    )
 
     touch(x1, x2)
     r.postprocess(lambda *_: None, True)

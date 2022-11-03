@@ -18,7 +18,7 @@ class PossiblyNecessary:
 
 
 class Infeasible:
-    def __init__(self, reason):
+    def __init__(self, reason: str):
         """
         Args:
             reason (str): reason
@@ -42,7 +42,8 @@ class IEvent:
     ...
 
 
-_Callback = Callable[[IEvent], None]
+Callback = Callable[[IEvent], None]
+
 
 class IRule(metaclass=ABCMeta):
     @abstractmethod
@@ -50,16 +51,16 @@ class IRule(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def preprocess(self, callback: _Callback) -> None:
+    def preprocess(self, callback: Callback) -> None:
         ...
 
     @abstractmethod
-    def postprocess(self, callback: _Callback, succ: bool) -> None:
+    def postprocess(self, callback: Callback, succ: bool) -> None:
         ...
 
     @property
     @abstractmethod
-    def method(self) -> Callable:
+    def method(self) -> Callable[..., object]:
         ...
 
     @property
@@ -75,9 +76,4 @@ class IRule(metaclass=ABCMeta):
     @property
     @abstractmethod
     def deps(self) -> Set[int]:
-        ...
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
         ...

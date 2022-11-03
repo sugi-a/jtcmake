@@ -1,25 +1,38 @@
 import os
 from pathlib import Path
-from typing import Any, Callable, Sequence, Set
+from typing import Any, Callable, Generic, Sequence, Set, TypeVar
 
-from jtcmake.rule.memo.abc import IMemo
-
-from ..core.abc import IRule, UpdateResults, TUpdateResult
+from ..rule.memo.abc import IMemo
+from ..core.abc import IRule, UpdateResults, TUpdateResult, Callback
 from .file import File, IFile
 
+TId = TypeVar("TId")
 
-class Rule(IRule):
+
+class Rule(IRule, Generic[TId]):
+    __slots__ = [
+        "yfiles",
+        "xfiles",
+        "xfile_is_orig",
+        "_deplist",
+        "_method",
+        "_args",
+        "_kwargs",
+        "_id",
+        "memo",
+    ]
+
     def __init__(
         self,
         yfiles: Sequence[IFile],
         xfiles: Sequence[IFile],
         xfile_is_orig: Sequence[bool],
         deplist: Set[int],
-        method: Callable,
+        method: Callable[..., object],
         args: Any,
         kwargs: Any,
         memo: IMemo,
-        name: str = "",
+        id: TId,
     ):
         assert len(xfiles) == len(xfile_is_orig)
 
@@ -30,7 +43,7 @@ class Rule(IRule):
         self._method = method
         self._args = args
         self._kwargs = kwargs
-        self._name = name
+        self._id = id
         self.memo = memo
 
     def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
@@ -68,14 +81,16 @@ class Rule(IRule):
 
         return UpdateResults.UpToDate()
 
-    def preprocess(self, callback):
+    def preprocess(self, callback: Callback):
+        del callback
         for f in self.yfiles:
             try:
                 os.makedirs(f.parent, exist_ok=True)
             except Exception:
                 pass
 
-    def postprocess(self, callback, succ):
+    def postprocess(self, callback: Callback, succ: bool):
+        del callback
         if succ:
             self.update_memo()
         else:
@@ -118,5 +133,5 @@ class Rule(IRule):
         return self._deplist
 
     @property
-    def name(self) -> str:
-        return self._name
+    def id(self) -> TId:
+        return self._id

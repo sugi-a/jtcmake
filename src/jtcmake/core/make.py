@@ -1,6 +1,5 @@
 import traceback, enum
-from collections import namedtuple
-from typing import Callable, List, Set, Sequence
+from typing import Callable, List, NamedTuple, Set, Sequence
 
 from . import events
 from .abc import IRule, IEvent, UpdateResults
@@ -13,16 +12,12 @@ class Result(enum.Enum):
     Fatal = 4
 
 
-MakeSummary = namedtuple(
-    "MakeSummary",
-    [
-        "total",  # planned to be update
-        "update",  # actually updated (method called)
-        "skip",  # "nothing to do with ..."
-        "fail",  # failed ones
-        "discard",  # not checked because of abort
-    ],
-)
+class MakeSummary(NamedTuple):
+    total: int  # planned to be update
+    update: int  # actually updated (method called)
+    skip: int  # "nothing to do with ..."
+    fail: int  # failed ones
+    discard: int  # not checked because of abort
 
 
 def _toplogical_sort(
@@ -134,11 +129,9 @@ def process_rule(
         ):
             callback(events.DryRun(rule))
             return Result.Update
-        elif isinstance(res, UpdateResults.UpToDate):
+        else:
             callback(events.Skip(rule, is_main))
             return Result.Skip
-        else:
-            raise Exception(f"Internal error: unexpected result {res}")
 
     res = rule.check_update(par_updated, False)
 

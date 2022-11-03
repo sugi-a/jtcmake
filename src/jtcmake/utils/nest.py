@@ -1,28 +1,14 @@
-from typing import Any, Callable, Mapping
-
-
-class NestKey(tuple):
-    def __new__(cls, nest_key):
-        return super().__new__(cls, nest_key)
-
-    def __getitem__(self, key):
-        if not isinstance(key, (int, str)):
-            raise ValueError(f"Key must be int or str. Given {key}")
-
-        return NestKey((*self, key))
-
-    def __getattr__(self, key):
-        return self[key]
-
-    def __repr__(self):
-        return f"NestKey({super().__repr__()})"
-
-
-def nest_get(nest: Any, nest_key: NestKey):
-    for k in nest_key:
-        nest = nest[k]
-
-    return nest
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Type,
+    Sequence,
+)
 
 
 def _raise_structure_unmatch(i: int):
@@ -31,31 +17,30 @@ def _raise_structure_unmatch(i: int):
     )
 
 
+T_Seq_Factory = Mapping[
+    Type[Sequence[Any]], Callable[[Iterable[Any]], Sequence[Any]]
+]
+T_Map_Factory = Mapping[
+    Type[Mapping[Any, Any]], Callable[[Mapping[Any, Any]], Mapping[Any, Any]]
+]
+T_Set_Factory = Mapping[Type[Set[Any]], Callable[[Iterable[Any]], Set[Any]]]
+
+
 def map_structure(
-    map_fn: Callable,
-    *nests,
-    seq_factory={list: list, tuple: tuple},
-    map_factory={dict: dict},
+    map_fn: Callable[[object], object],
+    *nests: object,
+    seq_factory: T_Seq_Factory = {list: list, tuple: tuple},
+    map_factory: T_Map_Factory = {dict: dict},
 ):
     assert callable(map_fn)
 
-    containert = (*seq_factory, *map_factory)
-
-    def _rec(nests):
+    def _rec(nests: Sequence[Any]):
         nest0, *rest = nests
-
-        if isinstance(nest0, NestKey):
-            for i, nest in enumerate(rest):
-                if not isinstance(nest, NestKey) and isinstance(
-                    nest, containert
-                ):
-                    _raise_structure_unmatch(i + 1)
-            return map_fn(*nests)
 
         for src, dst in seq_factory.items():
             if isinstance(nest0, src):
                 for i, nest in enumerate(rest):
-                    if isinstance(nest, NestKey) or not isinstance(nest, src):
+                    if not isinstance(nest, src):
                         _raise_structure_unmatch(i + 1)
 
                 return dst(map(_rec, zip(*nests)))
@@ -63,7 +48,7 @@ def map_structure(
         for src, dst in map_factory.items():
             if isinstance(nest0, src):
                 for i, nest in enumerate(rest):
-                    if isinstance(nest, NestKey) or not isinstance(nest, src):
+                    if not isinstance(nest, src):
                         _raise_structure_unmatch(i + 1)
 
                     if set(nest0) != set(nest):
@@ -79,17 +64,14 @@ def map_structure(
 
 
 def ordered_map_structure(
-    map_fn: Callable,
-    nest,
-    seq_factory={list: list, tuple: tuple},
-    map_factory={(dict, Mapping): dict},
+    map_fn: Callable[[Any], Any],
+    nest: object,
+    seq_factory: T_Seq_Factory = {list: list, tuple: tuple},
+    map_factory: T_Map_Factory = {dict: dict, Mapping: dict},
 ):
     assert callable(map_fn)
 
-    def rec(nest):
-        if isinstance(nest, NestKey):
-            return map_fn(nest)
-
+    def rec(nest: object):
         for src, dst in seq_factory.items():
             if isinstance(nest, src):
                 return dst(map(rec, nest))
@@ -104,17 +86,42 @@ def ordered_map_structure(
     return rec(nest)
 
 
-def flatten(nest):
-    res = []
+def map_structure_with_set(
+    map_fn: Callable[[Any], Any],
+    nest: Any,
+    seq_factory: T_Seq_Factory = {list: list, tuple: tuple},
+    map_factory: T_Map_Factory = {dict: dict},
+    set_factory: T_Set_Factory = {set: set},
+):
+    assert callable(map_fn)
 
-    def rec(node):
-        if isinstance(node, NestKey):
-            res.append(node)
-        elif isinstance(node, (tuple, list)):
-            for v in node:
+    def rec(nest: Any):
+        for src, dst in seq_factory.items():
+            if isinstance(nest, src):
+                return dst(map(rec, nest))
+
+        for src, dst in map_factory.items():
+            if isinstance(nest, src):
+                return dst({k: rec(v) for k, v in nest.items()})
+
+        for src, dst in set_factory.items():
+            if isinstance(nest, src):
+                return dst(map(rec, nest))
+
+        return map_fn(nest)
+
+    return rec(nest)
+
+
+def flatten(nest: object) -> List[object]:
+    res: List[object] = []
+
+    def rec(node: object):
+        if isinstance(node, (tuple, list)):
+            for v in node:  # pyright: ignore [reportUnknownVariableType]
                 rec(v)
         elif isinstance(node, (dict, Mapping)):
-            keys = sorted(node.keys(), key=lambda x: (hash(x), x))
+            keys: List[object] = sorted(node.keys(), key=lambda x: (hash(x), x))
             for k in keys:
                 rec(node[k])
         else:
@@ -124,35 +131,15 @@ def flatten(nest):
     return res
 
 
-def flatten_to_nest_keys(nest):
-    res = []
-
-    def rec(node, nest_key):
-        if isinstance(node, NestKey):
-            res.append(nest_key)
-        elif isinstance(node, (tuple, list)):
-            for i, v in enumerate(node):
-                rec(v, (*nest_key, i))
-        elif isinstance(node, (dict, Mapping)):
-            keys = sorted(node.keys(), key=lambda x: (hash(x), x))
-            for k in keys:
-                rec(node[k], (*nest_key, k))
-        else:
-            res.append(nest_key)
-
-    rec(nest, ())
-    return res
-
-
 class NotEnoughElementError(Exception):
-    def __init__(self, msg=None):
+    def __init__(self, msg: Optional[str] = None):
         super().__init__(msg or "not enough elements in flatten seq")
 
 
-def pack_sequence_as(ref_struct, flatten_seq):
+def pack_sequence_as(ref_struct: object, flatten_seq: List[object]):
     i = 0
 
-    def map_fn(x):
+    def map_fn(x: object):
         nonlocal i
         i += 1
         if i > len(flatten_seq):

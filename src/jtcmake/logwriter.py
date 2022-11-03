@@ -11,10 +11,11 @@ from typing import (
     Sequence,
     Tuple,
     TypeVar,
-    Union,
 )
 
-from typing_extensions import Literal, Protocol
+from typing_extensions import Literal, Protocol, runtime_checkable, TypeGuard
+
+from .utils.strpath import StrOrPath
 
 T = TypeVar("T")
 
@@ -26,13 +27,13 @@ def _or(a: T, b: T) -> T:
 class RichStrAttr(NamedTuple):
     c: Optional[Tuple[int, int, int]] = None
     bg: Optional[Tuple[int, int, int]] = None
-    link: Optional[Union[str, os.PathLike]] = None
+    link: Optional[StrOrPath] = None
 
 
 class RichStr(str):
     attr: RichStrAttr
 
-    def __new__(cls, s, *_args, **_kwargs):
+    def __new__(cls, s: str, *_args: object, **_kwargs: object):
         return super().__new__(cls, s)
 
     def __init__(
@@ -40,7 +41,7 @@ class RichStr(str):
         s: str,
         c: Optional[Tuple[int, int, int]] = None,
         bg: Optional[Tuple[int, int, int]] = None,
-        link: Optional[Union[str, os.PathLike]] = None,
+        link: Optional[StrOrPath] = None,
     ):
         a1, a2, a3 = None, None, None
 
@@ -49,22 +50,27 @@ class RichStr(str):
 
         self.attr = RichStrAttr(_or(c, a1), _or(bg, a2), _or(link, a3))
 
-    def __add__(self, rhs):
+    def __add__(self, rhs: object):
         if type(rhs) == str:
             return RichStr(str(self) + str(rhs), *self.attr)
         else:
             return NotImplemented
 
-    def __radd__(self, lhs):
+    def __radd__(self, lhs: object):
         if isinstance(lhs, str):
             return RichStr(str(lhs) + str(self), *self.attr)
         else:
             return NotImplemented
 
 
-TLoglevel = Literal["debug", "info", "warning", "error"]
+Loglevel = Literal["debug", "info", "warning", "error"]
 
-QUANT_LOG_LEVEL: Mapping[TLoglevel, int] = {
+
+def typeguard_loglevel(loglevel: object) -> TypeGuard[Loglevel]:
+    return loglevel in {"debug", "info", "warning", "error"}
+
+
+QUANT_LOG_LEVEL: Mapping[Loglevel, int] = {
     "debug": 10,
     "info": 20,
     "warning": 30,
@@ -73,18 +79,18 @@ QUANT_LOG_LEVEL: Mapping[TLoglevel, int] = {
 
 
 class IWriter:
-    loglevel: TLoglevel
+    loglevel: Loglevel
 
-    def __init__(self, loglevel: TLoglevel):
+    def __init__(self, loglevel: Loglevel):
         assert loglevel in {"debug", "info", "warning", "error"}
 
         self.loglevel = loglevel
 
     @abc.abstractmethod
-    def _write(self, *args: str, level: TLoglevel):
+    def _write(self, *args: str, level: Loglevel):
         ...
 
-    def write(self, *args: str, level: TLoglevel):
+    def write(self, *args: str, level: Loglevel):
         if QUANT_LOG_LEVEL[self.loglevel] <= QUANT_LOG_LEVEL[level]:
             self._write(*args, level=level)
 
@@ -102,36 +108,39 @@ class IWriter:
 
 
 class WritersWrapper(IWriter):
-    def __init__(self, writers: Sequence[IWriter], loglevel=None):
+    def __init__(
+        self, writers: Sequence[IWriter], loglevel: Optional[Loglevel] = None
+    ):
         super().__init__(loglevel or "debug")
         assert all(isinstance(w, IWriter) for w in writers)
         self.writers = writers
 
-    def _write(self, *args: str, level: TLoglevel):
+    def _write(self, *args: str, level: Loglevel):
         for writer in self.writers:
             writer.write(*args, level=level)
 
 
+@runtime_checkable
 class WritableProtocol(Protocol):
     def write(self, __t: str) -> Any:
         ...
 
 
 class TextWriter(IWriter):
-    def __init__(self, writable: WritableProtocol, loglevel: TLoglevel):
+    def __init__(self, writable: WritableProtocol, loglevel: Loglevel):
         super().__init__(loglevel)
         self.writable = writable
 
-    def _write(self, *args, **kwargs):
+    def _write(self, *args: str, level: Loglevel):
         self.writable.write("".join(map(str, args)) + "\n")
 
 
 class ColorTextWriter(IWriter):
-    def __init__(self, writable: WritableProtocol, loglevel: TLoglevel):
+    def __init__(self, writable: WritableProtocol, loglevel: Loglevel):
         super().__init__(loglevel)
         self.writable = writable
 
-    def _write(self, *args: str, level: TLoglevel):
+    def _write(self, *args: str, level: Loglevel):
         color = (
             {
                 "debug": (0x4F, 0x8A, 0x10),
@@ -159,7 +168,7 @@ class LoggerWriter(IWriter):
         super().__init__("debug")
         self.logger = logger
 
-    def _write(self, *args: str, level: TLoglevel):
+    def _write(self, *args: str, level: Loglevel):
         msg = "".join(map(str, args))
 
         if level == "debug":
@@ -173,25 +182,25 @@ class LoggerWriter(IWriter):
 
 
 class TextFileWriterOpenOnDemand(IWriter):
-    def __init__(self, loglevel: TLoglevel, fname: Union[str, os.PathLike]):
+    def __init__(self, loglevel: Loglevel, fname: StrOrPath):
         super().__init__(loglevel)
 
         os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.fname = fname
 
-    def _write(self, *args, **kwargs):
+    def _write(self, *args: str, level: Loglevel):
         with open(self.fname, "a") as f:
             f.write("".join(map(str, args)) + "\n")
 
 
-HTML_BG_COLOR_MAP: Dict[TLoglevel, Tuple[int, int, int]] = {
+HTML_BG_COLOR_MAP: Dict[Loglevel, Tuple[int, int, int]] = {
     "debug": (0xDF, 0xF2, 0xBF),
     "info": (0xFF, 0xFF, 0xFF),
     "warning": (0xFE, 0xEF, 0xB3),
     "error": (0xFF, 0xD2, 0xD2),
 }
-HTML_COLOR_MAP: Dict[TLoglevel, Tuple[int, int, int]] = {
+HTML_COLOR_MAP: Dict[Loglevel, Tuple[int, int, int]] = {
     "debug": (0x4F, 0x8A, 0x10),
     "info": (0, 0, 0),
     "warning": (0x9F, 0x60, 0x00),
@@ -200,15 +209,23 @@ HTML_COLOR_MAP: Dict[TLoglevel, Tuple[int, int, int]] = {
 
 
 class HTMLFileWriterOpenOnDemand(IWriter):
-    def __init__(self, loglevel, fname, basedir=None):
+    basedir: Optional[Path]
+    fname: Path
+
+    def __init__(
+        self,
+        loglevel: Loglevel,
+        fname: StrOrPath,
+        basedir: Optional[Path] = None,
+    ):
         super().__init__(loglevel)
 
         os.makedirs(Path(fname).parent, exist_ok=True)
 
         self.basedir = basedir
-        self.fname = fname
+        self.fname = Path(fname)
 
-    def _write(self, *args: str, level: TLoglevel):
+    def _write(self, *args: str, level: Loglevel):
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]
 
@@ -225,34 +242,36 @@ class HTMLFileWriterOpenOnDemand(IWriter):
 
 
 class HTMLJupyterWriter(IWriter):
-    def __init__(self, loglevel, basedir=None):
+    basedir: Optional[Path]
+
+    def __init__(self, loglevel: Loglevel, basedir: Optional[StrOrPath] = None):
         super().__init__(loglevel)
-        from IPython.display import display, HTML  # check if importable
+        from IPython.display import display, HTML  # pyright: ignore
 
-        self.basedir = basedir
+        del display, HTML
 
-    def _write(self, *args, level):
-        from IPython.display import display, HTML
+        self.basedir = Path(basedir) if basedir else None
+
+    def _write(self, *args: str, level: Loglevel):
+        from IPython.display import display, HTML  # pyright: ignore
 
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]
 
-        args = [RichStr(x, c=color) for x in args]
+        args_ = [RichStr(x, c=color) for x in args]
 
         display(
             HTML(
                 '<pre style="background-color: '
                 f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
-                f"{create_html(args, self.basedir)}</pre>"
+                f"{create_html(args_, self.basedir)}</pre>"
             )
         )
 
 
-def create_html(
-    sl: Sequence[str], basedir: Optional[Union[str, os.PathLike]] = None
-) -> str:
+def create_html(sl: Sequence[str], basedir: Optional[StrOrPath] = None) -> str:
     sl = [x if isinstance(x, RichStr) else RichStr(x) for x in sl]
-    groups = []
+    groups: List[List[RichStr]] = []
     for s in sl:
         if len(groups) >= 1 and s.attr == groups[-1][0].attr:
             groups[-1].append(s)
@@ -261,15 +280,15 @@ def create_html(
 
     outs: List[str] = []
     for group in groups:
-        s = RichStr("".join(group), **group[0].attr)
+        s = RichStr("".join(group), *group[0].attr)
         outs.append(_richstr_to_html(s, str(basedir)))
 
     return "".join(outs)
 
 
 def _richstr_to_html(s: RichStr, basedir: str) -> str:
-    starts = []
-    ends = []
+    starts: List[str] = []
+    ends: List[str] = []
 
     attr = s.attr
 
@@ -281,7 +300,7 @@ def _richstr_to_html(s: RichStr, basedir: str) -> str:
         starts.append(f'<a href="{Path(link).as_posix()}">')
         ends.append(f"</a>")
 
-    styles = []
+    styles: List[str] = []
     if attr.c is not None:
         styles.append(f"color: rgb({attr.c[0]}, {attr.c[1]}, {attr.c[2]});")
 
@@ -341,8 +360,9 @@ def _comp_8bit_term_color(r: int, g: int, b: int) -> int:
 
 def term_is_jupyter() -> bool:
     try:
-        from IPython.core.getipython import get_ipython
+        from IPython.core.getipython import get_ipython  # pyright: ignore
 
-        return get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+        name = get_ipython().__class__.__name__  # pyright: ignore
+        return name == "ZMQInteractiveShell"  # pyright: ignore
     except:
         return False

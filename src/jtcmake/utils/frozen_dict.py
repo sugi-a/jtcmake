@@ -1,4 +1,4 @@
-from typing import TypeVar, Any, Mapping
+from typing import Iterator, TypeVar, Mapping
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -11,17 +11,14 @@ class FrozenDict(Mapping[K, V]):
     def __getitem__(self, key: K) -> V:
         return self._dic[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[K]:
         return self._dic.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dic)
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         return key in self._dic
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"FrozenDict{dict(self)}"
-
-    def __getattr__(self, key: Any) -> V:
-        return self._dic[key]

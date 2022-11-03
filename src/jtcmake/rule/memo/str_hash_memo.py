@@ -2,14 +2,14 @@ from __future__ import annotations
 from pathlib import PurePath
 from hashlib import sha256
 from numbers import Complex
-from typing import Any, Tuple, List
+from typing import Any, Set, Tuple, List
 
 from ...utils.nest import ordered_map_structure
 from .abc import IMemo, IMemoAtom, ILazyMemoValue, IMemoInstance
 
 
 class StrHashMemo(IMemo):
-    def __init__(self, args):
+    def __init__(self, args: object):
         args, lazy_values = unwrap_atom(args)
         self.code = hash_fn(stringify(args))
         self.lazy_values = lazy_values
@@ -34,8 +34,8 @@ class StrHashMemoInstance(IMemoInstance):
         return [self.code, self.lazy_code]
 
     @classmethod
-    def from_obj(cls, data: Any) -> StrHashMemoInstance:
-        code, lazy_code = data
+    def from_obj(cls, obj: Any) -> StrHashMemoInstance:
+        code, lazy_code = obj
         return StrHashMemoInstance(code, lazy_code)
 
     def compare(self, other: Any) -> bool:
@@ -77,11 +77,11 @@ _AUTO_STRINGIFIED_BASE_TYPES = (
 )
 
 
-def stringify(nest: Any) -> str:
-    sl = []
-    visited = set()
+def stringify(nest: object) -> str:
+    sl: List[str] = []
+    visited: Set[int] = set()
 
-    def rec(nest):
+    def rec(nest: object):
         if isinstance(nest, (tuple, list, dict, set)):
             if id(nest) in visited:
                 raise TypeError("Detected recursion in nested structure")
@@ -90,13 +90,13 @@ def stringify(nest: Any) -> str:
 
             if isinstance(nest, (tuple, list)):
                 sl.append("(" if isinstance(nest, tuple) else "[")
-                for v in nest:
+                for v in nest:  # pyright: ignore [reportUnknownVariableType]
                     rec(v)
                     sl.append(",")
                 sl.append(")" if isinstance(nest, tuple) else "]")
             elif isinstance(nest, set):
                 try:
-                    ordered = sorted(nest)
+                    ordered: List[object] = sorted(nest)
                 except TypeError as e:
                     raise TypeError(
                         "set in memoization values must have sortable values"
@@ -108,7 +108,7 @@ def stringify(nest: Any) -> str:
                 sl.append(")")
             else:
                 try:
-                    keys = sorted(nest)
+                    keys: List[object] = sorted(nest)
                 except TypeError as e:
                     raise TypeError(
                         "dict in memoization values must have sortable keys"
@@ -116,7 +116,7 @@ def stringify(nest: Any) -> str:
 
                 sl.append("{")
 
-                for k in keys:
+                for k in keys:  # pyright: ignore [reportUnknownVariableType]
                     rec(k)
                     sl.append(":")
                     rec(nest[k])

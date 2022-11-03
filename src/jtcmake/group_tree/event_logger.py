@@ -1,28 +1,31 @@
 import inspect, warnings
-from typing import Any, Callable, List, Optional, Sequence, Mapping
+from typing import Any, Callable, List, Optional, Sequence, Mapping, Dict, Tuple
 from pathlib import Path
 
-from ..core.abc import IEvent
+from ..rule.rule import Rule
+from ..core.abc import IEvent, IRule
 from ..core import events
-from ..logwriter.writer import IWriter, RichStr
+from ..logwriter import IWriter, RichStr
 
 
-def log_make_event(w: IWriter, e: IEvent):
+def get_rule_name(r: IRule, id2name: Callable[[int], str]):
+    if isinstance(r, Rule):
+        return id2name(r.id)  # pyright: ignore [reportUnknownMemberType]
+    else:
+        warnings.warn(
+            "Internal Error: an event of unnamed Rule has been emitted."
+        )
+        return "<unknown>"
+
+
+def log_make_event(w: IWriter, e: IEvent, id2name: Callable[[int], str]):
     if isinstance(e, events.ErrorRuleEvent):
-        r = e.rule
-
         # Show stack trace and error message
         w.warning("".join(e.trace_exc.format()))
 
-        if r.name is not None:
-            name = "/".join(r.name)
-        else:
-            name = "<unknown>"
-            warnings.warn(
-                "Internal Error: an event of unnamed Rule has been emitted."
-            )
+        r = e.rule
 
-        name = RichStr(name, c=(0, 0xCC, 0))
+        name = RichStr(get_rule_name(r, id2name), c=(0, 0xCC, 0))
 
         if isinstance(e, events.PreProcError):
             w.error(
@@ -52,15 +55,7 @@ def log_make_event(w: IWriter, e: IEvent):
     elif isinstance(e, events.RuleEvent):
         r = e.rule
 
-        if r.name is not None:
-            name = "/".join(r.name)
-        else:
-            name = "<unknown>"
-            warnings.warn(
-                "Internal Error: an event of unnamed Rule has been emitted."
-            )
-
-        name = RichStr(name, c=(0, 0xCC, 0))
+        name = RichStr(get_rule_name(r, id2name), c=(0, 0xCC, 0))
 
         if isinstance(e, events.Skip):
             if e.is_direct_target:
@@ -104,7 +99,7 @@ def add_indent(sl: Sequence[str], indent: str) -> List[str]:
     return res
 
 
-def get_func_name(f: Callable) -> str:
+def get_func_name(f: Callable[..., object]) -> str:
     try:
         name, mod = f.__qualname__, f.__module__
 
@@ -116,7 +111,12 @@ def get_func_name(f: Callable) -> str:
         return "<unkonw function>"
 
 
-def tostrs_func_call(dst, f, args, kwargs):
+def tostrs_func_call(
+    dst: List[str],
+    f: Callable[..., object],
+    args: Tuple[object, ...],
+    kwargs: Dict[str, object],
+):
     bn = inspect.signature(f).bind(*args, **kwargs)
     bn.apply_defaults()
 
@@ -135,10 +135,10 @@ def tostrs_obj(dst: List[str], o: Any, capacity: Optional[int] = None):
     _tostrs_obj(dst, o, capacity or 10**10)
 
 
-def _tostrs_obj(dst: List[str], o: Any, capacity: int) -> int:
+def _tostrs_obj(dst: List[str], o: object, capacity: int) -> int:
     if isinstance(o, (tuple, list)):
         dst.append("[")
-        for i, v in enumerate(o):
+        for i, v in enumerate(o):  # pyright: ignore [reportUnknownVariableType]
             if capacity <= 0:
                 dst.append(", ...")
                 capacity -= 5
@@ -151,7 +151,10 @@ def _tostrs_obj(dst: List[str], o: Any, capacity: int) -> int:
         return capacity
     elif isinstance(o, Mapping):
         dst.append("{")
-        for i, (k, v) in enumerate(o.items()):
+        for i, (
+            k,  # pyright: ignore [reportUnknownVariableType]
+            v,  # pyright: ignore [reportUnknownVariableType]
+        ) in enumerate(o.items()):
             if capacity <= 0:
                 dst.append(", ... ")
                 capacity -= 5
