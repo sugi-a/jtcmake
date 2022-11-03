@@ -6,6 +6,8 @@ from ...rule.file import IFile
 from ..core import IGroup, IRule
 
 SelectorKind = Literal["group", "rule", "file"]
+SELECTOR_KINDS: Tuple[Literal["group"], Literal["rule"], Literal["file"]] = \
+    ("group", "rule", "file")
 
 SEP = ";"
 
@@ -28,28 +30,6 @@ T = TypeVar("T", IGroup, IRule, IFile)
 
 
 class SelectorMixin(IGroup, metaclass=ABCMeta):
-    def _select_wrapper(
-        self,
-        pattern: object,
-        kind: SelectorKind,
-    ):
-        if isinstance(pattern, str):
-            if len(pattern) == 0:
-                raise ValueError("pattern must not be an empty str")
-
-            pattern = pattern.strip("/")
-            pattern = re.split("/+", pattern)
-        elif isinstance(pattern, (tuple, list)):
-            if not all(
-                isinstance(v, str)
-                for v in pattern  # pyright: ignore [reportUnknownVariableType]
-            ):
-                raise TypeError("Pattern sequence items must be str")
-        else:
-            raise TypeError("Pattern must be str or sequence of str")
-
-        return self._select(pattern, kind)
-
     def _select(self, pattern: Sequence[str], kind: SelectorKind) -> List[Any]:
         rxs: List[str] = []
 
@@ -115,10 +95,10 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
             raise Exception("unreachable")
 
     def select_rules(self, pattern: Union[str, Sequence[str]]) -> List[IRule]:
-        return self._select_wrapper(pattern, "rule")
+        return self._select(_parse_args_pattern(pattern), "rule")
 
     def select_files(self, pattern: Union[str, Sequence[str]]) -> List[IFile]:
-        return self._select_wrapper(pattern, "file")
+        return self._select(_parse_args_pattern(pattern), "file")
 
     def select_groups(self, pattern: Union[str, Sequence[str]]) -> List[IGroup]:
         """Obtain child groups or rules of this group.
@@ -189,4 +169,24 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
                 g.select(['dir/a.txt']) == [rule]  # OK
                 g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
         """
-        return self._select_wrapper(pattern, "group")
+        return self._select(_parse_args_pattern(pattern), "group")
+
+
+def _parse_args_pattern(pattern: object) -> List[str]:
+    if isinstance(pattern, str):
+        if len(pattern) == 0:
+            raise ValueError("pattern must not be an empty str")
+
+        pattern = pattern.strip("/")
+        return re.split("/+", pattern)
+    elif isinstance(pattern, Sequence):
+        if not all(
+            isinstance(v, str)
+            for v in pattern  # pyright: ignore [reportUnknownVariableType]
+        ):
+            raise TypeError("Pattern sequence items must be str")
+        
+        return list(pattern)  # pyright: ignore [reportUnknownVariableType]
+    else:
+        raise TypeError("Pattern must be str or sequence of str")
+
