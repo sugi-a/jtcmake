@@ -36,7 +36,6 @@ include = ["src/jtcmake"]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
 reportUnknownArgumentType = "none"
-reportUnnecessaryIsInstance = "information"
 
 [tool.pytest.ini_options]
 testpaths = [ "tests" ]

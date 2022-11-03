@@ -420,7 +420,9 @@ class UntypedGroup(
 
         child_group_class_ = _as_igroup(child_group_class or UntypedGroup)
 
-        if not issubclass(child_group_class_, IGroup):
+        if not issubclass(
+            child_group_class_, IGroup
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
             raise TypeError("child_group_class must be subclass of IGroup")
 
         if not isinstance(
