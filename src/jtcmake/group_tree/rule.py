@@ -360,6 +360,20 @@ def Rule_init_parse_deco_func(
     return (), kwargs
 
 
+def _validate_str(s: object, err_msg: str) -> str:
+    if not isinstance(s, str):
+        raise TypeError(err_msg)
+
+    return s
+
+
+def _pathlike_to_str(p: object) -> str:
+    if not isinstance(p, (str, os.PathLike)):
+        raise TypeError("Expected str or os.PathLike. Got {p}")
+
+    return _validate_str(os.fspath(p), "bytes path is not allowed. ({p})")
+
+
 def parse_args_output_files(
     keys: Optional[Sequence[K]],
     output_files: object,
@@ -367,7 +381,7 @@ def parse_args_output_files(
 ) -> Dict[K, IFile]:
     if isinstance(output_files, (tuple, list)):
         outs: Dict[str, object] = {
-            str(v): v
+            _pathlike_to_str(v): v
             for v in output_files  # pyright: ignore [reportUnknownVariableType]
         }
     elif isinstance(output_files, (str, os.PathLike)):

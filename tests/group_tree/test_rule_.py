@@ -10,12 +10,22 @@ from jtcmake.rule.file import IFile
 from jtcmake.group_tree import rule
 from jtcmake.group_tree.atom import Atom
 
+class Path_:
+    """Fake object to represent an PathLike[str] object"""
+    def __init__(self, p: str) -> None:
+        self.p = p
+
+    def __fspath__(self) -> str:
+        return self.p
+
+
 class DummyFile(IFile):
     """Fake object to represent an IFile object"""
 
-    def copy_with(self, path):
+    def copy_with(self, path) -> IFile:
         ...
 
+    @property
     def memo_value(self):
         ...
 
@@ -23,9 +33,10 @@ class DummyFile(IFile):
 class DummyFile2(IFile):
     """Fake object to represent an IFile object"""
 
-    def copy_with(self, path):
+    def copy_with(self, path) -> IFile:
         ...
 
+    @property
     def memo_value(self):
         ...
 
@@ -33,13 +44,13 @@ class DummyFile2(IFile):
 class DummyCollection(Collection):
     """Fake object to represent a Collection object"""
 
-    def __init__(self, c) -> None:
+    def __init__(self, c: Collection) -> None:
         self.c = c
 
     def __contains__(self, __x: object) -> bool:
         return __x in self.c
 
-    def __iter__(self) -> Iterator[_T_co]:
+    def __iter__(self) -> Iterator[object]:
         return iter(self.c)
 
     def __len__(self) -> int:
@@ -49,7 +60,7 @@ class DummyCollection(Collection):
 class DummyContainer(Container):
     """Fake object to represent a Container object"""
 
-    def __init__(self, c) -> None:
+    def __init__(self, c: Container) -> None:
         self.c = c
 
     def __contains__(self, __x: object) -> bool:
@@ -164,11 +175,11 @@ def test_replace_obj_by_atom_in_structure():
 
 @pytest.mark.parametrize("ofiles,expect",[
     (
-        {"a": "a", "b": Path("b"), "c": DummyFile2("c")},
+        {"a": "a", "b": Path_("b"), "c": DummyFile2("c")},
         {"a": DummyFile("a"), "b": DummyFile("b"), "c": DummyFile2("c")},
     ),
     (
-        ["a", Path("b"), DummyFile2("c")],
+        ["a", Path_("b"), DummyFile2("c")],
         {"a": DummyFile("a"), "b": DummyFile("b"), "c": DummyFile2("c")},
     ),
     (
