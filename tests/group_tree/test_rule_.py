@@ -23,7 +23,7 @@ class DummyFile(IFile):
     """Fake object to represent an IFile object"""
 
     def copy_with(self, path) -> IFile:
-        ...
+        return DummyFile(path)
 
     @property
     def memo_value(self):
@@ -34,7 +34,7 @@ class DummyFile2(IFile):
     """Fake object to represent an IFile object"""
 
     def copy_with(self, path) -> IFile:
-        ...
+        return DummyFile2(path)
 
     @property
     def memo_value(self):
@@ -186,12 +186,34 @@ def test_replace_obj_by_atom_in_structure():
         "a",
         {"a": DummyFile("a")},
     ),
+    (
+        {"a": "{F}{R}", "b": Path_("{F}{R}")},
+        {"a": DummyFile("ar"), "b": DummyFile("br")},
+    ),
+    (
+        ["a{R}", Path_("b{R}")],
+        {"ar": DummyFile("ar"), "br": DummyFile("br")},
+    ),
+    (
+        ["{F}"],
+        ValueError(),
+    ),
+    (
+        "{F}",
+        ValueError(),
+    ),
 ])
 def test_parse_args_output_files(ofiles, expect):
+    if isinstance(expect, Exception):
+        with pytest.raises(type(expect)):
+            rule.parse_args_output_files("r", None, ofiles, DummyFile)
+
+        return
+
     keys = list(expect.keys())
 
-    assert rule.parse_args_output_files(None, ofiles, DummyFile) == expect
-    assert rule.parse_args_output_files(keys, ofiles, DummyFile) == expect
+    assert rule.parse_args_output_files("r", None, ofiles, DummyFile) == expect
+    assert rule.parse_args_output_files("r", keys, ofiles, DummyFile) == expect
 
     with pytest.raises(Exception):
         rule.parse_args_output_files(["x"], ofiles, DummyFile)

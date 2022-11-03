@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os, inspect, time
+import re
 from pathlib import Path
 from os import PathLike
 from typing import (
@@ -248,7 +249,7 @@ class Rule(IRule, Generic[K]):
             raise RuntimeError("Already initialized")
 
         yfiles = parse_args_output_files(
-            self._file_keys_hint, output_files, File
+            self.name_tuple[-1], self._file_keys_hint, output_files, File
         )
 
         def _init(*args: P.args, **kwargs: P.kwargs):
@@ -269,7 +270,7 @@ class Rule(IRule, Generic[K]):
             raise RuntimeError("Already initialized")
 
         yfiles = parse_args_output_files(
-            self._file_keys_hint, output_files, File
+            self.name_tuple[-1], self._file_keys_hint, output_files, File
         )
 
         def decorator(method: object):
@@ -367,6 +368,15 @@ def _validate_str(s: object, err_msg: str) -> str:
     return s
 
 
+T_type = TypeVar("T_type")
+
+def _validate_type(tp: Tuple[type[T_type], ...], o: object, msg: str) -> T_type:
+    if isinstance(o, tp):
+        return o  # pyright: ignore
+    else:
+        raise TypeError(msg)
+
+
 def _pathlike_to_str(p: object) -> str:
     if not isinstance(p, (str, os.PathLike)):
         raise TypeError("Expected str or os.PathLike. Got {p}")
@@ -374,44 +384,64 @@ def _pathlike_to_str(p: object) -> str:
     return _validate_str(os.fspath(p), "bytes path is not allowed. ({p})")
 
 
+def _to_IFile(f: object, IFile_factory: Callable[[StrOrPath], IFile]) -> IFile:
+    if isinstance(f, IFile):
+        return f
+
+    if isinstance(f, (str, os.PathLike)):
+        return IFile_factory(f)
+
+    raise TypeError(f"Output file must be str or PathLike. Given {f}")
+
+
 def parse_args_output_files(
-    keys: Optional[Sequence[K]],
+    rule_name: str,
+    key_hints: Optional[Sequence[K]],
     output_files: object,
     IFile_factory: Callable[[StrOrPath], IFile],
 ) -> Dict[K, IFile]:
     if isinstance(output_files, (tuple, list)):
-        outs: Dict[str, object] = {
-            _pathlike_to_str(v): v
-            for v in output_files  # pyright: ignore [reportUnknownVariableType]
+        output_files_str = map(_pathlike_to_str, output_files)
+        output_files_str = \
+            (_repl_name_ref(p, rule_name, None) for p in output_files_str)
+        outs: Dict[str, IFile] = {
+            v: _to_IFile(f, IFile_factory).copy_with(v)
+            for v, f  # pyright: ignore [reportUnknownVariableType]
+            in zip(output_files_str, output_files)
         }
     elif isinstance(output_files, (str, os.PathLike)):
-        outs = {str(output_files): output_files}
+        k = _pathlike_to_str(output_files)
+        k = _repl_name_ref(k, rule_name, None)
+        outs = {k: _to_IFile(output_files, IFile_factory).copy_with(k)}
     elif isinstance(output_files, Mapping):
-        outs = dict(output_files)
+        output_files_: Mapping[object, object] = output_files
+        keys = [
+            _validate_type((str,), k, "file key must be str")
+            for k in output_files_
+        ]
+        files_str = map(_pathlike_to_str, output_files_.values())
+        files_str = \
+            (_repl_name_ref(f, rule_name, k) for k, f in zip(keys, files_str))
+
+        files = (
+            _to_IFile(f, IFile_factory).copy_with(sf)
+            for f, sf in zip(output_files_.values(), files_str)
+        )
+        
+        outs = { k: _to_IFile(f, IFile_factory)  for k, f in zip(keys, files) }
     else:
         raise TypeError(
             "output_files must be str | PathLike | Sequence[str|PathLike] "
             "| Mapping[str|PathLike]."
         )
 
-    def _to_IFile(f: object) -> IFile:
-        if isinstance(f, IFile):
-            return f
-
-        if isinstance(f, (str, os.PathLike)):
-            return IFile_factory(f)
-
-        raise TypeError(f"Output file must be str or PathLike. Given {f}")
-
-    outs_ = {k: _to_IFile(v) for k, v in outs.items()}
-
-    if not _check_file_keys(outs_, keys):
+    if not _check_file_keys(outs, key_hints):
         raise TypeError(
-            f"Runtime type check error: Expected file keys: {keys}, "
-            f"Actual keys of given output files: {list(outs_.keys())}"
+            f"Runtime type check error: Expected file keys: {key_hints}, "
+            f"Actual keys of given output files: {list(outs.keys())}"
         )
 
-    return outs_
+    return outs
 
 
 def _check_file_keys(
@@ -541,3 +571,28 @@ def _assert_signature_match(
         raise TypeError(
             f"Signature of the method does not match the arguments"
         ) from e
+
+
+NAME_REF_RULE = "{R}"
+NAME_REF_FILE = "{F}"
+
+def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
+    def _repl(m: re.Match[str]) -> str:
+        r = m.group(0)
+        print(r, r == NAME_REF_RULE, rule_name)
+        if r == NAME_REF_RULE:
+            return rule_name
+        else:
+            if file_key is None:
+                raise ValueError(
+                    "File key may not referenced by the output file names "
+                    "when the keys weren't explicitly given."
+                )
+
+            return file_key
+
+    pattern = f"{re.escape(NAME_REF_RULE)}|{re.escape(NAME_REF_FILE)}"
+
+    a = re.sub(pattern, _repl, src)
+    print(a)
+    return a 

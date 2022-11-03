@@ -55,10 +55,16 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             outs = name
             method = outs
 
-        outs_: Dict[str, IFile] = parse_args_output_files(None, outs, File)
+        if not isinstance(name, str):
+            raise TypeError("name must be str or os.PathLike")
+
+        name_ = str(name)
+
+        outs_: Dict[str, IFile] = \
+            parse_args_output_files(name_, None, outs, File)
 
         def _add(*args: object, **kwargs: object):
-            self._add_rule(str(name), outs_, method, args, kwargs)
+            self._add_rule(name_, outs_, method, args, kwargs)
 
         return _add
 
@@ -77,12 +83,17 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         if output_files is None:
             output_files = name
 
+        if not isinstance(name, str):
+            raise TypeError("name must be str or os.PathLike")
+
+        name_ = str(name)
+
         output_files_: Dict[str, IFile] = \
-            parse_args_output_files(None, output_files, File)
+            parse_args_output_files(name_, None, output_files, File)
 
         def decorator(method: object):
             args, kwargs = Rule_init_parse_deco_func(method)
-            self._add_rule(str(name), output_files_, method, args, kwargs)
+            self._add_rule(name_, output_files_, method, args, kwargs)
 
         return decorator
 
