@@ -17,7 +17,7 @@ from typing import (
     Set,
     final,
 )
-from typing_extensions import ParamSpec, Self, Concatenate
+from typing_extensions import ParamSpec, Concatenate
 
 from .atom import Atom
 from ..rule.memo.abc import IMemo
@@ -47,32 +47,34 @@ class INode(metaclass=ABCMeta):
         ...
 
 
+T_Self = TypeVar("T_Self", bound="IGroup")
+
 class IGroup(INode, metaclass=ABCMeta):
     __prefix: Union[None, str] = None
 
     @classmethod
     @abstractmethod
     def __create_as_child__(
-        cls,
-        type_hint: Type[Self],
+        cls: Type[T_Self],
+        type_hint: Type[T_Self],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
-    ) -> Self:
+    ) -> T_Self:
         ...
 
     @overload
-    def set_prefix(self, dirname: StrOrPath) -> Self:
+    def set_prefix(self: T_Self, dirname: StrOrPath) -> T_Self:
         ...
 
     @overload
-    def set_prefix(self, *, prefix: StrOrPath) -> Self:
+    def set_prefix(self: T_Self, *, prefix: StrOrPath) -> T_Self:
         ...
 
     @final
     def set_prefix(
-        self, dirname: object = None, *, prefix: object = None
-    ) -> Self:
+        self: T_Self, dirname: object = None, *, prefix: object = None
+    ) -> T_Self:
         if self.__prefix is not None:
             raise Exception(
                 f'Prefix is already set (to "{self.__prefix}") and '

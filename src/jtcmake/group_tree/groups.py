@@ -1,6 +1,7 @@
 from __future__ import annotations
 from logging import Logger
 from typing import (
+    Any,
     Mapping,
     Optional,
     Tuple,
@@ -16,7 +17,6 @@ from typing import (
     get_type_hints,
     Callable,
 )
-from typing_extensions import Self
 
 from ..utils.strpath import StrOrPath
 from ..logwriter import Loglevel, WritableProtocol
@@ -38,7 +38,6 @@ TMemoKind = Literal["str_hash", "pickle"]
 
 V = TypeVar("V")
 
-
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
@@ -49,11 +48,11 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     @classmethod
     def __create_as_child__(
         cls,
-        type_hint: Type[Self],
+        type_hint: Type[IGroup],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
-    ) -> Self:
+    ):
         del type_hint
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
@@ -128,7 +127,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 T_Child = TypeVar("T_Child", bound=IGroup)
 
-
 class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
@@ -169,11 +167,11 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     @classmethod
     def __create_as_child__(
         cls,
-        type_hint: Type[Self],
+        type_hint: Type[IGroup],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
-    ) -> Self:
+    ):
         g = cls.__new__(cls)
 
         origin = get_origin(type_hint)
@@ -260,10 +258,10 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     def rules(self) -> Mapping[str, IRule]:
         return {}
 
-    def __getitem__(self, k: str) -> IGroup:
+    def __getitem__(self, k: str) -> T_Child:
         return self._groups[k]
 
-    def __getattr__(self, k: str) -> IGroup:
+    def __getattr__(self, k: str) -> T_Child:
         return self[k]
 
     @property
@@ -289,11 +287,11 @@ class GroupOfRules(
     @classmethod
     def __create_as_child__(
         cls,
-        type_hint: Type[Self],
+        type_hint: Type[IGroup],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
-    ) -> Self:
+    ):
         del type_hint
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
@@ -376,11 +374,11 @@ class UntypedGroup(
     @classmethod
     def __create_as_child__(
         cls,
-        type_hint: Type[Self],
+        type_hint: Type[IGroup],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
-    ) -> Self:
+    ):
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
         return g
