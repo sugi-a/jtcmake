@@ -22,7 +22,7 @@ from typing_extensions import Self, TypeGuard, ParamSpec, Concatenate
 
 from ..core.make import MakeSummary
 
-from ..utils.frozen_dict import DictView
+from ..utils.dict_view import DictView
 from ..utils.nest import map_structure_with_set
 from ..utils.strpath import StrOrPath
 from .atom import Atom

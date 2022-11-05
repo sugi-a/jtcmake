@@ -19,7 +19,7 @@ from typing import (
 )
 
 from ..utils.strpath import StrOrPath
-from ..utils.frozen_dict import DictView
+from ..utils.dict_view import DictView
 from ..logwriter import Loglevel, WritableProtocol
 from .core import IGroup, GroupTreeInfo, IRule, parse_args_prefix
 from .rule import Rule
@@ -93,7 +93,18 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 g = tp.__create_as_child__(tp, self._info, self, fqcname)
                 setattr(self, child_name, g)
                 self._groups[child_name] = g
-
+            else:
+                origin: object = get_origin(tp)
+                
+                if isinstance(origin, type) and issubclass(origin, IGroup):
+                    g = origin.__create_as_child__(
+                        tp,  # pyright: ignore
+                        self._info,
+                        self,
+                        fqcname
+                    )
+                    setattr(self, child_name, g)
+                    self._groups[child_name] = g
 
     @property
     def name(self) -> str:
@@ -213,7 +224,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
             type_hint
         )  # pyright: ignore
 
-    def add(self, name: str) -> T_Child:
+    def add_group(self, name: str) -> T_Child:
         if not isinstance(
             name, str
         ):  # pyright: ignore [reportUnnecessaryIsInstance]
