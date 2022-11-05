@@ -18,7 +18,7 @@ from typing import (
     Collection,
     Container,
 )
-from typing_extensions import Self, TypeGuard, ParamSpec
+from typing_extensions import Self, TypeGuard, ParamSpec, Concatenate
 
 from ..core.make import MakeSummary
 
@@ -59,6 +59,23 @@ class SelfRule:
 
 
 SELF: Any = SelfRule()
+
+_T_Rule = TypeVar("_T_Rule", bound=IRule)
+
+def require_init(
+    rule_method: Callable[Concatenate[_T_Rule, P], T]
+) -> Callable[Concatenate[_T_Rule, P], T]:
+    def _method(self: _T_Rule, *args: P.args, **kwargs: P.kwargs) -> T:
+        info = self._get_info()  # pyright: ignore [reportPrivateUsage]
+
+        if self.name_tuple in info.rules_to_be_init:
+            raise Exception(
+                "Rule must be initialized before calling this method"
+            )
+
+        return rule_method(self, *args, **kwargs)
+
+    return _method
 
 
 class Rule(IRule, Generic[K]):
@@ -122,11 +139,11 @@ class Rule(IRule, Generic[K]):
     def initialized(self) -> bool:
         return self._name not in self._info.rules_to_be_init
 
-    @require_tree_init
+    @require_init
     def __getattr__(self, key: K) -> IFile:
         return self.__getitem__(key)
 
-    @require_tree_init
+    @require_init
     def __getitem__(self, key: Union[int, K]) -> IFile:
         if isinstance(key, int):
             return self._files[self._file_keys[key]]
@@ -280,7 +297,7 @@ class Rule(IRule, Generic[K]):
         return self._info
 
     @property
-    @require_tree_init
+    @require_init
     def raw_rule_id(self) -> int:
         return self._raw_rule_id
 
@@ -320,12 +337,12 @@ class Rule(IRule, Generic[K]):
         return self._name
 
     @property
-    @require_tree_init
+    @require_init
     def files(self) -> Mapping[K, IFile]:
         return self._files
 
     @property
-    @require_tree_init
+    @require_init
     def xfiles(self) -> Collection[str]:
         return self._xfiles
 
