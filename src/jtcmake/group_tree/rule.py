@@ -117,7 +117,7 @@ class Rule(IRule, Generic[K]):
 
     @property
     def initialized(self) -> bool:
-        return self._name in self._info.rules_to_be_init
+        return self._name not in self._info.rules_to_be_init
 
     @require_tree_init
     def __getattr__(self, key: K) -> IFile:
