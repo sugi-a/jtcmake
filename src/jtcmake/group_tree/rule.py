@@ -93,6 +93,9 @@ class Rule(IRule, Generic[K]):
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
     ):
+        if self.initialized:
+            raise RuntimeError("Already initialized")
+
         self._init_main(yfiles, method, args, kwargs)
         self._info.rules_to_be_init.remove(self._name)
 
@@ -181,9 +184,6 @@ class Rule(IRule, Generic[K]):
         args: object,
         kwargs: object,
     ):
-        if self.initialized:
-            raise RuntimeError("Already initialized")
-
         args_ = (args, kwargs)
 
         # Add path prefix
