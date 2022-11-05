@@ -39,13 +39,13 @@ TMemoKind = Literal["str_hash", "pickle"]
 
 V = TypeVar("V")
 
+
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
     _groups: Dict[str, IGroup]
     _rules: Dict[str, Rule[str]]
     _parent: IGroup
-
 
     def __init_as_child__(
         self,
@@ -115,6 +115,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 T_Child = TypeVar("T_Child", bound=IGroup)
 _T_Self = TypeVar("_T_Self", bound="GroupOfGroups[Any]")
 
+
 class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
@@ -165,7 +166,6 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         self._name = name
         self._groups = {}
 
-
     def init(
         self: _T_Self,
         child_group_type: Type[T_Child],
@@ -197,7 +197,6 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
 
         return self
 
-
     def add_group(self, name: str) -> T_Child:
         if not isinstance(
             name, str
@@ -225,7 +224,6 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
             setattr(self, name, g)
 
         return g
-
 
     @property
     def name(self) -> str:
@@ -298,7 +296,6 @@ class GroupOfRules(
             setattr(self, name, r)
 
         return r
-
 
     @property
     def name(self) -> str:
@@ -375,8 +372,8 @@ class UntypedGroup(
         return r
 
     def add_group(
-		self, name: str, child_group_class: Optional[Type[IGroup]] = None
-	) -> IGroup:
+        self, name: str, child_group_class: Optional[Type[IGroup]] = None
+    ) -> IGroup:
         if child_group_class is None:
             tp = UntypedGroup
         else:
@@ -386,7 +383,9 @@ class UntypedGroup(
                 raise TypeError(f"{tp_} is not a valid type")
 
             if not issubclass(tp_, IGroup):
-                raise TypeError(f"child_group_type must be a subclass of IGroup")
+                raise TypeError(
+                    f"child_group_type must be a subclass of IGroup"
+                )
 
             if inspect.isabstract(tp_):
                 raise TypeError(f"child_group_type must not be abstract")
@@ -410,7 +409,6 @@ class UntypedGroup(
             setattr(self, name, g)
 
         return g
-
 
     @property
     def name(self) -> str:
@@ -441,7 +439,6 @@ class UntypedGroup(
     @property
     def name_tuple(self) -> Tuple[str, ...]:
         return self._name
-
 
     def __getitem__(self, k: str) -> Union[IGroup, IRule]:
         if k in self.groups:

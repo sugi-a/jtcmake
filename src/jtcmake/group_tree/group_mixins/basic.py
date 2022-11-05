@@ -232,4 +232,3 @@ def parse_args_create_memo_factory(
         return _memo_factory_pickle
     else:
         raise TypeError('memo kind must be "str_hash" or "pickle"')
-

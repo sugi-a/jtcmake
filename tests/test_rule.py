@@ -82,7 +82,9 @@ def test_rule_check_update(tmp_path, mocker):
         mock_memo = mocker.MagicMock(IMemo)
         mock_memo.memo.compare.return_value = memo_no_change
 
-        return Rule(ys, xs, xisorig, set(), lambda x: None, [], {}, mock_memo, 0)
+        return Rule(
+            ys, xs, xisorig, set(), lambda x: None, [], {}, mock_memo, 0
+        )
 
     # case 1 (dry_run, x1 is original)
     r = _Rule([y1, y2], [x1, x2], [True, False], True)

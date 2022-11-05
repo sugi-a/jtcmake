@@ -2,10 +2,17 @@ from logging import getLogger
 
 import pytest
 
-from jtcmake.logwriter import ColorTextWriter, HTMLFileWriterOpenOnDemand, LoggerWriter, TextFileWriterOpenOnDemand, TextWriter
+from jtcmake.logwriter import (
+    ColorTextWriter,
+    HTMLFileWriterOpenOnDemand,
+    LoggerWriter,
+    TextFileWriterOpenOnDemand,
+    TextWriter,
+)
 from jtcmake.rule.memo.pickle_memo import PickleMemo
 from jtcmake.rule.memo.str_hash_memo import StrHashMemo
 from jtcmake.group_tree.group_mixins import basic
+
 
 class Path_:
     def __init__(self, p: str):

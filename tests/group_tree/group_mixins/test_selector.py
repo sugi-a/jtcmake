@@ -8,13 +8,16 @@ from jtcmake.group_tree.group_mixins import selector
 from jtcmake.group_tree.rule import SELF
 
 
-@pytest.mark.parametrize("pattern,expect", [
-    (["a", "b/"], ["a", "b/"]),
-    ("a/b", ["a", "b"]),
-    ("a/b/", ["a", "b"]),
-    ("", ValueError()),
-    (1, TypeError()),
-])
+@pytest.mark.parametrize(
+    "pattern,expect",
+    [
+        (["a", "b/"], ["a", "b/"]),
+        ("a/b", ["a", "b"]),
+        ("a/b/", ["a", "b"]),
+        ("", ValueError()),
+        (1, TypeError()),
+    ],
+)
 def test_parse_args_pattern(pattern: object, expect: object):
     func = selector._parse_args_pattern  # pyright: ignore [reportPrivateUsage]
     if isinstance(expect, Exception):
@@ -51,6 +54,7 @@ def _create_group_for_test_select():
     `-- a/b/
         `-- a (a.txt)
     """
+
     def _fn(*args: object, **kwargs: object):
         ...
 

@@ -27,7 +27,14 @@ from ..utils.nest import map_structure_with_set
 from ..utils.strpath import StrOrPath
 from .atom import Atom
 from ..rule.file import File, IFile
-from .core import IRule, GroupTreeInfo, IGroup, concat_prefix, require_tree_init, make
+from .core import (
+    IRule,
+    GroupTreeInfo,
+    IGroup,
+    concat_prefix,
+    require_tree_init,
+    make,
+)
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
@@ -61,6 +68,7 @@ class SelfRule:
 SELF: Any = SelfRule()
 
 _T_Rule = TypeVar("_T_Rule", bound=IRule)
+
 
 def require_init(
     rule_method: Callable[Concatenate[_T_Rule, P], T]
@@ -389,6 +397,7 @@ def _validate_str(s: object, err_msg: str) -> str:
 
 T_type = TypeVar("T_type")
 
+
 def _validate_type(tp: Tuple[type[T_type], ...], o: object, msg: str) -> T_type:
     if isinstance(o, tp):
         return o  # pyright: ignore
@@ -421,12 +430,14 @@ def parse_args_output_files(
 ) -> Dict[K, IFile]:
     if isinstance(output_files, (tuple, list)):
         output_files_str = map(_pathlike_to_str, output_files)
-        output_files_str = \
-            (_repl_name_ref(p, rule_name, None) for p in output_files_str)
+        output_files_str = (
+            _repl_name_ref(p, rule_name, None) for p in output_files_str
+        )
         outs: Dict[str, IFile] = {
             v: _to_IFile(f, IFile_factory).copy_with(v)
-            for v, f  # pyright: ignore [reportUnknownVariableType]
-            in zip(output_files_str, output_files)
+            for v, f in zip(  # pyright: ignore [reportUnknownVariableType]
+                output_files_str, output_files
+            )
         }
     elif isinstance(output_files, (str, os.PathLike)):
         k = _pathlike_to_str(output_files)
@@ -439,15 +450,16 @@ def parse_args_output_files(
             for k in output_files_
         ]
         files_str = map(_pathlike_to_str, output_files_.values())
-        files_str = \
-            (_repl_name_ref(f, rule_name, k) for k, f in zip(keys, files_str))
+        files_str = (
+            _repl_name_ref(f, rule_name, k) for k, f in zip(keys, files_str)
+        )
 
         files = (
             _to_IFile(f, IFile_factory).copy_with(sf)
             for f, sf in zip(output_files_.values(), files_str)
         )
-        
-        outs = { k: _to_IFile(f, IFile_factory)  for k, f in zip(keys, files) }
+
+        outs = {k: _to_IFile(f, IFile_factory) for k, f in zip(keys, files)}
     else:
         raise TypeError(
             "output_files must be str | PathLike | Sequence[str|PathLike] "
@@ -595,6 +607,7 @@ def _assert_signature_match(
 NAME_REF_RULE = "{R}"
 NAME_REF_FILE = "{F}"
 
+
 def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     def _repl(m: re.Match[str]) -> str:
         r = m.group(0)
@@ -612,4 +625,4 @@ def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     pattern = f"{re.escape(NAME_REF_RULE)}|{re.escape(NAME_REF_FILE)}"
 
     a = re.sub(pattern, _repl, src)
-    return a 
+    return a

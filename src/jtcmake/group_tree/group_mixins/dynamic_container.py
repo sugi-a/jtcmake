@@ -58,24 +58,26 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         name_ = str(name)
 
-        outs_: Dict[str, IFile] = \
-            parse_args_output_files(name_, None, outs, File)
+        outs_: Dict[str, IFile] = parse_args_output_files(
+            name_, None, outs, File
+        )
 
         def _add(*args: object, **kwargs: object):
             self._add_rule(name_, outs_, method, args, kwargs)
 
         return _add
 
-
     def add_deco(
         self,
         name: StrOrPath,
-        output_files: Optional[Union[
-            Mapping[K, StrOrPath],
-            Sequence[Union[str, PathLike[str]]],
-            str,
-            PathLike[str],
-        ]] = None,
+        output_files: Optional[
+            Union[
+                Mapping[K, StrOrPath],
+                Sequence[Union[str, PathLike[str]]],
+                str,
+                PathLike[str],
+            ]
+        ] = None,
         /,
     ) -> Callable[[Callable[[], object]], None]:
         if output_files is None:
@@ -86,15 +88,15 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         name_ = str(name)
 
-        output_files_: Dict[str, IFile] = \
-            parse_args_output_files(name_, None, output_files, File)
+        output_files_: Dict[str, IFile] = parse_args_output_files(
+            name_, None, output_files, File
+        )
 
         def decorator(method: object):
             args, kwargs = Rule_init_parse_deco_func(method)
             self._add_rule(name_, output_files_, method, args, kwargs)
 
         return decorator
-
 
     def _add_rule(
         self,
@@ -129,4 +131,3 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         self, name: str, rule_factory: Callable[[], Rule[str]]
     ) -> Rule[str]:
         ...
-

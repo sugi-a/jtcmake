@@ -48,6 +48,7 @@ class INode(metaclass=ABCMeta):
 
 T_Self = TypeVar("T_Self", bound="IGroup")
 
+
 class IGroup(INode, metaclass=ABCMeta):
     __prefix: Union[None, str] = None
 
@@ -358,6 +359,7 @@ def get_group_info_of_nodes(nodes: Sequence[INode]) -> GroupTreeInfo:
             )
 
     return info
+
 
 def gather_raw_rule_ids(
     group_or_rules: Sequence[Union[IGroup, IRule]]
