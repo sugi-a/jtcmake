@@ -55,6 +55,7 @@ class Static1(StaticGroupBase):
 
         self.r2.init("{R}", copy)(self.r1.a, SELF)
 
+        self.g1.init(Static2)
         self.g1.add_group("sub1").init(self.r1[0])
         self.g1.add_group("sub2").init(self.r1[1])
 

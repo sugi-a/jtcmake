@@ -7,7 +7,6 @@ from typing import (
     Mapping,
     Optional,
     Tuple,
-    Type,
     TypeVar,
     Dict,
     Union,
@@ -52,23 +51,25 @@ T_Self = TypeVar("T_Self", bound="IGroup")
 class IGroup(INode, metaclass=ABCMeta):
     __prefix: Union[None, str] = None
 
-    @classmethod
     @abstractmethod
-    def __create_as_child__(
-        cls: Type[T_Self],
-        type_hint: Type[T_Self],
+    def __init_as_child__(
+        self,
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
+    ):
+        ...
+
+    @overload
+    def set_prefix(
+        self: T_Self, dirname: StrOrPath, *, prefix: None = None
     ) -> T_Self:
         ...
 
     @overload
-    def set_prefix(self: T_Self, dirname: StrOrPath) -> T_Self:
-        ...
-
-    @overload
-    def set_prefix(self: T_Self, *, prefix: StrOrPath) -> T_Self:
+    def set_prefix(
+        self: T_Self, dirname: None = None, *, prefix: StrOrPath
+    ) -> T_Self:
         ...
 
     @final

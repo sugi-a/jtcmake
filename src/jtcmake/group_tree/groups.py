@@ -1,6 +1,8 @@
 from __future__ import annotations
+import inspect
 from logging import Logger
 from typing import (
+    Any,
     Dict,
     Mapping,
     Optional,
@@ -9,10 +11,8 @@ from typing import (
     TypeVar,
     Generic,
     Union,
-    List,
     Literal,
     Sequence,
-    get_args,
     get_origin,
     get_type_hints,
     Callable,
@@ -46,18 +46,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _rules: Dict[str, Rule[str]]
     _parent: IGroup
 
-    @classmethod
-    def __create_as_child__(
-        cls,
-        type_hint: Type[IGroup],
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...],
-    ):
-        del type_hint
-        g = cls.__new__(cls)
-        g.__init_as_child__(info, parent, name)
-        return g
 
     def __init_as_child__(
         self,
@@ -72,39 +60,26 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         self._groups = {}
         self._rules = {}
 
-        for child_name, tp in get_type_hints(type(self)).items():
+        for child_name, type_hint in get_type_hints(type(self)).items():
             fqcname = (*self._name, child_name)
 
+            tp = _get_type(type_hint)
+
+            if tp is None:
+                continue
+
             if tp == Rule:
-                # Rule[str]
+                # Rule
                 r: Rule[str] = Rule.__new__(Rule)
                 r.__init_partial__(fqcname, self._info, None, self)
                 setattr(self, child_name, r)
                 self._rules[child_name] = r
-            elif hasattr(tp, "__origin__") and tp.__origin__ == Rule:
-                # Rule[Literal[...]]
-                keys = _parse_rule_generic_args(tp.__args__)
-                r: Rule[str] = Rule.__new__(Rule)
-                r.__init_partial__(fqcname, self._info, keys, self)
-                setattr(self, child_name, r)
-                self._rules[child_name] = r
-            elif isinstance(tp, type) and issubclass(tp, IGroup) and tp != IGroup:
-                # StaticGroup
-                g = tp.__create_as_child__(tp, self._info, self, fqcname)
+            elif issubclass(tp, IGroup) and not inspect.isabstract(tp):
+                # Group
+                g = tp.__new__(tp)
+                g.__init_as_child__(self._info, self, fqcname)
                 setattr(self, child_name, g)
                 self._groups[child_name] = g
-            else:
-                origin: object = get_origin(tp)
-                
-                if isinstance(origin, type) and issubclass(origin, IGroup):
-                    g = origin.__create_as_child__(
-                        tp,  # pyright: ignore
-                        self._info,
-                        self,
-                        fqcname
-                    )
-                    setattr(self, child_name, g)
-                    self._groups[child_name] = g
 
     @property
     def name(self) -> str:
@@ -138,13 +113,14 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 
 T_Child = TypeVar("T_Child", bound=IGroup)
+_T_Self = TypeVar("_T_Self", bound="GroupOfGroups[Any]")
 
 class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
     _groups: Dict[str, T_Child]
-    _child_type_hint: Type[T_Child]
+    _child_group_type: Union[None, Type[T_Child]] = None
 
     def __init__(
         self,
@@ -172,45 +148,14 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
 
         info = GroupTreeInfo(writer, memo_factory)
 
-        self.__init_as_child__(child_group_type, info, self, ())
+        self.__init_as_child__(info, self, ())
 
         self.set_prefix(parse_args_prefix(dirname, prefix))
 
-    @classmethod
-    def __create_as_child__(
-        cls,
-        type_hint: Type[IGroup],
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...],
-    ):
-        g = cls.__new__(cls)
-
-        origin = get_origin(type_hint)
-
-        if origin is None or origin is not GroupOfGroups:
-            raise TypeError(
-                "Invalid type hint for GroupOfGroups. "
-                "Type hint for GroupOfGroups must be like GroupOfGroups[...]. "
-                f"Given {type_hint}"
-            )
-
-        type_args = get_args(type_hint)
-
-        if len(type_args) != 1:
-            raise TypeError(
-                "Invalid type hint for GroupOfGroups. "
-                "One type parameter must be given. "
-                "e.g. GroupOfGroups[GroupOfRules]"
-            )
-
-        g.__init_as_child__(type_args[0], info, parent, name)
-
-        return g
+        self.init(child_group_type)
 
     def __init_as_child__(
         self,
-        type_hint: Type[T_Child],
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
@@ -220,9 +165,38 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         self._name = name
         self._groups = {}
 
-        self._child_type_hint = _validate_child_group_type(
-            type_hint
-        )  # pyright: ignore
+
+    def init(
+        self: _T_Self,
+        child_group_type: Type[T_Child],
+        dirname: Optional[StrOrPath] = None,
+        prefix: Optional[StrOrPath] = None,
+    ) -> _T_Self:
+        if self._child_group_type is not None:
+            raise Exception(
+                f"Child group type is already set ({self._child_group_type}). "
+                "group_of_groups.init() may not be invoked if it was created "
+                "as the root node using GroupOfGroups(...)"
+            )
+
+        tp = _get_type(child_group_type)
+
+        if tp is None:
+            raise TypeError(f"{tp} is not a valid type")
+
+        if not issubclass(tp, IGroup):
+            raise TypeError(f"child_group_type must be a subclass of IGroup")
+
+        if inspect.isabstract(tp):
+            raise TypeError(f"child_group_type must not be abstract")
+
+        self._child_group_type = tp  # pyright: ignore
+
+        if dirname is not None or prefix is not None:
+            self.set_prefix(dirname, prefix=prefix)  # pyright: ignore
+
+        return self
+
 
     def add_group(self, name: str) -> T_Child:
         if not isinstance(
@@ -233,11 +207,17 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         if name in self._groups:
             raise KeyError(f"Child group {name} already exists")
 
-        child_t = self._child_type_hint
+        tp = self._child_group_type
 
-        g = child_t.__create_as_child__(
-            child_t, self._info, self, (*self._name, name)
-        )
+        if tp is None:
+            raise Exception(
+                "Child group type must be set before adding children to "
+                "a GroupOfGroups object. "
+                "Please run `this_group.init(SomeChildGroupClass)` first."
+            )
+
+        g = tp.__new__(tp)
+        g.__init_as_child__(self._info, self, (*self._name, name))
 
         self._groups[name] = g
 
@@ -295,19 +275,6 @@ class GroupOfRules(
     _parent: IGroup
     _info: GroupTreeInfo
     _rules: Dict[str, Rule[str]]
-
-    @classmethod
-    def __create_as_child__(
-        cls,
-        type_hint: Type[IGroup],
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...],
-    ):
-        del type_hint
-        g = cls.__new__(cls)
-        g.__init_as_child__(info, parent, name)
-        return g
 
     def __init_as_child__(
         self, info: GroupTreeInfo, parent: IGroup, name: Tuple[str, ...]
@@ -383,19 +350,6 @@ class UntypedGroup(
     _groups: Dict[str, IGroup]
     _rules: Dict[str, Rule[str]]
 
-    @classmethod
-    def __create_as_child__(
-        cls,
-        type_hint: Type[IGroup],
-        info: GroupTreeInfo,
-        parent: IGroup,
-        name: Tuple[str, ...],
-    ):
-        del type_hint
-        g = cls.__new__(cls)
-        g.__init_as_child__(info, parent, name)
-        return g
-
     def __init_as_child__(
         self, info: GroupTreeInfo, parent: IGroup, name: Tuple[str, ...]
     ):
@@ -423,16 +377,21 @@ class UntypedGroup(
     def add_group(
 		self, name: str, child_group_class: Optional[Type[IGroup]] = None
 	) -> IGroup:
-        # This is necessary for Pyright
-        def _as_igroup(a: Type[IGroup]) -> Type[IGroup]:
-            return a
+        if child_group_class is None:
+            tp = UntypedGroup
+        else:
+            tp_ = _get_type(child_group_class)
 
-        child_group_class_ = _as_igroup(child_group_class or UntypedGroup)
+            if tp_ is None:
+                raise TypeError(f"{tp_} is not a valid type")
 
-        if not issubclass(
-            child_group_class_, IGroup
-        ):  # pyright: ignore [reportUnnecessaryIsInstance]
-            raise TypeError("child_group_class must be subclass of IGroup")
+            if not issubclass(tp_, IGroup):
+                raise TypeError(f"child_group_type must be a subclass of IGroup")
+
+            if inspect.isabstract(tp_):
+                raise TypeError(f"child_group_type must not be abstract")
+
+            tp = tp_
 
         if not isinstance(
             name, str
@@ -442,9 +401,8 @@ class UntypedGroup(
         if name in self._groups:
             raise KeyError(f"Child group {name} already exists")
 
-        g = child_group_class_.__create_as_child__(
-            child_group_class_, self._info, self, (*self._name, name)
-        )
+        g = tp.__new__(tp)
+        g.__init_as_child__(self._info, self, (*self._name, name))
 
         self._groups[name] = g
 
@@ -493,62 +451,16 @@ class UntypedGroup(
             return self.rules[k]
 
 
-def _parse_rule_generic_args(
-    args: Tuple[object, ...]
-) -> Union[None, List[str]]:
-    if len(args) != 1:
-        raise TypeError(
-            f"Arguments for a generic Rule must be str or LiteralString. "
-            f"Given {args}"
-        )
+def _get_type(type_hint: Type[object]) -> Union[None, Type[Any]]:
+    """
+    Get instance of `type` from type hint.
+    """
+    if isinstance(type_hint, type):
+        return type_hint
 
-    arg = args[0]
+    origin = get_origin(type_hint)
 
-    if isinstance(arg, type) and issubclass(arg, str):
+    if isinstance(origin, type):
+        return origin
+    else:
         return None
-
-    origin_t = getattr(arg, "__origin__", None)
-
-    if origin_t != Literal:
-        raise TypeError(f"Expected LiteralString. Given {arg}")
-
-    keys = getattr(arg, "__args__", None)
-
-    if not isinstance(keys, Sequence):
-        raise TypeError(f"Invalid type hint {arg}")
-
-    return [
-        _assert_isstr(k)
-        for k in keys  # pyright: ignore [reportUnknownVariableType]
-    ]
-
-
-def _assert_isstr(o: object) -> str:
-    if isinstance(o, str):
-        return o
-    else:
-        raise TypeError("Expected str, given {o}")
-
-
-def _validate_child_group_type(tp: object) -> Type[IGroup]:
-    dummy_g = UntypedGroup()
-    dummy_info = dummy_g._get_info()  # pyright: ignore [reportPrivateUsage]
-
-    if isinstance(tp, type):
-        if issubclass(tp, IGroup):
-            tp.__create_as_child__(tp, dummy_info, dummy_g, ("dummy",))
-        else:
-            raise TypeError("Type of child groups must be a subclass of IGroup")
-
-        return tp
-
-    origin: object = get_origin(tp)
-
-    if not isinstance(origin, type) or not issubclass(origin, IGroup):
-        raise TypeError("Invalid type hint {tp}.")
-    else:
-        origin.__create_as_child__(
-            tp, dummy_info, dummy_g, ("dummy",)  # pyright: ignore
-        )
-
-    return tp  # pyright: ignore
