@@ -1,7 +1,7 @@
 from __future__ import annotations
 from logging import Logger
 from typing import (
-    Any,
+    Dict,
     Mapping,
     Optional,
     Tuple,
@@ -19,8 +19,9 @@ from typing import (
 )
 
 from ..utils.strpath import StrOrPath
+from ..utils.frozen_dict import DictView
 from ..logwriter import Loglevel, WritableProtocol
-from .core import IGroup, GroupTreeInfo, IRule, ItemMap, priv_add_to_itemmap, parse_args_prefix
+from .core import IGroup, GroupTreeInfo, IRule, parse_args_prefix
 from .rule import Rule
 from .group_mixins.basic import (
     BasicMixin,
@@ -41,8 +42,8 @@ V = TypeVar("V")
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
-    _groups: ItemMap[IGroup]
-    _rules: ItemMap[Rule[str]]
+    _groups: Dict[str, IGroup]
+    _rules: Dict[str, Rule[str]]
     _parent: IGroup
 
     @classmethod
@@ -68,8 +69,8 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         self._info = info
         self._name = name
 
-        self._groups = ItemMap()
-        self._rules = ItemMap()
+        self._groups = {}
+        self._rules = {}
 
         for child_name, tp in get_type_hints(type(self)).items():
             fqcname = (*self._name, child_name)
@@ -79,19 +80,19 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 r: Rule[str] = Rule.__new__(Rule)
                 r.__init_partial__(fqcname, self._info, None, self)
                 setattr(self, child_name, r)
-                priv_add_to_itemmap(self._rules, child_name, r)
+                self._rules[child_name] = r
             elif hasattr(tp, "__origin__") and tp.__origin__ == Rule:
                 # Rule[Literal[...]]
                 keys = _parse_rule_generic_args(tp.__args__)
                 r: Rule[str] = Rule.__new__(Rule)
                 r.__init_partial__(fqcname, self._info, keys, self)
                 setattr(self, child_name, r)
-                priv_add_to_itemmap(self._rules, child_name, r)
+                self._rules[child_name] = r
             elif isinstance(tp, type) and issubclass(tp, IGroup) and tp != IGroup:
                 # StaticGroup
                 g = tp.__create_as_child__(tp, self._info, self, fqcname)
                 setattr(self, child_name, g)
-                priv_add_to_itemmap(self._groups, child_name, g)
+                self._groups[child_name] = g
 
 
     @property
@@ -111,11 +112,11 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
-        return self._groups
+        return DictView(self._groups)
 
     @property
     def rules(self) -> Mapping[str, IRule]:
-        return self._rules
+        return DictView(self._rules)
 
     @property
     def name_tuple(self) -> Tuple[str, ...]:
@@ -131,7 +132,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
-    _groups: ItemMap[T_Child]
+    _groups: Dict[str, T_Child]
     _child_type_hint: Type[T_Child]
 
     def __init__(
@@ -206,7 +207,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         self._info = info
         self._parent = parent
         self._name = name
-        self._groups = ItemMap()
+        self._groups = {}
 
         self._child_type_hint = _validate_child_group_type(
             type_hint
@@ -227,7 +228,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
             child_t, self._info, self, (*self._name, name)
         )
 
-        priv_add_to_itemmap(self._groups, name, g)
+        self._groups[name] = g
 
         if name.isidentifier() and name[0] != "_" and not hasattr(self, name):
             setattr(self, name, g)
@@ -252,11 +253,11 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
-        return self._groups
+        return DictView(self._groups)
 
     @property
     def rules(self) -> Mapping[str, IRule]:
-        return {}
+        return DictView({})
 
     def __getitem__(self, k: str) -> T_Child:
         return self._groups[k]
@@ -282,7 +283,7 @@ class GroupOfRules(
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
-    _rules: ItemMap[Rule[str]]
+    _rules: Dict[str, Rule[str]]
 
     @classmethod
     def __create_as_child__(
@@ -303,7 +304,7 @@ class GroupOfRules(
         self._info = info
         self._parent = parent
         self._name = name
-        self._rules = ItemMap()
+        self._rules = {}
 
     def _add_rule_lazy(
         self, name: str, rule_factory: Callable[[], Rule[str]]
@@ -313,7 +314,7 @@ class GroupOfRules(
 
         r = rule_factory()
 
-        priv_add_to_itemmap(self._rules, name, r)
+        self._rules[name] = r
 
         if name.isidentifier() and not hasattr(self, name):
             setattr(self, name, r)
@@ -338,11 +339,11 @@ class GroupOfRules(
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
-        return {}
+        return DictView({})
 
     @property
     def rules(self) -> Mapping[str, IRule]:
-        return self._rules
+        return DictView(self._rules)
 
     def __getitem__(self, k: str) -> Rule[str]:
         return self._rules[k]
@@ -368,8 +369,8 @@ class UntypedGroup(
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
-    _groups: ItemMap[IGroup]
-    _rules: ItemMap[Rule[str]]
+    _groups: Dict[str, IGroup]
+    _rules: Dict[str, Rule[str]]
 
     @classmethod
     def __create_as_child__(
@@ -379,6 +380,7 @@ class UntypedGroup(
         parent: IGroup,
         name: Tuple[str, ...],
     ):
+        del type_hint
         g = cls.__new__(cls)
         g.__init_as_child__(info, parent, name)
         return g
@@ -389,8 +391,8 @@ class UntypedGroup(
         self._info = info
         self._parent = parent
         self._name = name
-        self._groups = ItemMap()
-        self._rules = ItemMap()
+        self._groups = {}
+        self._rules = {}
 
     def _add_rule_lazy(
         self, name: str, rule_factory: Callable[[], Rule[str]]
@@ -400,7 +402,7 @@ class UntypedGroup(
 
         r = rule_factory()
 
-        priv_add_to_itemmap(self._rules, name, r)
+        self._rules[name] = r
 
         if name.isidentifier() and not hasattr(self, name):
             setattr(self, name, r)
@@ -433,7 +435,7 @@ class UntypedGroup(
             child_group_class_, self._info, self, (*self._name, name)
         )
 
-        priv_add_to_itemmap(self._groups, name, g)
+        self._groups[name] = g
 
         if name.isidentifier() and name[0] != "_" and not hasattr(self, name):
             setattr(self, name, g)
@@ -458,11 +460,11 @@ class UntypedGroup(
 
     @property
     def groups(self) -> Mapping[str, IGroup]:
-        return self._groups
+        return DictView(self._groups)
 
     @property
     def rules(self) -> Mapping[str, IRule]:
-        return self._rules
+        return DictView(self._rules)
 
     def _get_info(self) -> GroupTreeInfo:
         return self._info

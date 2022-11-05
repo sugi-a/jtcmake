@@ -407,33 +407,3 @@ def parse_args_prefix(dirname: object, prefix: object) -> str:
 def concat_prefix(base: str, prefix: str) -> str:
     base = os.path.expanduser(base)
     return base if os.path.isabs(base) else prefix + base
-
-
-V = TypeVar("V")
-
-
-class ItemMap(Mapping[str, V]):
-    __slots__ = ["_dic"]
-    _dic: Dict[str, V]
-
-    def __init__(self, dic: Optional[Dict[str, V]] = None):
-        self._dic = {} if dic is None else dic
-
-    def __getitem__(self, k: str):
-        return self._dic[k]
-
-    def __iter__(self):
-        return iter(self._dic)
-
-    def __len__(self):
-        return len(self._dic)
-
-    def __contains__(self, k: object):
-        return k in self._dic
-
-    def _add(self, k: str, v: V):
-        self._dic[k] = v
-
-
-def priv_add_to_itemmap(itemmap: ItemMap[V], k: str, v: V):
-    itemmap._add(k, v)  # pyright: ignore [reportPrivateUsage]

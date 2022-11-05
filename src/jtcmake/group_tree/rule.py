@@ -22,7 +22,7 @@ from typing_extensions import Self, TypeGuard, ParamSpec
 
 from ..core.make import MakeSummary
 
-from ..utils.frozen_dict import FrozenDict
+from ..utils.frozen_dict import DictView
 from ..utils.nest import map_structure_with_set
 from ..utils.strpath import StrOrPath
 from .atom import Atom
@@ -65,7 +65,7 @@ class Rule(IRule, Generic[K]):
     _raw_rule_id: int
     _info: GroupTreeInfo
     _name: Tuple[str]
-    _files: FrozenDict[K, IFile]
+    _files: DictView[K, IFile]
     _xfiles: Sequence[str]
     _file_keys_hint: Optional[List[K]]
     _file_keys: List[K]
@@ -228,7 +228,7 @@ class Rule(IRule, Generic[K]):
 
         # Update self
         self._raw_rule_id = raw_rule.id
-        self._files = FrozenDict(yfiles)
+        self._files = DictView(yfiles)
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
