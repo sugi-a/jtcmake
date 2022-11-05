@@ -261,9 +261,9 @@ class Rule(IRule, Generic[K]):
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]],
+            Sequence[Union[K, PathLike[K]]],
             K,
-            PathLike[Any],
+            PathLike[K],
         ],
         method: Callable[P, object],
     ) -> Callable[P, None]:
