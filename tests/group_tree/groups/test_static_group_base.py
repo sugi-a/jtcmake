@@ -51,14 +51,14 @@ class Static1(StaticGroupBase):
     g1: GroupOfGroups[Static2]
 
     def init(self, text1: str, text2: str) -> Static1:
-        @self.r1.init_deco({"a": "{R}-{F}", "b": "{R}-{F}"})
+        @self.r1.init_deco({"a": "<R>-<F>", "b": "<R>-<F>"})
         def _(  # pyright: ignore [reportUnusedFunction]
             a: Path = SELF.a, b: Path = SELF.b, t1: str = text1, t2: str = text2
         ):
             a.write_text(t1)
             b.write_text(t2)
 
-        self.r2.init("{R}", copy)(self.r1.a, SELF)
+        self.r2.init("<R>", copy)(self.r1.a, SELF)
 
         self.g1.init(Static2)
         self.g1.add_group("sub1").init(self.r1[0])
@@ -71,7 +71,7 @@ class Static2(StaticGroupBase):
     r1: Rule[str]
 
     def init(self, src: Path) -> Static2:
-        self.r1.init({"a": "{F}.txt"}, copy)(src, SELF)
+        self.r1.init({"a": "<F>.txt"}, copy)(src, SELF)
         return self
 
 

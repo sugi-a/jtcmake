@@ -604,8 +604,8 @@ def _assert_signature_match(
         ) from e
 
 
-NAME_REF_RULE = "{R}"
-NAME_REF_FILE = "{F}"
+NAME_REF_RULE = "<R>"
+NAME_REF_FILE = "<F>"
 
 
 def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:

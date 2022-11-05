@@ -195,19 +195,19 @@ def test_replace_obj_by_atom_in_structure():
             {"a": DummyFile("a")},
         ),
         (
-            {"a": "{F}{R}", "b": Path_("{F}{R}")},
+            {"a": "<F><R>", "b": Path_("<F><R>")},
             {"a": DummyFile("ar"), "b": DummyFile("br")},
         ),
         (
-            ["a{R}", Path_("b{R}")],
+            ["a<R>", Path_("b<R>")],
             {"ar": DummyFile("ar"), "br": DummyFile("br")},
         ),
         (
-            ["{F}"],
+            ["<F>"],
             ValueError(),
         ),
         (
-            "{F}",
+            "<F>",
             ValueError(),
         ),
     ],
