@@ -107,7 +107,16 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         kwargs: Dict[str, object],
     ) -> Rule[str]:
         if name in self.rules:
-            raise KeyError(f"Rule {name} already exists in the group")
+            raise KeyError(
+                f"A child rule with the same {name} already exists. "
+                "All child groups and rules must have unique names"
+            )
+
+        if name in self.groups:
+            raise KeyError(
+                f"A child group with the same {name} already exists. "
+                "All child groups and rules must have unique names"
+            )
 
         def _factory() -> Rule[str]:
             r: Rule[str] = Rule.__new__(Rule)

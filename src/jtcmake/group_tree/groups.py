@@ -398,7 +398,16 @@ class UntypedGroup(
             raise TypeError("name must be str")
 
         if name in self._groups:
-            raise KeyError(f"Child group {name} already exists")
+            raise KeyError(
+                f"A child group with the same {name} already exists. "
+                "All child groups and rules must have unique names"
+            )
+
+        if name in self._rules:
+            raise KeyError(
+                f"A child rule with the same {name} already exists. "
+                "All child groups and rules must have unique names"
+            )
 
         g = tp.__new__(tp)
         g.__init_as_child__(self._info, self, (*self._name, name))
