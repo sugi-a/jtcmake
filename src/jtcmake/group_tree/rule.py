@@ -23,10 +23,10 @@ from typing_extensions import Self, TypeGuard, ParamSpec, Concatenate
 from ..core.make import MakeSummary
 
 from ..utils.dict_view import DictView
-from ..utils.nest import map_structure_with_set
+from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
 from .atom import Atom
-from ..rule.file import File, IFile
+from .file import File, IFile
 from .core import (
     IRule,
     GroupTreeInfo,
@@ -542,7 +542,7 @@ def _replace_self(files: Mapping[str, IFile], args: object) -> object:
         else:
             return o
 
-    return map_structure_with_set(repl, args)
+    return map_structure(repl, args)
 
 
 def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
@@ -554,7 +554,7 @@ def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
             if absp in unused:
                 unused.remove(absp)
 
-    map_structure_with_set(check, args)
+    map_structure(check, args)
 
     if len(unused) > 0:
         raise ValueError(
@@ -574,7 +574,7 @@ def _find_xfiles_in_args(
             if absp not in ypaths:
                 res[absp] = v
 
-    map_structure_with_set(check, args)
+    map_structure(check, args)
 
     return res
 
@@ -588,7 +588,7 @@ def _replace_Atom_and_IFile(args: object) -> object:
         else:
             return v
 
-    return map_structure_with_set(repl, args)
+    return map_structure(repl, args)
 
 
 def _assert_signature_match(

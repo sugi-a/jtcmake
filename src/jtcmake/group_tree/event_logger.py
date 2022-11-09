@@ -2,7 +2,7 @@ import inspect, warnings
 from typing import Any, Callable, List, Optional, Sequence, Mapping, Dict, Tuple
 from pathlib import Path
 
-from ..rule.rule import Rule
+from ..raw_rule import Rule
 from ..core.abc import IEvent, IRule
 from ..core import events
 from ..logwriter import IWriter, RichStr

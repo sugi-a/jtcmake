@@ -19,9 +19,9 @@ from typing import (
 from typing_extensions import ParamSpec, Concatenate
 
 from .atom import Atom
-from ..rule.memo.abc import IMemo
-from ..rule.file import IFile
-from ..rule.rule import Rule as _RawRule
+from ..memo.abc import IMemo
+from .file import IFile, VFile
+from ..raw_rule import Rule as _RawRule
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
@@ -171,8 +171,8 @@ class RuleStore:
         yp2f: Mapping[str, IFile],  # abspath(str) => IFile
         xp2f: Mapping[str, IFile],  # abspath(str) => IFile
         method: Callable[..., object],
-        method_args: object,
-        method_kwargs: object,
+        method_args: Tuple[object, ...],
+        method_kwargs: Dict[str, object],
         memo: IMemo,
         name: Tuple[str, ...],
     ) -> _RawRule[int]:
@@ -200,6 +200,7 @@ class RuleStore:
             yfiles=list(yp2f.values()),
             xfiles=list(xp2f.values()),
             xfile_is_orig=[i == -1 for i in xids],
+            xfile_is_vf=[isinstance(f, VFile) for f in xp2f.values()],
             deplist=set(xids) - {-1},
             method=method,
             args=method_args,

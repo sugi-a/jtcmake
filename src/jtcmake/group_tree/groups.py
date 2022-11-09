@@ -11,12 +11,13 @@ from typing import (
     TypeVar,
     Generic,
     Union,
-    Literal,
     Sequence,
     get_origin,
     get_type_hints,
     Callable,
 )
+
+from ..memo.str_hash_memo import StrHashMemo
 
 from ..utils.strpath import StrOrPath
 from ..utils.dict_view import DictView
@@ -26,8 +27,6 @@ from .rule import Rule
 from .group_mixins.basic import (
     BasicMixin,
     BasicInitMixin,
-    MemoKind,
-    parse_args_create_memo_factory,
     basic_init_create_logwriter,
 )
 from .group_mixins.dynamic_container import DynamicRuleContainerMixin
@@ -35,10 +34,7 @@ from .group_mixins.memo import MemoMixin
 from .group_mixins.selector import SelectorMixin
 
 
-TMemoKind = Literal["str_hash", "pickle"]
-
 V = TypeVar("V")
-
 
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
@@ -138,14 +134,12 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
             WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
-        memo_kind: MemoKind = "str_hash",
-        pickle_key: Union[None, str, bytes] = None,
     ):
         writer = basic_init_create_logwriter(
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = parse_args_create_memo_factory(memo_kind, pickle_key)
+        memo_factory = StrHashMemo.create
 
         info = GroupTreeInfo(writer, memo_factory)
 

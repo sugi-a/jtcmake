@@ -1,5 +1,5 @@
 from jtcmake.group_tree.atom import Atom
-from jtcmake.rule.memo.abc import IMemoAtom
+from jtcmake.memo.abc import IMemoAtom
 
 
 def test_atom():

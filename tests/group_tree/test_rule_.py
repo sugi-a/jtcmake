@@ -6,7 +6,7 @@ from collections.abc import Container, Collection, Iterator
 
 import pytest
 
-from jtcmake.rule.file import IFile
+from jtcmake.group_tree.file import IFile
 from jtcmake.group_tree import rule
 from jtcmake.group_tree.atom import Atom
 

@@ -6,7 +6,7 @@ import pathlib
 from typing import Any, Dict, Tuple
 
 from ..utils.strpath import StrOrPath
-from .memo.abc import IMemoAtom, ILazyMemoValue
+from ..memo.abc import IMemoAtom, ILazyMemoValue
 
 
 if sys.platform == "win32":
