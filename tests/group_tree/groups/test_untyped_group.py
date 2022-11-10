@@ -13,7 +13,7 @@ def write(p: Path, c: str):
 
 def test_basic(tmp_path: Path):
     g = UntypedGroup(tmp_path)
-    
+
     g.add("a", write)(SELF, "a")
 
     g.add_group("sub").add("b", write)(SELF, "b")

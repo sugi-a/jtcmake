@@ -20,8 +20,13 @@ from .utils.strpath import StrOrPath
 T = TypeVar("T")
 
 
-def _or(a: T, b: T) -> T:
-    return b if a is None else a
+def _first_non_none(*t: T) -> T:
+    assert len(t) > 0
+    for x in t:
+        if x is not None:
+            return x
+
+    return t[-1]
 
 
 class RichStrAttr(NamedTuple):
@@ -42,13 +47,16 @@ class RichStr(str):
         c: Optional[Tuple[int, int, int]] = None,
         bg: Optional[Tuple[int, int, int]] = None,
         link: Optional[StrOrPath] = None,
+        default: Optional[RichStrAttr] = None,
     ):
-        a1, a2, a3 = None, None, None
+        a = s.attr if isinstance(s, RichStr) else RichStrAttr()
+        b = default or RichStrAttr()
 
-        if isinstance(s, RichStr):
-            a1, a2, a3 = s.attr
-
-        self.attr = RichStrAttr(_or(c, a1), _or(bg, a2), _or(link, a3))
+        self.attr = RichStrAttr(
+            _first_non_none(c, a.c, b.c),
+            _first_non_none(bg, a.bg, b.bg),
+            _first_non_none(link, a.link, b.link),
+        )
 
     def __add__(self, rhs: object):
         if type(rhs) == str:
@@ -159,7 +167,7 @@ class ColorTextWriter(IWriter):
             }
         ).get(level)
 
-        args_ = [RichStr(x, c=color, bg=bgcolor) for x in args]
+        args_ = [RichStr(x, default=RichStrAttr(color, bgcolor)) for x in args]
         self.writable.write(create_color_str(args_) + "\n")
 
 
@@ -229,7 +237,7 @@ class HTMLFileWriterOpenOnDemand(IWriter):
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]
 
-        args_ = [RichStr(x, c=color) for x in args]
+        args_ = [RichStr(x, default=RichStrAttr(color, bgcolor)) for x in args]
 
         with open(self.fname, "a") as f:
             f.write(
@@ -258,7 +266,7 @@ class HTMLJupyterWriter(IWriter):
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]
 
-        args_ = [RichStr(x, c=color) for x in args]
+        args_ = [RichStr(x, default=RichStrAttr(color, bgcolor)) for x in args]
 
         display(
             HTML(

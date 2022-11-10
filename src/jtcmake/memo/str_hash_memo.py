@@ -8,8 +8,9 @@ from .abc import IMemoWrapper, IMemo
 
 MAX_RAW_REPRESENTATION_LEN = 1000
 
+
 class StrHashMemo(IMemoWrapper):
-    __slots__ = ("text")
+    __slots__ = "text"
     text: str
 
     def __init__(self, text: str):
@@ -34,7 +35,7 @@ class StrHashMemo(IMemoWrapper):
     @classmethod
     def create(cls, args: object) -> StrHashMemo:
         return cls(stringify(args, None))
-    
+
 
 def _hash_fn(s: str):
     return sha256(s.encode("utf8")).digest().hex()
@@ -47,13 +48,12 @@ SUPPORTED_ATOM_TYPES = (  # pyright: ignore [reportUnknownVariableType]
     bool,
     bytes,
     bytearray,
-    os.PathLike
+    os.PathLike,
 )
 
 
 def stringify(
-    nest: object,
-    default: Optional[Callable[[object], object]]
+    nest: object, default: Optional[Callable[[object], object]]
 ) -> str:
     def _default(_: object):
         raise TypeError()
@@ -68,7 +68,7 @@ def _stringify(
     nest: object,
     dst: List[str],
     visited_container: Set[int],
-    default: Callable[[object], object]
+    default: Callable[[object], object],
 ) -> None:
     if isinstance(nest, (tuple, list)):
         stringify_sequence(nest, dst, visited_container, default)
@@ -91,7 +91,7 @@ def stringify_sequence(
     nest: Sequence[object],
     dst: List[str],
     visited_container: Set[int],
-    default: Callable[[object], object]
+    default: Callable[[object], object],
 ):
     _check_and_update_visited(nest, visited_container)
 
@@ -106,7 +106,7 @@ def stringify_mapping(
     nest: Mapping[object, object],
     dst: List[str],
     visited_container: Set[int],
-    default: Callable[[object], object]
+    default: Callable[[object], object],
 ):
     _check_and_update_visited(nest, visited_container)
 
@@ -130,7 +130,7 @@ def stringify_set(
     nest: Set[object],
     dst: List[str],
     visited_container: Set[int],
-    default: Callable[[object], object]
+    default: Callable[[object], object],
 ):
     _check_and_update_visited(nest, visited_container)
 
@@ -153,7 +153,7 @@ def stringify_atom(
     atom: object,
     dst: List[str],
     visited_container: Set[int],
-    default: Callable[[object], object]
+    default: Callable[[object], object],
 ):
     """
     atom must not be a container (list/tuple/dict/set)

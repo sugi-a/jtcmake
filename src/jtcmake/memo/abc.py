@@ -9,6 +9,7 @@ from ..utils.nest import ordered_map_structure
 from ..utils.strpath import StrOrPath
 from ..raw_rule import IMemo
 
+
 class IMemoWrapper(IMemo, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
@@ -43,6 +44,7 @@ class ILazyMemo(IMemoWrapper):
     def lazy_memo(self) -> IMemoWrapper:
         ...
 
+
 def create_lazy_memo_type(memo_type: Type[IMemoWrapper]) -> Type[IMemoWrapper]:
     class LazyMemo(ILazyMemo):
         __slots__ = ("_memo", "lazy_args")
@@ -52,7 +54,7 @@ def create_lazy_memo_type(memo_type: Type[IMemoWrapper]) -> Type[IMemoWrapper]:
         def __init__(
             self,
             memo: IMemoWrapper,
-            lazy_args: Union[List[ILazyMemoValue], IMemoWrapper]
+            lazy_args: Union[List[ILazyMemoValue], IMemoWrapper],
         ):
             self._memo = memo
             self.lazy_args = lazy_args
@@ -68,11 +70,12 @@ def create_lazy_memo_type(memo_type: Type[IMemoWrapper]) -> Type[IMemoWrapper]:
                 return self.memo.create(lazy_args)
             else:
                 return self.lazy_args
-            
+
         def compare(self, other: IMemo) -> bool:
             if isinstance(other, ILazyMemo):
-                return self.memo.compare(other.memo) and \
-                    self.lazy_memo.compare(other.lazy_memo)
+                return self.memo.compare(other.memo) and self.lazy_memo.compare(
+                    other.lazy_memo
+                )
             else:
                 return False
 
