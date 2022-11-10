@@ -1,5 +1,5 @@
 from typing import Any
-from ..rule.memo.abc import IMemoAtom
+from ..memo.abc import IMemoAtom
 
 
 class Atom(IMemoAtom):

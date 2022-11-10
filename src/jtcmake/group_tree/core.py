@@ -7,7 +7,6 @@ from typing import (
     Mapping,
     Optional,
     Tuple,
-    Type,
     TypeVar,
     Dict,
     Union,
@@ -20,9 +19,9 @@ from typing import (
 from typing_extensions import ParamSpec, Concatenate
 
 from .atom import Atom
-from ..rule.memo.abc import IMemo
-from ..rule.file import IFile
-from ..rule.rule import Rule as _RawRule
+from ..memo.abc import IMemo
+from .file import IFile, VFile
+from ..raw_rule import Rule as _RawRule
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
@@ -49,26 +48,29 @@ class INode(metaclass=ABCMeta):
 
 T_Self = TypeVar("T_Self", bound="IGroup")
 
+
 class IGroup(INode, metaclass=ABCMeta):
     __prefix: Union[None, str] = None
 
-    @classmethod
     @abstractmethod
-    def __create_as_child__(
-        cls: Type[T_Self],
-        type_hint: Type[T_Self],
+    def __init_as_child__(
+        self,
         info: GroupTreeInfo,
         parent: IGroup,
         name: Tuple[str, ...],
+    ):
+        ...
+
+    @overload
+    def set_prefix(
+        self: T_Self, dirname: StrOrPath, *, prefix: None = None
     ) -> T_Self:
         ...
 
     @overload
-    def set_prefix(self: T_Self, dirname: StrOrPath) -> T_Self:
-        ...
-
-    @overload
-    def set_prefix(self: T_Self, *, prefix: StrOrPath) -> T_Self:
+    def set_prefix(
+        self: T_Self, dirname: None = None, *, prefix: StrOrPath
+    ) -> T_Self:
         ...
 
     @final
@@ -169,8 +171,8 @@ class RuleStore:
         yp2f: Mapping[str, IFile],  # abspath(str) => IFile
         xp2f: Mapping[str, IFile],  # abspath(str) => IFile
         method: Callable[..., object],
-        method_args: object,
-        method_kwargs: object,
+        method_args: Tuple[object, ...],
+        method_kwargs: Dict[str, object],
         memo: IMemo,
         name: Tuple[str, ...],
     ) -> _RawRule[int]:
@@ -198,6 +200,7 @@ class RuleStore:
             yfiles=list(yp2f.values()),
             xfiles=list(xp2f.values()),
             xfile_is_orig=[i == -1 for i in xids],
+            xfile_is_vf=[isinstance(f, VFile) for f in xp2f.values()],
             deplist=set(xids) - {-1},
             method=method,
             args=method_args,
@@ -358,6 +361,7 @@ def get_group_info_of_nodes(nodes: Sequence[INode]) -> GroupTreeInfo:
 
     return info
 
+
 def gather_raw_rule_ids(
     group_or_rules: Sequence[Union[IGroup, IRule]]
 ) -> List[int]:
@@ -407,33 +411,3 @@ def parse_args_prefix(dirname: object, prefix: object) -> str:
 def concat_prefix(base: str, prefix: str) -> str:
     base = os.path.expanduser(base)
     return base if os.path.isabs(base) else prefix + base
-
-
-V = TypeVar("V")
-
-
-class ItemMap(Mapping[str, V]):
-    __slots__ = ["_dic"]
-    _dic: Dict[str, V]
-
-    def __init__(self, dic: Optional[Dict[str, V]] = None):
-        self._dic = {} if dic is None else dic
-
-    def __getitem__(self, k: str):
-        return self._dic[k]
-
-    def __iter__(self):
-        return iter(self._dic)
-
-    def __len__(self):
-        return len(self._dic)
-
-    def __contains__(self, k: object):
-        return k in self._dic
-
-    def _add(self, k: str, v: V):
-        self._dic[k] = v
-
-
-def priv_add_to_itemmap(itemmap: ItemMap[V], k: str, v: V):
-    itemmap._add(k, v)  # pyright: ignore [reportPrivateUsage]

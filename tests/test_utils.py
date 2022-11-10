@@ -21,4 +21,3 @@ def add1(x):
 def test_map_structure(x, x2):
     assert map_structure(lambda x: x, x) == x
     assert map_structure(lambda x: 2 * x, x) == x2
-

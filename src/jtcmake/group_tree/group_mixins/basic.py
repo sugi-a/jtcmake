@@ -3,23 +3,21 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from logging import Logger
 from typing import (
-    Callable,
     Optional,
     Tuple,
     TypeVar,
     Union,
-    Literal,
     Sequence,
     List,
 )
+
+from jtcmake.memo.abc import create_lazy_memo_type
 
 from ...core.make import MakeSummary
 
 from .selector import get_offspring_groups
 
-from ...rule.memo.abc import IMemo
-from ...rule.memo.pickle_memo import PickleMemo
-from ...rule.memo.str_hash_memo import StrHashMemo
+from ...memo.str_hash_memo import StrHashMemo
 from ...logwriter import (
     Loglevel,
     WritableProtocol,
@@ -37,8 +35,6 @@ from ...logwriter import (
 from ..core import IGroup, GroupTreeInfo, make, parse_args_prefix
 from ...utils.strpath import StrOrPath
 
-
-MemoKind = Literal["str_hash", "pickle"]
 
 T = TypeVar("T")
 
@@ -58,14 +54,12 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
-        memo_kind: MemoKind = "str_hash",
-        pickle_key: Union[None, str, bytes] = None,
     ):
         writer = basic_init_create_logwriter(
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = parse_args_create_memo_factory(memo_kind, pickle_key)
+        memo_factory = create_lazy_memo_type(StrHashMemo).create
 
         info = GroupTreeInfo(writer, memo_factory)
 
@@ -199,37 +193,3 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
         return ColorTextWriter(sys.stderr, loglevel)
     else:
         return TextWriter(sys.stderr, loglevel)
-
-
-def parse_args_create_memo_factory(
-    kind: object, pickle_key: object
-) -> Callable[[object], IMemo]:
-    if kind == "str_hash":
-        if pickle_key is not None:
-            raise TypeError(
-                "pickle_key must not be specified for " "str_hash memoization"
-            )
-        return StrHashMemo
-    elif kind == "pickle":
-        if pickle_key is None:
-            raise TypeError("pickle_key must be specified")
-
-        if isinstance(pickle_key, str):
-            try:
-                pickle_key_ = bytes.fromhex(pickle_key)
-            except ValueError as e:
-                raise ValueError(
-                    "If given as str, pickle_key must be a hexadecimal string"
-                ) from e
-        elif isinstance(pickle_key, bytes):
-            pickle_key_ = pickle_key
-        else:
-            raise TypeError("pickle_key must be bytes or hexadecimal str")
-
-        def _memo_factory_pickle(args: object) -> IMemo:
-            return PickleMemo(args, pickle_key_)
-
-        return _memo_factory_pickle
-    else:
-        raise TypeError('memo kind must be "str_hash" or "pickle"')
-

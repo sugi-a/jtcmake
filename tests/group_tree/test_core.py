@@ -9,17 +9,16 @@ from jtcmake.group_tree.core import (
     IGroup,
     INode,
     IRule,
-    ItemMap,
     get_group_info_of_nodes,
     parse_args_prefix,
     concat_prefix,
-    priv_add_to_itemmap,
-    gather_raw_rule_ids
+    gather_raw_rule_ids,
 )
 
 
 class Path_:
     """Dummy object to represent an os.PathLike object"""
+
     def __init__(self, p):
         self.p = p
 
@@ -27,13 +26,16 @@ class Path_:
         return self.p
 
 
-@pytest.mark.parametrize("dirname,prefix,expect", [
-    (None, "a", "a"),
-    (None, Path_("a"), "a"),
-    ("a", None, "a" + os.path.sep),
-    (Path_("a"), None, "a" + os.path.sep),
-    ("a", "a", TypeError),
-])
+@pytest.mark.parametrize(
+    "dirname,prefix,expect",
+    [
+        (None, "a", "a"),
+        (None, Path_("a"), "a"),
+        ("a", None, "a" + os.path.sep),
+        (Path_("a"), None, "a" + os.path.sep),
+        ("a", "a", TypeError),
+    ],
+)
 def test_parse_args_prefix(dirname, prefix, expect):
     if isinstance(expect, str):
         assert parse_args_prefix(dirname, prefix) == expect
@@ -42,23 +44,16 @@ def test_parse_args_prefix(dirname, prefix, expect):
             parse_args_prefix(dirname, prefix)
 
 
-@pytest.mark.parametrize("base,prefix,expect", [
-    ("a", "b", "ba"),
-    (os.path.abspath("a"), "b", os.path.abspath("a")),
-    ("~/a", "b", os.path.expanduser("~/a")),
-])
+@pytest.mark.parametrize(
+    "base,prefix,expect",
+    [
+        ("a", "b", "ba"),
+        (os.path.abspath("a"), "b", os.path.abspath("a")),
+        ("~/a", "b", os.path.expanduser("~/a")),
+    ],
+)
 def test_concat_prefix(base, prefix, expect):
     concat_prefix(base, prefix) == expect
-
-
-def test_ItemMap():
-    m = ItemMap()
-
-    assert list(m.items()) == []
-    
-    priv_add_to_itemmap(m, "a", 1)
-
-    assert list(m.items()) == [("a", 1)]
 
 
 def test_gather_raw_rule_ids(mocker):

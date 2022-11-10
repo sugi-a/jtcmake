@@ -23,6 +23,9 @@ dynamic = ["version"]
 [tool.setuptools]
 package-dir = { "" = "src" }
 
+[tool.setuptools.package-data]
+jtcmake = ["py.typed"]
+
 [tool.setuptools.dynamic]
 version = { attr = "jtcmake.VERSION" }
 
@@ -33,7 +36,7 @@ line-length = 80
 
 [tool.pyright]
 include = ["src/jtcmake"]
-pythonVersion = "3.11"
+pythonVersion = "3.8"
 typeCheckingMode = "strict"
 reportUnknownArgumentType = "none"
 
@@ -41,7 +44,7 @@ reportUnknownArgumentType = "none"
 testpaths = [ "tests" ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.8"
 files = ["src/jtcmake"]
 
 [[tool.mypy.overrides]]

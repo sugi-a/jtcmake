@@ -4,7 +4,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-class FrozenDict(Mapping[K, V]):
+class DictView(Mapping[K, V]):
     def __init__(self, dic: Mapping[K, V]):
         self._dic = dic
 
@@ -21,4 +21,4 @@ class FrozenDict(Mapping[K, V]):
         return key in self._dic
 
     def __repr__(self) -> str:
-        return f"FrozenDict{dict(self)}"
+        return f"{self.__class__.__name__}{dict(self)}"

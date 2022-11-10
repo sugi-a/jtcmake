@@ -5,6 +5,7 @@ from typing_extensions import TypeAlias
 
 StrOrPath: TypeAlias = "Union[str, PathLike[str]]"
 
+
 def fspath2str(p: object) -> str:
     if isinstance(p, str):
         return p

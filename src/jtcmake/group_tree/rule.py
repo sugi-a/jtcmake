@@ -18,16 +18,23 @@ from typing import (
     Collection,
     Container,
 )
-from typing_extensions import Self, TypeGuard, ParamSpec
+from typing_extensions import Self, TypeGuard, ParamSpec, Concatenate
 
 from ..core.make import MakeSummary
 
-from ..utils.frozen_dict import FrozenDict
-from ..utils.nest import map_structure_with_set
+from ..utils.dict_view import DictView
+from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
 from .atom import Atom
-from ..rule.file import File, IFile
-from .core import IRule, GroupTreeInfo, IGroup, concat_prefix, require_tree_init, make
+from .file import File, IFile
+from .core import (
+    IRule,
+    GroupTreeInfo,
+    IGroup,
+    concat_prefix,
+    require_tree_init,
+    make,
+)
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
@@ -60,12 +67,30 @@ class SelfRule:
 
 SELF: Any = SelfRule()
 
+_T_Rule = TypeVar("_T_Rule", bound=IRule)
+
+
+def require_init(
+    rule_method: Callable[Concatenate[_T_Rule, P], T]
+) -> Callable[Concatenate[_T_Rule, P], T]:
+    def _method(self: _T_Rule, *args: P.args, **kwargs: P.kwargs) -> T:
+        info = self._get_info()  # pyright: ignore [reportPrivateUsage]
+
+        if self.name_tuple in info.rules_to_be_init:
+            raise Exception(
+                "Rule must be initialized before calling this method"
+            )
+
+        return rule_method(self, *args, **kwargs)
+
+    return _method
+
 
 class Rule(IRule, Generic[K]):
     _raw_rule_id: int
     _info: GroupTreeInfo
     _name: Tuple[str]
-    _files: FrozenDict[K, IFile]
+    _files: DictView[K, IFile]
     _xfiles: Sequence[str]
     _file_keys_hint: Optional[List[K]]
     _file_keys: List[K]
@@ -93,6 +118,9 @@ class Rule(IRule, Generic[K]):
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
     ):
+        if self.initialized:
+            raise RuntimeError("Already initialized")
+
         self._init_main(yfiles, method, args, kwargs)
         self._info.rules_to_be_init.remove(self._name)
 
@@ -117,13 +145,13 @@ class Rule(IRule, Generic[K]):
 
     @property
     def initialized(self) -> bool:
-        return self._name in self._info.rules_to_be_init
+        return self._name not in self._info.rules_to_be_init
 
-    @require_tree_init
+    @require_init
     def __getattr__(self, key: K) -> IFile:
         return self.__getitem__(key)
 
-    @require_tree_init
+    @require_init
     def __getitem__(self, key: Union[int, K]) -> IFile:
         if isinstance(key, int):
             return self._files[self._file_keys[key]]
@@ -181,9 +209,6 @@ class Rule(IRule, Generic[K]):
         args: object,
         kwargs: object,
     ):
-        if self.initialized:
-            raise RuntimeError("Already initialized")
-
         args_ = (args, kwargs)
 
         # Add path prefix
@@ -228,7 +253,7 @@ class Rule(IRule, Generic[K]):
 
         # Update self
         self._raw_rule_id = raw_rule.id
-        self._files = FrozenDict(yfiles)
+        self._files = DictView(yfiles)
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
@@ -236,9 +261,9 @@ class Rule(IRule, Generic[K]):
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]],
+            Sequence[Union[K, PathLike[K]]],
             K,
-            PathLike[Any],
+            PathLike[K],
         ],
         method: Callable[P, object],
     ) -> Callable[P, None]:
@@ -280,7 +305,7 @@ class Rule(IRule, Generic[K]):
         return self._info
 
     @property
-    @require_tree_init
+    @require_init
     def raw_rule_id(self) -> int:
         return self._raw_rule_id
 
@@ -320,12 +345,12 @@ class Rule(IRule, Generic[K]):
         return self._name
 
     @property
-    @require_tree_init
+    @require_init
     def files(self) -> Mapping[K, IFile]:
         return self._files
 
     @property
-    @require_tree_init
+    @require_init
     def xfiles(self) -> Collection[str]:
         return self._xfiles
 
@@ -372,6 +397,7 @@ def _validate_str(s: object, err_msg: str) -> str:
 
 T_type = TypeVar("T_type")
 
+
 def _validate_type(tp: Tuple[type[T_type], ...], o: object, msg: str) -> T_type:
     if isinstance(o, tp):
         return o  # pyright: ignore
@@ -404,12 +430,14 @@ def parse_args_output_files(
 ) -> Dict[K, IFile]:
     if isinstance(output_files, (tuple, list)):
         output_files_str = map(_pathlike_to_str, output_files)
-        output_files_str = \
-            (_repl_name_ref(p, rule_name, None) for p in output_files_str)
+        output_files_str = (
+            _repl_name_ref(p, rule_name, None) for p in output_files_str
+        )
         outs: Dict[str, IFile] = {
             v: _to_IFile(f, IFile_factory).copy_with(v)
-            for v, f  # pyright: ignore [reportUnknownVariableType]
-            in zip(output_files_str, output_files)
+            for v, f in zip(  # pyright: ignore [reportUnknownVariableType]
+                output_files_str, output_files
+            )
         }
     elif isinstance(output_files, (str, os.PathLike)):
         k = _pathlike_to_str(output_files)
@@ -422,15 +450,16 @@ def parse_args_output_files(
             for k in output_files_
         ]
         files_str = map(_pathlike_to_str, output_files_.values())
-        files_str = \
-            (_repl_name_ref(f, rule_name, k) for k, f in zip(keys, files_str))
+        files_str = (
+            _repl_name_ref(f, rule_name, k) for k, f in zip(keys, files_str)
+        )
 
         files = (
             _to_IFile(f, IFile_factory).copy_with(sf)
             for f, sf in zip(output_files_.values(), files_str)
         )
-        
-        outs = { k: _to_IFile(f, IFile_factory)  for k, f in zip(keys, files) }
+
+        outs = {k: _to_IFile(f, IFile_factory) for k, f in zip(keys, files)}
     else:
         raise TypeError(
             "output_files must be str | PathLike | Sequence[str|PathLike] "
@@ -513,7 +542,7 @@ def _replace_self(files: Mapping[str, IFile], args: object) -> object:
         else:
             return o
 
-    return map_structure_with_set(repl, args)
+    return map_structure(repl, args)
 
 
 def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
@@ -525,7 +554,7 @@ def _assert_all_yfiles_used_in_args(ypaths: Collection[str], args: object):
             if absp in unused:
                 unused.remove(absp)
 
-    map_structure_with_set(check, args)
+    map_structure(check, args)
 
     if len(unused) > 0:
         raise ValueError(
@@ -545,7 +574,7 @@ def _find_xfiles_in_args(
             if absp not in ypaths:
                 res[absp] = v
 
-    map_structure_with_set(check, args)
+    map_structure(check, args)
 
     return res
 
@@ -559,7 +588,7 @@ def _replace_Atom_and_IFile(args: object) -> object:
         else:
             return v
 
-    return map_structure_with_set(repl, args)
+    return map_structure(repl, args)
 
 
 def _assert_signature_match(
@@ -575,8 +604,9 @@ def _assert_signature_match(
         ) from e
 
 
-NAME_REF_RULE = "{R}"
-NAME_REF_FILE = "{F}"
+NAME_REF_RULE = "<R>"
+NAME_REF_FILE = "<F>"
+
 
 def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     def _repl(m: re.Match[str]) -> str:
@@ -595,4 +625,4 @@ def _repl_name_ref(src: str, rule_name: str, file_key: Optional[str]) -> str:
     pattern = f"{re.escape(NAME_REF_RULE)}|{re.escape(NAME_REF_FILE)}"
 
     a = re.sub(pattern, _repl, src)
-    return a 
+    return a

@@ -126,7 +126,7 @@ def gen_dot_code(
         par_prefix = os.path.abspath(par_prefix + "_")[:-1]
 
         for yf in r.files.values():
-            fid[str(yf)] = len(fid)
+            fid[os.path.abspath(yf)] = len(fid)
 
             p = os.path.abspath(yf)
             if par_prefix != "" and p[: len(par_prefix)] == par_prefix:
@@ -135,7 +135,7 @@ def gen_dot_code(
                 p = str(yf)
 
             res.append(
-                idt + f"  f{fid[str(yf)]} ["
+                idt + f"  f{fid[os.path.abspath(yf)]} ["
                 f'label=<<FONT FACE="monospace">{escape(p)}</FONT>>; '
                 f"style=filled; "
                 f"color=white; "
@@ -149,7 +149,7 @@ def gen_dot_code(
     rec_group(group, "  ", "")
 
     for r in rid.keys():
-        f0 = str(next(iter(r.files.values())))
+        f0 = os.path.abspath(next(iter(r.files.values())))
         for xf in r.xfiles:
             if xf not in fid:
                 fid[xf] = len(fid)
