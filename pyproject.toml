@@ -23,6 +23,9 @@ dynamic = ["version"]
 [tool.setuptools]
 package-dir = { "" = "src" }
 
+[tool.setuptools.package-data]
+jtcmake = ["py.typed"]
+
 [tool.setuptools.dynamic]
 version = { attr = "jtcmake.VERSION" }
 
