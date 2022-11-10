@@ -11,6 +11,8 @@ from typing import (
     List,
 )
 
+from jtcmake.memo.abc import create_lazy_memo_type
+
 from ...core.make import MakeSummary
 
 from .selector import get_offspring_groups
@@ -57,7 +59,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = StrHashMemo.create
+        memo_factory = create_lazy_memo_type(StrHashMemo).create
 
         info = GroupTreeInfo(writer, memo_factory)
 
