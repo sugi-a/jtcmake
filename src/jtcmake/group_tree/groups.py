@@ -450,6 +450,14 @@ class UntypedGroup(
         else:
             return self.rules[k]
 
+    def __getattr__(self, __name: str) -> Any:
+        if __name in self.groups:
+            return self.groups[__name]
+        elif __name in self.rules:
+            return self.rules[__name]
+        else:
+            raise KeyError(f"No child group or rule named {__name}")
+
 
 def _get_type(type_hint: Type[object]) -> Union[None, Type[Any]]:
     """
