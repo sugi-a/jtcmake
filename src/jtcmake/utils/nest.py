@@ -70,5 +70,3 @@ def ordered_map_structure(
         return map_fn(nest)
 
     return rec(nest)
-
-

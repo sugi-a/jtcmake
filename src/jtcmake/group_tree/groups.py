@@ -36,6 +36,7 @@ from .group_mixins.selector import SelectorMixin
 
 V = TypeVar("V")
 
+
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     _info: GroupTreeInfo
     _name: Tuple[str, ...]

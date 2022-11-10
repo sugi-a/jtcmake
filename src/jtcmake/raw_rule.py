@@ -2,11 +2,22 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
-from typing import Callable, Generic, Optional, Sequence, Set, Tuple, TypeVar, Dict, Collection
+from typing import (
+    Callable,
+    Generic,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Dict,
+    Collection,
+)
 
 from .utils.strpath import StrOrPath
 
 from .core.abc import IRule, UpdateResults, TUpdateResult, Callback
+
 
 class IMemo(metaclass=ABCMeta):
     @abstractmethod
@@ -21,8 +32,6 @@ class IMemo(metaclass=ABCMeta):
     @abstractmethod
     def load(cls, path: StrOrPath) -> IMemo:
         ...
-
-
 
 
 TId = TypeVar("TId")
@@ -94,14 +103,14 @@ class Rule(IRule, Generic[TId]):
 
         for func in funcs:
             res = func(
-                ys = self.yfiles,
-                xs = self.xfiles,
-                xisorig = self.xfile_is_orig,
-                xisvf = self.xfile_is_vf,
+                ys=self.yfiles,
+                xs=self.xfiles,
+                xisorig=self.xfile_is_orig,
+                xisvf=self.xfile_is_vf,
                 dry_run=dry_run,
                 par_updated=par_updated,
                 memo=self.memo,
-                old_memo_file=self.metadata_fname
+                old_memo_file=self.metadata_fname,
             )
             if res is not None:
                 return res
@@ -164,7 +173,6 @@ class Rule(IRule, Generic[TId]):
         return self._id
 
 
-
 def _check_update_1(
     xs: Sequence[Path],
     xisorig: Sequence[bool],
@@ -174,9 +182,7 @@ def _check_update_1(
     for f, isorig in zip(xs, xisorig):
         if not f.exists():
             if not dry_run or isorig:
-                return UpdateResults.Infeasible(
-                    f"Input file {f} is missing"
-                )
+                return UpdateResults.Infeasible(f"Input file {f} is missing")
         elif os.path.getmtime(f) == 0:
             if not dry_run or isorig:
                 return UpdateResults.Infeasible(
@@ -196,6 +202,7 @@ def _check_update_2(
     if any(os.path.getmtime(f) == 0 for f in ys):
         return UpdateResults.Necessary()
 
+
 def _check_update_3(
     dry_run: bool, par_updated: bool, **_: object
 ) -> Optional[TUpdateResult]:
@@ -211,6 +218,7 @@ def _check_update_4(
     oldest_y = min(os.path.getmtime(f) for f in ys)
     if any(not isvf and getmtime(x) > oldest_y for x, isvf in zip(xs, xisvf)):
         return UpdateResults.Necessary()
+
 
 def _check_update_5(
     memo: IMemo, old_memo_file: StrOrPath, **_: object

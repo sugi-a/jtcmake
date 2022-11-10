@@ -55,7 +55,7 @@ class RichStr(str):
         self.attr = RichStrAttr(
             _first_non_none(c, a.c, b.c),
             _first_non_none(bg, a.bg, b.bg),
-            _first_non_none(link, a.link, b.link)
+            _first_non_none(link, a.link, b.link),
         )
 
     def __add__(self, rhs: object):
