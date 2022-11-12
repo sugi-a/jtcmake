@@ -43,6 +43,13 @@ class INode(metaclass=ABCMeta):
     def name_tuple(self) -> Tuple[str, ...]:
         ...
 
+    @property
+    def name(self) -> str:
+        if len(self.name_tuple) == 0:
+            return "/"
+        else:
+            return "/" + "/".join(self.name_tuple)
+
 
 T_Self = TypeVar("T_Self", bound="IGroup")
 
