@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-import os
+import os, itertools
 from typing import (
     Callable,
     Collection,
@@ -303,8 +303,13 @@ def require_tree_init(
         info = self._get_info()  # pyright: ignore [reportPrivateUsage]
 
         if len(info.rules_to_be_init) != 0:
+            top10names = itertools.islice(info.rules_to_be_init, 10)
+            top10names = ["/" + "/".join(n) for n in top10names]
             raise RuntimeError(
-                "Rule must be initialized before calling this method"
+                "All rules in the group tree must be initialized "
+                f"before calling this method. {len(info.rules_to_be_init)} "
+                f"rules are not initialized. {len(top10names)} of them are: \n"
+                + "\n".join(top10names)
             )
         return method(self, *args, **kwargs)
 
