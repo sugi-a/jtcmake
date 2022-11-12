@@ -18,7 +18,7 @@ from typing import (
     Collection,
     Container,
 )
-from typing_extensions import Self, TypeGuard, ParamSpec, Concatenate
+from typing_extensions import TypeGuard, ParamSpec, Concatenate
 
 from ..core.make import MakeSummary
 
@@ -133,7 +133,7 @@ class Rule(IRule, Generic[K]):
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
-    ) -> Self:
+    ) -> Rule[K]:
         self._info = group_tree_info
         self._name = name
         self._file_keys_hint = None
