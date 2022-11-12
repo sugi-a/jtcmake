@@ -19,9 +19,7 @@ from typing import (
 from typing_extensions import ParamSpec, Concatenate
 from pathlib import Path
 
-from .atom import Atom
-from ..memo.abc import IMemo, IMemoAtom
-from ..raw_rule import Rule as _RawRule
+from ..raw_rule import Rule as _RawRule, IMemo
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
@@ -144,7 +142,14 @@ class IRule(INode, metaclass=ABCMeta):
         ...
 
 
-class IFile(Path, IMemoAtom, metaclass=ABCMeta):
+class IAtom(metaclass=ABCMeta):
+    @property
+    @abstractmethod
+    def value(self) -> object:
+        ...
+
+
+class IFile(Path, metaclass=ABCMeta):
     """
     Abstract base class to represent a file object.
     """
@@ -266,7 +271,7 @@ class GroupTreeInfo:
     rule_store: RuleStore
     logwriter: IWriter
     memo_factory: Callable[[object], IMemo]
-    memo_store: Dict[int, Atom]
+    memo_store: Dict[int, IAtom]
     rules_to_be_init: Set[Tuple[str, ...]]
 
     def __init__(

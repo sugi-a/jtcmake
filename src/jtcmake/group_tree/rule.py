@@ -35,6 +35,7 @@ from .core import (
     require_tree_init,
     make,
     IFile,
+    IAtom,
 )
 
 K = TypeVar("K", bound=str)
@@ -496,7 +497,7 @@ def _normalize_path(p: str, pfx: str) -> str:
 
 
 def _replace_obj_by_atom_in_structure(
-    memo_store: Mapping[int, Atom], args: object
+    memo_store: Mapping[int, IAtom], args: object
 ) -> object:
     def _rec(o: object) -> object:
         if id(o) in memo_store:

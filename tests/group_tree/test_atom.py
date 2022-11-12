@@ -1,5 +1,4 @@
-from jtcmake.group_tree.atom import Atom
-from jtcmake.memo.abc import IMemoAtom
+from jtcmake.group_tree.atom import Atom, IMemoAtom
 
 
 def test_atom():

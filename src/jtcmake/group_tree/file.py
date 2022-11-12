@@ -5,8 +5,9 @@ import pathlib
 from typing import Dict, Tuple
 
 from ..utils.strpath import StrOrPath
-from ..memo.abc import ILazyMemoValue
+from ..memo import ILazyMemoValue
 from .core import IFile
+from .atom import IMemoAtom
 
 
 if sys.platform == "win32":
@@ -27,10 +28,6 @@ class File(_Path, IFile):
     updated.
     """
 
-    @property
-    def memo_value(self) -> object:
-        return None
-
     def is_value_file(self) -> bool:
         return False
 
@@ -45,7 +42,7 @@ class _ContentHash(ILazyMemoValue):
         return get_hash(self.path)
 
 
-class VFile(_Path, IFile):
+class VFile(_Path, IFile, IMemoAtom):
     """
     An instance of this class represents a value file, which can be
     an input or output of rules.
