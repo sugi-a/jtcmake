@@ -143,19 +143,22 @@ def basic_init_create_logwriter(
             f"Given {use_default_logger}"
         )
 
-    if logfile is None:
-        logfile_: Sequence[object] = []
-    else:
-        logfile_: Sequence[object] = (
-            logfile if isinstance(logfile, Sequence) else [logfile]
-        )
-
-    writers: List[IWriter] = [create_logwriter(f, loglevel) for f in logfile_]
+    writers = create_logwriter_list(loglevel, logfile)
 
     if use_default_logger:
         writers.append(create_default_logwriter(loglevel))
 
     return WritersWrapper(writers)
+
+
+def create_logwriter_list(loglevel: Loglevel, logfile: object) -> List[IWriter]:
+    if logfile is None:
+        return []
+    elif isinstance(logfile, (list, tuple)):
+        logfile_: Sequence[object] = logfile
+        return [create_logwriter(f, loglevel) for f in logfile_]
+    else:
+        return [create_logwriter(logfile, loglevel)]
 
 
 def create_logwriter(f: object, loglevel: Loglevel) -> IWriter:
