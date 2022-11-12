@@ -11,7 +11,7 @@ from typing import (
     List,
 )
 
-from jtcmake.memo.abc import create_lazy_memo_type
+from ...memo.abc import create_lazy_memo_type
 
 from ...core.make import MakeSummary
 
