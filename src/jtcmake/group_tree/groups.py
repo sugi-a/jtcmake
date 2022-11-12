@@ -110,8 +110,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 
 T_Child = TypeVar("T_Child", bound=IGroup)
-_T_Self = TypeVar("_T_Self", bound="GroupOfGroups[Any]")
-
 
 class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
     _name: Tuple[str, ...]
@@ -162,11 +160,11 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         self._groups = {}
 
     def init(
-        self: _T_Self,
+        self,
         child_group_type: Type[T_Child],
         dirname: Optional[StrOrPath] = None,
         prefix: Optional[StrOrPath] = None,
-    ) -> _T_Self:
+    ) -> GroupOfGroups[T_Child]:
         if self._child_group_type is not None:
             raise Exception(
                 f"Child group type is already set ({self._child_group_type}). "
