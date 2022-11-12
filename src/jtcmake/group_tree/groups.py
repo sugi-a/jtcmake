@@ -234,7 +234,7 @@ class GroupOfGroups(BasicMixin, SelectorMixin, MemoMixin, Generic[T_Child]):
         return self._parent
 
     @property
-    def groups(self) -> Mapping[str, IGroup]:
+    def groups(self) -> Mapping[str, T_Child]:
         return DictView(self._groups)
 
     @property
