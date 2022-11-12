@@ -1,14 +1,20 @@
 # type: ignore
 from __future__ import annotations
-import os
-from pathlib import Path
+import os, sys
+from pathlib import Path, WindowsPath, PosixPath
 from collections.abc import Container, Collection, Iterator
 
 import pytest
 
-from jtcmake.group_tree.file import IFile
+from jtcmake.group_tree.core import IFile
 from jtcmake.group_tree import rule
 from jtcmake.group_tree.atom import Atom
+
+
+if sys.platform == "win32":
+    _Path = WindowsPath
+else:
+    _Path = PosixPath
 
 
 class Path_:
@@ -21,8 +27,9 @@ class Path_:
         return self.p
 
 
-class DummyFile(IFile):
+class DummyFile(_Path, IFile):
     """Fake object to represent an IFile object"""
+
     @property
     def memo_value(self):
         ...
@@ -31,7 +38,7 @@ class DummyFile(IFile):
         return False
 
 
-class DummyFile2(IFile):
+class DummyFile2(_Path, IFile):
     """Fake object to represent an IFile object"""
 
     @property

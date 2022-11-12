@@ -16,8 +16,8 @@ from typing import (
 
 from typing_extensions import ParamSpec
 
-from ..file import IFile, File
-from ..core import IGroup
+from ..file import File
+from ..core import IGroup, IFile
 from ..rule import parse_args_output_files, Rule_init_parse_deco_func, Rule
 from ...utils.strpath import StrOrPath
 

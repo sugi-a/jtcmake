@@ -17,10 +17,10 @@ from typing import (
     final,
 )
 from typing_extensions import ParamSpec, Concatenate
+from pathlib import Path
 
 from .atom import Atom
-from ..memo.abc import IMemo
-from .file import IFile
+from ..memo.abc import IMemo, IMemoAtom
 from ..raw_rule import Rule as _RawRule
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
@@ -142,6 +142,31 @@ class IRule(INode, metaclass=ABCMeta):
         self, file: bool, memo: bool, create: bool, t: Union[float, None]
     ) -> None:
         ...
+
+
+class IFile(Path, IMemoAtom, metaclass=ABCMeta):
+    """
+    Abstract base class to represent a file object.
+    """
+
+    """
+    For implementors of this ABC:
+        It is highly recommended not to have variable properties (public or
+        private) in the new class because the default implementations of the
+        generative methods of Path (absolute(), resolve(), etc) create new
+        instance without copying subclasses' variable properties.
+    """
+
+    @abstractmethod
+    def is_value_file(self) -> bool:
+        ...
+
+    def __eq__(self, other: object) -> bool:
+        ts, to = type(self), type(other)
+        if issubclass(to, ts) or issubclass(ts, to):
+            return super().__eq__(other)
+        else:
+            return False
 
 
 class RuleStore:

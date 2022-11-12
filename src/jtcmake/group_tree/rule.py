@@ -26,7 +26,7 @@ from ..utils.dict_view import DictView
 from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
 from .atom import Atom
-from .file import File, IFile
+from .file import File
 from .core import (
     IRule,
     GroupTreeInfo,
@@ -34,6 +34,7 @@ from .core import (
     concat_prefix,
     require_tree_init,
     make,
+    IFile,
 )
 
 K = TypeVar("K", bound=str)
