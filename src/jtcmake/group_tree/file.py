@@ -1,9 +1,9 @@
 from __future__ import annotations
 import os, sys
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 import hashlib, base64
 import pathlib
-from typing import Any, Dict, Tuple
+from typing import Dict, Tuple
 
 from ..utils.strpath import StrOrPath
 from ..memo.abc import IMemoAtom, ILazyMemoValue
@@ -15,10 +15,28 @@ else:
     _Path = pathlib.PosixPath
 
 
-class IFile(_Path, IMemoAtom):
+class IFile(_Path, IMemoAtom, metaclass=ABCMeta):
+    """
+    Abstract base class to represent a file object.
+    """
+
+    """
+    For implementors of this ABC:
+        It is highly recommended not to have variable properties (public or
+        private) in the new class because the default implementations of the
+        generative methods of Path (absolute(), resolve(), etc) create new
+        instance without copying subclasses' variable properties.
+    """
     @abstractmethod
-    def copy_with(self, path: StrOrPath) -> IFile:
+    def is_value_file(self) -> bool:
         ...
+
+    def __eq__(self, other: object) -> bool:
+        ts, to = type(self), type(other)
+        if issubclass(to, ts) or issubclass(ts, to):
+            return super().__eq__(other)
+        else:
+            return False
 
 
 class File(IFile):
@@ -32,13 +50,12 @@ class File(IFile):
     If any of the output files is older than the input, the rule must be
     updated.
     """
-
-    def copy_with(self, path: StrOrPath) -> File:
-        return File(path)
-
     @property
-    def memo_value(self) -> Any:
+    def memo_value(self) -> object:
         return None
+
+    def is_value_file(self) -> bool:
+        return False
 
 
 class _ContentHash(ILazyMemoValue):
@@ -62,18 +79,12 @@ class VFile(IFile):
     If any of the output files is older than the input, the rule must be
     updated.
     """
-
-    __slots__ = ["_memo_value"]
-
-    def __init__(self, path: StrOrPath):
-        self._memo_value = _ContentHash(path)
+    def is_value_file(self) -> bool:
+        return True
 
     @property
-    def memo_value(self) -> Any:
-        return self._memo_value
-
-    def copy_with(self, path: StrOrPath) -> VFile:
-        return VFile(path)
+    def memo_value(self) -> object:
+        return _ContentHash(self)
 
 
 _hash_cache: Dict[str, Tuple[float, str]] = {}

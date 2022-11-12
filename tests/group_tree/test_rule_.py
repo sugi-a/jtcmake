@@ -23,24 +23,23 @@ class Path_:
 
 class DummyFile(IFile):
     """Fake object to represent an IFile object"""
-
-    def copy_with(self, path) -> IFile:
-        return DummyFile(path)
-
     @property
     def memo_value(self):
         ...
+
+    def is_value_file(self) -> bool:
+        return False
 
 
 class DummyFile2(IFile):
     """Fake object to represent an IFile object"""
 
-    def copy_with(self, path) -> IFile:
-        return DummyFile2(path)
-
     @property
     def memo_value(self):
         ...
+
+    def is_value_file(self) -> bool:
+        return False
 
 
 class DummyCollection(Collection):

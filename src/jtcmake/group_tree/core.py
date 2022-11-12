@@ -20,7 +20,7 @@ from typing_extensions import ParamSpec, Concatenate
 
 from .atom import Atom
 from ..memo.abc import IMemo
-from .file import IFile, VFile
+from .file import IFile
 from ..raw_rule import Rule as _RawRule
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
@@ -186,7 +186,7 @@ class RuleStore:
         # Check IFile type consistency of xfiles
         for p, f in xp2f.items():
             f_ = self.path2file.get(p)
-            if f_ is not None and type(f_) != type(f):
+            if f_ is not None and f_.resolve() != f.resolve():
                 raise TypeError(
                     f"IFile inconsistency detected: argument {f} is of type "
                     f"{type(f)} but the file was registered to be created as "
@@ -200,7 +200,7 @@ class RuleStore:
             yfiles=list(yp2f.values()),
             xfiles=list(xp2f.values()),
             xfile_is_orig=[i == -1 for i in xids],
-            xfile_is_vf=[isinstance(f, VFile) for f in xp2f.values()],
+            xfile_is_vf=[f.is_value_file() for f in xp2f.values()],
             deplist=set(xids) - {-1},
             method=method,
             args=method_args,

@@ -213,7 +213,7 @@ class Rule(IRule, Generic[K]):
 
         # Add path prefix
         yfiles = {
-            k: f.copy_with(_normalize_path(str(f), self._parent.prefix))
+            k: type(f)(_normalize_path(str(f), self._parent.prefix))
             for k, f in yfiles.items()
         }
 
@@ -434,7 +434,7 @@ def parse_args_output_files(
             _repl_name_ref(p, rule_name, None) for p in output_files_str
         )
         outs: Dict[str, IFile] = {
-            v: _to_IFile(f, IFile_factory).copy_with(v)
+            v: type(_to_IFile(f, IFile_factory))(v)
             for v, f in zip(  # pyright: ignore [reportUnknownVariableType]
                 output_files_str, output_files
             )
@@ -442,7 +442,7 @@ def parse_args_output_files(
     elif isinstance(output_files, (str, os.PathLike)):
         k = _pathlike_to_str(output_files)
         k = _repl_name_ref(k, rule_name, None)
-        outs = {k: _to_IFile(output_files, IFile_factory).copy_with(k)}
+        outs = {k: type(_to_IFile(output_files, IFile_factory))(k)}
     elif isinstance(output_files, Mapping):
         output_files_: Mapping[object, object] = output_files
         keys = [
@@ -455,7 +455,7 @@ def parse_args_output_files(
         )
 
         files = (
-            _to_IFile(f, IFile_factory).copy_with(sf)
+            type(_to_IFile(f, IFile_factory))(sf)
             for f, sf in zip(output_files_.values(), files_str)
         )
 
