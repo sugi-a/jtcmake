@@ -17,6 +17,7 @@ from typing import (
     TypeVar,
     Collection,
     Container,
+    overload,
 )
 from typing_extensions import TypeGuard, ParamSpec, Concatenate
 
@@ -26,7 +27,7 @@ from ..utils.dict_view import DictView
 from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
 from .atom import Atom
-from .file import File
+from .file import File, VFile
 from .core import (
     IRule,
     GroupTreeInfo,
@@ -259,6 +260,11 @@ class Rule(IRule, Generic[K]):
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
+    @overload
+    def init(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+        ...
+
+    @overload
     def init(
         self,
         output_files: Union[
@@ -268,33 +274,121 @@ class Rule(IRule, Generic[K]):
             PathLike[K],
         ],
         method: Callable[P, object],
-    ) -> Callable[P, None]:
+        /,
+    ) -> Callable[P, Rule[K]]:
+        ...
+
+    def init(
+        self, output_files: object, method: object = None, /
+    ) -> Callable[..., Rule[K]]:
+        return self._init(output_files, method, IFile_fact=File)
+
+    @overload
+    def initvf(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+        ...
+
+    @overload
+    def initvf(
+        self,
+        output_files: Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[K, PathLike[K]]],
+            K,
+            PathLike[K],
+        ],
+        method: Callable[P, object],
+        /,
+    ) -> Callable[P, Rule[K]]:
+        ...
+
+    def initvf(
+        self, output_files: object, method: object = None, /
+    ) -> Callable[..., Rule[K]]:
+        return self._init(output_files, method, IFile_fact=VFile)
+
+    def _init(
+        self,
+        output_files: object,
+        method: object = None,
+        /,
+        *,
+        IFile_fact: Callable[[StrOrPath], IFile],
+    ) -> Callable[P, Rule[K]]:
         if self.initialized:
             raise RuntimeError("Already initialized")
 
+        if method is None:
+            output_files, method = self.name_tuple[-1], output_files
+
         yfiles = parse_args_output_files(
-            self.name_tuple[-1], self._file_keys_hint, output_files, File
+            self.name_tuple[-1], self._file_keys_hint, output_files, IFile_fact
         )
 
-        def _init(*args: P.args, **kwargs: P.kwargs):
+        def _init(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
             self.__init_full__(yfiles, method, args, kwargs)
+            return self
 
         return _init
 
+    @overload
+    def init_deco(self, /) -> Callable[[Callable[[], object]], None]:
+        ...
+
+    @overload
     def init_deco(
         self,
         output_files: Union[
             Mapping[K, StrOrPath],
-            Sequence[Union[K, PathLike[Any]]],
+            Sequence[Union[K, PathLike[K]]],
             K,
-            PathLike[Any],
+            PathLike[K],
         ],
+        /,
+    ) -> Callable[[Callable[[], object]], None]:
+        ...
+
+    def init_deco(
+        self, output_files: object = None, /
+    ) -> Callable[[Callable[[], object]], None]:
+        return self._init_deco(output_files, IFile_fact=File)
+
+    @overload
+    def initvf_deco(self, /) -> Callable[[Callable[[], object]], None]:
+        ...
+
+    @overload
+    def initvf_deco(
+        self,
+        output_files: Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[K, PathLike[K]]],
+            K,
+            PathLike[K],
+        ],
+        /,
+    ) -> Callable[[Callable[[], object]], None]:
+        ...
+
+    def initvf_deco(
+        self, output_files: object = None, /
+    ) -> Callable[[Callable[[], object]], None]:
+        return self._init_deco(output_files, IFile_fact=VFile)
+
+    def _init_deco(
+        self,
+        output_files: object = None,
+        /,
+        *,
+        IFile_fact: Callable[[StrOrPath], IFile],
     ) -> Callable[[Callable[[], object]], None]:
         if self.initialized:
             raise RuntimeError("Already initialized")
 
+        if output_files is None:
+            output_files = self.name_tuple[-1]
+
         yfiles = parse_args_output_files(
-            self.name_tuple[-1], self._file_keys_hint, output_files, File
+            self.name_tuple[-1], self._file_keys_hint, output_files, IFile_fact
         )
 
         def decorator(method: object):
