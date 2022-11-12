@@ -103,7 +103,7 @@ def create_lazy_memo_type(memo_type: Type[IMemoWrapper]) -> Type[IMemoWrapper]:
 class IMemoAtom(metaclass=ABCMeta):
     @property
     @abstractmethod
-    def memo_value(self):
+    def memo_value(self) -> object:
         """
         Returns:
             object to be memoized
