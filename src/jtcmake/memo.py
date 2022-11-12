@@ -1,16 +1,118 @@
 from __future__ import annotations
-import os
+import json, os
 from hashlib import sha256
+from abc import ABCMeta, abstractmethod
 from numbers import Complex
-from typing import Callable, Mapping, Optional, Sequence, Set, List
+from typing import (
+    Callable,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Type,
+    List,
+    Union,
+)
 
-from .abc import IMemoWrapper, IMemo
+from .raw_rule import IMemo
+
+
+ENCODING = "utf8"
+
+
+class ILazyMemo(IMemo, metaclass=ABCMeta):
+    @property
+    def memo(self) -> IMemo:
+        ...
+
+    @property
+    def lazy_memo(self) -> IMemo:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def create(cls, args: object, lazy_args: List[ILazyMemoValue]) -> ILazyMemo:
+        ...
+
+
+class ILazyMemoValue(metaclass=ABCMeta):
+    @abstractmethod
+    def __call__(self) -> object:
+        """
+        Returns:
+            object to be memoized.
+        """
+        ...
+
+
+def create_lazy_memo_type(
+    memo_factory: Callable[[object], IMemo]
+) -> Type[ILazyMemo]:
+    from_bytes = memo_factory(None).loads
+
+    class LazyMemo(ILazyMemo):
+        __slots__ = ("_memo", "lazy_args")
+        _memo: IMemo
+        lazy_args: Union[List[ILazyMemoValue], IMemo]
+
+        def __init__(
+            self,
+            memo: IMemo,
+            lazy_args: Union[List[ILazyMemoValue], IMemo],
+        ):
+            self._memo = memo
+            self.lazy_args = lazy_args
+
+        @property
+        def memo(self) -> IMemo:
+            return self._memo
+
+        @property
+        def lazy_memo(self) -> IMemo:
+            if isinstance(self.lazy_args, list):
+                lazy_args = [v() for v in self.lazy_args]
+                return memo_factory(lazy_args)
+            else:
+                return self.lazy_args
+
+        def compare(self, other: IMemo) -> bool:
+            if isinstance(other, ILazyMemo):
+                return self.memo.compare(other.memo) and self.lazy_memo.compare(
+                    other.lazy_memo
+                )
+            else:
+                return False
+
+        @classmethod
+        def create(
+            cls, args: object, lazy_args: List[ILazyMemoValue]
+        ) -> ILazyMemo:
+            return cls(memo_factory(args), lazy_args)
+
+        def dumps(self) -> Iterable[bytes]:
+            memo_ = b"".join(self.memo.dumps()).hex()
+            lazy_memo_ = b"".join(self.lazy_memo.dumps()).hex()
+            return [json.dumps([memo_, lazy_memo_]).encode(ENCODING)]
+
+        @classmethod
+        def loads(cls, data: bytes) -> ILazyMemo:
+            o = json.loads(data.decode(ENCODING))
+            assert isinstance(o, list)
+
+            memo = from_bytes(bytes.fromhex(o[0]))
+            lazy_args = from_bytes(bytes.fromhex(o[1]))
+
+            return cls(memo, lazy_args)
+
+    return LazyMemo
+
 
 MAX_RAW_REPRESENTATION_LEN = 1000
 
 
-class StrHashMemo(IMemoWrapper):
-    __slots__ = "text"
+class StrHashMemo(IMemo):
+    __slots__ = ("text",)
     text: str
 
     def __init__(self, text: str):
@@ -25,12 +127,12 @@ class StrHashMemo(IMemoWrapper):
         else:
             return False
 
-    def to_str(self) -> str:
-        return self.text
+    def dumps(self) -> Iterable[bytes]:
+        return [self.text.encode(ENCODING)]
 
     @classmethod
-    def from_str(cls, s: str) -> StrHashMemo:
-        return cls(s)
+    def loads(cls, data: bytes) -> StrHashMemo:
+        return cls(data.decode(ENCODING))
 
     @classmethod
     def create(cls, args: object) -> StrHashMemo:

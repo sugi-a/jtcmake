@@ -73,17 +73,6 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 self._groups[child_name] = g
 
     @property
-    def name(self) -> str:
-        if len(self._name) == 0:
-            return ""
-        else:
-            return self._name[-1]
-
-    @property
-    def namefq(self) -> str:
-        return "/".join(self._name)
-
-    @property
     def parent(self) -> IGroup:
         return self._parent
 
@@ -183,17 +172,6 @@ class GroupOfGroups(
         return g
 
     @property
-    def name(self) -> str:
-        if len(self._name) == 0:
-            return ""
-        else:
-            return self._name[-1]
-
-    @property
-    def namefq(self) -> str:
-        return "/".join(self._name)
-
-    @property
     def parent(self) -> IGroup:
         return self._parent
 
@@ -253,17 +231,6 @@ class GroupOfRules(
             setattr(self, name, r)
 
         return r
-
-    @property
-    def name(self) -> str:
-        if len(self._name) == 0:
-            return ""
-        else:
-            return self._name[-1]
-
-    @property
-    def namefq(self) -> str:
-        return "/".join(self._name)
 
     @property
     def parent(self) -> IGroup:
@@ -362,17 +329,6 @@ class UntypedGroup(
             setattr(self, name, g)
 
         return g
-
-    @property
-    def name(self) -> str:
-        if len(self._name) == 0:
-            return ""
-        else:
-            return self._name[-1]
-
-    @property
-    def namefq(self) -> str:
-        return "/".join(self._name)
 
     @property
     def parent(self) -> IGroup:

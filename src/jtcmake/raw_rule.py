@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import (
     Callable,
     Generic,
+    Iterable,
     Optional,
     Sequence,
     Set,
@@ -13,8 +14,6 @@ from typing import (
     Dict,
     Collection,
 )
-
-from .utils.strpath import StrOrPath
 
 from .core.abc import IRule, UpdateResults, TUpdateResult, Callback
 
@@ -25,12 +24,12 @@ class IMemo(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def save(self, path: StrOrPath):
+    def dumps(self) -> Iterable[bytes]:
         ...
 
     @classmethod
     @abstractmethod
-    def load(cls, path: StrOrPath) -> IMemo:
+    def loads(cls, data: bytes) -> IMemo:
         ...
 
 
@@ -150,7 +149,8 @@ class Rule(IRule, Generic[TId]):
 
     def update_memo(self):
         os.makedirs(os.path.dirname(self.metadata_fname), exist_ok=True)
-        self.memo.save(self.metadata_fname)
+        with self.metadata_fname.open("wb") as f:
+            f.writelines(self.memo.dumps())
 
     @property
     def method(self):
@@ -221,10 +221,13 @@ def _check_update_4(
 
 
 def _check_update_5(
-    memo: IMemo, old_memo_file: StrOrPath, **_: object
+    memo: IMemo, old_memo_file: Path, **_: object
 ) -> Optional[TUpdateResult]:
     if not os.path.exists(old_memo_file):
         return UpdateResults.Necessary()
 
-    if not memo.compare(memo.load(old_memo_file)):
+    with old_memo_file.open("rb") as f:
+        old_memo = memo.loads(f.read())
+
+    if not memo.compare(old_memo):
         return UpdateResults.Necessary()

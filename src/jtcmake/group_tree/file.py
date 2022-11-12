@@ -1,12 +1,13 @@
 from __future__ import annotations
 import os, sys
-from abc import abstractmethod
 import hashlib, base64
 import pathlib
-from typing import Any, Dict, Tuple
+from typing import Dict, Tuple
 
 from ..utils.strpath import StrOrPath
-from ..memo.abc import IMemoAtom, ILazyMemoValue
+from ..memo import ILazyMemoValue
+from .core import IFile
+from .atom import IMemoAtom
 
 
 if sys.platform == "win32":
@@ -15,13 +16,7 @@ else:
     _Path = pathlib.PosixPath
 
 
-class IFile(_Path, IMemoAtom):
-    @abstractmethod
-    def copy_with(self, path: StrOrPath) -> IFile:
-        ...
-
-
-class File(IFile):
+class File(_Path, IFile):
     """
     An instance of this class represents a file, which can be an input or
     output of rules.
@@ -33,12 +28,8 @@ class File(IFile):
     updated.
     """
 
-    def copy_with(self, path: StrOrPath) -> File:
-        return File(path)
-
-    @property
-    def memo_value(self) -> Any:
-        return None
+    def is_value_file(self) -> bool:
+        return False
 
 
 class _ContentHash(ILazyMemoValue):
@@ -51,7 +42,7 @@ class _ContentHash(ILazyMemoValue):
         return get_hash(self.path)
 
 
-class VFile(IFile):
+class VFile(_Path, IFile, IMemoAtom):
     """
     An instance of this class represents a value file, which can be
     an input or output of rules.
@@ -63,17 +54,12 @@ class VFile(IFile):
     updated.
     """
 
-    __slots__ = ["_memo_value"]
-
-    def __init__(self, path: StrOrPath):
-        self._memo_value = _ContentHash(path)
+    def is_value_file(self) -> bool:
+        return True
 
     @property
-    def memo_value(self) -> Any:
-        return self._memo_value
-
-    def copy_with(self, path: StrOrPath) -> VFile:
-        return VFile(path)
+    def memo_value(self) -> object:
+        return _ContentHash(self)
 
 
 _hash_cache: Dict[str, Tuple[float, str]] = {}

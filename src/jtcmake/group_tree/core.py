@@ -17,11 +17,9 @@ from typing import (
     final,
 )
 from typing_extensions import ParamSpec, Concatenate
+from pathlib import Path
 
-from .atom import Atom
-from ..memo.abc import IMemo
-from .file import IFile, VFile
-from ..raw_rule import Rule as _RawRule
+from ..raw_rule import Rule as _RawRule, IMemo
 from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
@@ -44,6 +42,13 @@ class INode(metaclass=ABCMeta):
     @abstractmethod
     def name_tuple(self) -> Tuple[str, ...]:
         ...
+
+    @property
+    def name(self) -> str:
+        if len(self.name_tuple) == 0:
+            return "/"
+        else:
+            return "/" + "/".join(self.name_tuple)
 
 
 T_Self = TypeVar("T_Self", bound="IGroup")
@@ -144,6 +149,38 @@ class IRule(INode, metaclass=ABCMeta):
         ...
 
 
+class IAtom(metaclass=ABCMeta):
+    @property
+    @abstractmethod
+    def value(self) -> object:
+        ...
+
+
+class IFile(Path, metaclass=ABCMeta):
+    """
+    Abstract base class to represent a file object.
+    """
+
+    """
+    For implementors of this ABC:
+        It is highly recommended not to have variable properties (public or
+        private) in the new class because the default implementations of the
+        generative methods of Path (absolute(), resolve(), etc) create new
+        instance without copying subclasses' variable properties.
+    """
+
+    @abstractmethod
+    def is_value_file(self) -> bool:
+        ...
+
+    def __eq__(self, other: object) -> bool:
+        ts, to = type(self), type(other)
+        if issubclass(to, ts) or issubclass(ts, to):
+            return super().__eq__(other)
+        else:
+            return False
+
+
 class RuleStore:
     __slots__ = (
         "rules",
@@ -186,7 +223,7 @@ class RuleStore:
         # Check IFile type consistency of xfiles
         for p, f in xp2f.items():
             f_ = self.path2file.get(p)
-            if f_ is not None and type(f_) != type(f):
+            if f_ is not None and f_.resolve() != f.resolve():
                 raise TypeError(
                     f"IFile inconsistency detected: argument {f} is of type "
                     f"{type(f)} but the file was registered to be created as "
@@ -200,7 +237,7 @@ class RuleStore:
             yfiles=list(yp2f.values()),
             xfiles=list(xp2f.values()),
             xfile_is_orig=[i == -1 for i in xids],
-            xfile_is_vf=[isinstance(f, VFile) for f in xp2f.values()],
+            xfile_is_vf=[f.is_value_file() for f in xp2f.values()],
             deplist=set(xids) - {-1},
             method=method,
             args=method_args,
@@ -241,7 +278,7 @@ class GroupTreeInfo:
     rule_store: RuleStore
     logwriter: IWriter
     memo_factory: Callable[[object], IMemo]
-    memo_store: Dict[int, Atom]
+    memo_store: Dict[int, IAtom]
     rules_to_be_init: Set[Tuple[str, ...]]
 
     def __init__(

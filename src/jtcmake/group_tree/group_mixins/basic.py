@@ -3,21 +3,24 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from logging import Logger
 from typing import (
+    Callable,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
     Sequence,
     List,
 )
 
-from ...memo.abc import create_lazy_memo_type
+from ..atom import unwrap_atoms_in_nest
+
+from ...memo import ILazyMemo, create_lazy_memo_type, StrHashMemo, IMemo
 
 from ...core.make import MakeSummary
 
 from .selector import get_offspring_groups
 
-from ...memo.str_hash_memo import StrHashMemo
 from ...logwriter import (
     Loglevel,
     WritableProtocol,
@@ -59,7 +62,8 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             loglevel, use_default_logger, logfile
         )
 
-        memo_factory = create_lazy_memo_type(StrHashMemo).create
+        lazy_memo_type = create_lazy_memo_type(StrHashMemo.create)
+        memo_factory = create_lazy_memo_factory(lazy_memo_type)
 
         info = GroupTreeInfo(writer, memo_factory)
 
@@ -196,3 +200,13 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
         return ColorTextWriter(sys.stderr, loglevel)
     else:
         return TextWriter(sys.stderr, loglevel)
+
+
+def create_lazy_memo_factory(
+    lazy_memo_type: Type[ILazyMemo],
+) -> Callable[[object], IMemo]:
+    def _res(args: object) -> IMemo:
+        args, lazy_args = unwrap_atoms_in_nest(args)
+        return lazy_memo_type.create(args, lazy_args)
+
+    return _res

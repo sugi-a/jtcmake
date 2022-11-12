@@ -1,6 +1,6 @@
 import os, time
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Iterable, Optional, Union
 import pytest
 
 from jtcmake.core.abc import UpdateResults
@@ -78,11 +78,11 @@ class Memo(IMemo):
     def compare(self, other: IMemo):
         return self.res
 
-    def save(self, path: StrOrPath):
+    def dumps(self) -> Iterable[bytes]:
         ...
 
     @classmethod
-    def load(cls, path: StrOrPath) -> IMemo:
+    def loads(cls, data: bytes) -> IMemo:
         ...
 
 
@@ -261,6 +261,6 @@ def test_postprocess(tmp_path: Path, mocker: Any):
 
     r.postprocess(_, True)
 
-    mock_memo.save.assert_called_once_with(r.metadata_fname)
+    mock_memo.dumps.assert_called_once_with()
 
     # TODO: test

@@ -8,7 +8,6 @@ from typing import (
     TypeVar,
     Union,
     Tuple,
-    Any,
     overload,
     Mapping,
     Callable,
@@ -16,8 +15,8 @@ from typing import (
 
 from typing_extensions import ParamSpec
 
-from ..file import IFile, File
-from ..core import IGroup
+from ..file import File, VFile
+from ..core import IGroup, IFile
 from ..rule import parse_args_output_files, Rule_init_parse_deco_func, Rule
 from ...utils.strpath import StrOrPath
 
@@ -38,18 +37,54 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ],
         method: Callable[P, object],
         /,
-    ) -> Callable[P, None]:
+    ) -> Callable[P, Rule[str]]:
         ...
 
     @overload
     def add(
         self, name: StrOrPath, method: Callable[P, object], /
-    ) -> Callable[P, None]:
+    ) -> Callable[P, Rule[str]]:
         ...
 
     def add(
         self, name: object, outs: object, method: object = None
-    ) -> Callable[..., Any]:
+    ) -> Callable[..., Rule[str]]:
+        return self._add(name, outs, method, IFile_fact=File)
+
+    @overload
+    def addvf(
+        self,
+        name: StrOrPath,
+        output_files: Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[K, PathLike[str]]],
+            K,
+            PathLike[str],
+        ],
+        method: Callable[P, object],
+        /,
+    ) -> Callable[P, Rule[str]]:
+        ...
+
+    @overload
+    def addvf(
+        self, name: StrOrPath, method: Callable[P, object], /
+    ) -> Callable[P, Rule[str]]:
+        ...
+
+    def addvf(
+        self, name: object, outs: object, method: object = None
+    ) -> Callable[..., Rule[str]]:
+        return self._add(name, outs, method, IFile_fact=VFile)
+
+    def _add(
+        self,
+        name: object,
+        outs: object,
+        method: object = None,
+        *,
+        IFile_fact: Callable[[StrOrPath], IFile],
+    ) -> Callable[..., Rule[str]]:
         if method is None:
             outs, method = name, outs
 
@@ -59,11 +94,11 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         name_ = str(name)
 
         outs_: Dict[str, IFile] = parse_args_output_files(
-            name_, None, outs, File
+            name_, None, outs, IFile_fact
         )
 
-        def _add(*args: object, **kwargs: object):
-            self._add_rule(name_, outs_, method, args, kwargs)
+        def _add(*args: object, **kwargs: object) -> Rule[str]:
+            return self._add_rule(name_, outs_, method, args, kwargs)
 
         return _add
 
@@ -80,6 +115,37 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ] = None,
         /,
     ) -> Callable[[Callable[[], object]], None]:
+        return self._add_deco(name, output_files, IFile_fact=File)
+
+    def addvf_deco(
+        self,
+        name: StrOrPath,
+        output_files: Optional[
+            Union[
+                Mapping[K, StrOrPath],
+                Sequence[Union[str, PathLike[str]]],
+                str,
+                PathLike[str],
+            ]
+        ] = None,
+        /,
+    ) -> Callable[[Callable[[], object]], None]:
+        return self._add_deco(name, output_files, IFile_fact=VFile)
+
+    def _add_deco(
+        self,
+        name: StrOrPath,
+        output_files: Optional[
+            Union[
+                Mapping[K, StrOrPath],
+                Sequence[Union[str, PathLike[str]]],
+                str,
+                PathLike[str],
+            ]
+        ] = None,
+        *,
+        IFile_fact: Callable[[StrOrPath], IFile],
+    ) -> Callable[[Callable[[], object]], None]:
         if output_files is None:
             output_files = name
 
@@ -89,7 +155,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         name_ = str(name)
 
         output_files_: Dict[str, IFile] = parse_args_output_files(
-            name_, None, output_files, File
+            name_, None, output_files, IFile_fact
         )
 
         def decorator(method: object):
