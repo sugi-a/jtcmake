@@ -13,6 +13,7 @@ from typing import (
     get_origin,
     get_type_hints,
     Callable,
+    overload,
 )
 
 from ..utils.strpath import StrOrPath
@@ -295,9 +296,15 @@ class UntypedGroup(
 
         return r
 
-    def add_group(
-        self, name: str, child_group_type: Optional[Type[IGroup]] = None
-    ) -> IGroup:
+    @overload
+    def add_group(self, name: str, child_group_type: Type[T_Child]) -> T_Child:
+        ...
+
+    @overload
+    def add_group(self, name: str) -> UntypedGroup:
+        ...
+
+    def add_group(self, name: object, child_group_type: Any = None) -> IGroup:
         if child_group_type is None:
             tp = UntypedGroup
         else:
@@ -349,7 +356,7 @@ class UntypedGroup(
     def name_tuple(self) -> Tuple[str, ...]:
         return self._name
 
-    def __getitem__(self, k: str) -> Union[IGroup, IRule]:
+    def __getitem__(self, k: str) -> Any:
         if k in self.groups:
             return self.groups[k]
 
