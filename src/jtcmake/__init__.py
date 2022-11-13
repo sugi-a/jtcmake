@@ -12,7 +12,7 @@ from .group_tree.graphviz import print_graphviz
 from .group_tree.misc import print_method
 from .core.make import MakeSummary
 
-VERSION = "0.4.0"
+VERSION = "0.4.1-alpha"
 
 __all__ = [
     "SELF",
