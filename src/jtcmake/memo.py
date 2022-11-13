@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Tuple,
     Type,
     List,
     Union,
@@ -194,6 +195,21 @@ def stringify_sequence(
     dst.append(")" if isinstance(nest, tuple) else "]")
 
 
+def _stringify_keys(
+    keys: Iterable[object],
+    visited_container: Set[int],
+    default: Callable[[object], object],
+) -> List[Tuple[str, object]]:
+    res: List[Tuple[str, object]] = []
+
+    for k in keys:
+        _s: List[str] = []
+        _stringify(k, _s, visited_container, default)
+        res.append(("".join(_s), k))
+
+    return res
+
+
 def stringify_mapping(
     nest: Mapping[object, object],
     dst: List[str],
@@ -202,16 +218,18 @@ def stringify_mapping(
 ):
     _check_and_update_visited(nest, visited_container)
 
+    skey_keys = _stringify_keys(nest, visited_container, default)
+
     try:
-        keys: List[object] = sorted(nest, key=lambda x: (hash(x), x))
+        skey_keys.sort()
     except TypeError as e:
         e_ = TypeError("dict in memoization values must have sortable keys")
         raise e_ from e
 
     dst.append("{")
 
-    for k in keys:  # pyright: ignore [reportUnknownVariableType]
-        _stringify(k, dst, visited_container, default)
+    for sk, k in skey_keys:
+        dst.append(sk)
         dst.append(":")
         _stringify(nest[k], dst, visited_container, default)
         dst.append(",")
@@ -226,16 +244,18 @@ def stringify_set(
 ):
     _check_and_update_visited(nest, visited_container)
 
+    skey_keys = _stringify_keys(nest, visited_container, default)
+
     try:
-        ordered: List[object] = sorted(nest, key=lambda x: (hash(x), x))
+        skey_keys.sort()
     except TypeError as e:
         e_ = TypeError("set in memoization values must have sortable values")
         raise e_ from e
 
     dst.append("{")
 
-    for v in ordered:
-        _stringify(v, dst, visited_container, default)
+    for s, _ in skey_keys:
+        dst.append(s)
         dst.append(",")
 
     dst.append(")")
