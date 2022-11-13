@@ -395,9 +395,9 @@ def _parse_child_group_type(child_group_type: object) -> Type[IGroup]:
         raise TypeError(f"{tp} is not a valid type")
 
     if not issubclass(tp, IGroup):
-        raise TypeError(f"Child group type must be a subclass of IGroup")
+        raise TypeError("Child group type must be a subclass of IGroup")
 
     if inspect.isabstract(tp):
-        raise TypeError(f"Child group type must not be abstract")
+        raise TypeError("Child group type must not be abstract")
 
     return tp

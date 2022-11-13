@@ -1,4 +1,5 @@
-import inspect, warnings
+import inspect
+import warnings
 from typing import Any, Callable, List, Optional, Sequence, Mapping, Dict, Tuple
 from pathlib import Path
 
@@ -107,7 +108,7 @@ def get_func_name(f: Callable[..., object]) -> str:
             return name
         else:
             return f"{mod}.{name}"
-    except:
+    except Exception:
         return "<unkonw function>"
 
 
@@ -125,7 +126,7 @@ def tostrs_func_call(
 
     for k, v in bn.arguments.items():
         dst.append(RichStr(f"  {k}", c=(0xFF, 0x80, 0)))
-        dst.append(f" = ")
+        dst.append(" = ")
         tostrs_obj(dst, v, capacity=500)
         dst.append(",\n")
     dst.append(")\n")

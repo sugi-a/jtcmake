@@ -1,5 +1,6 @@
 from __future__ import annotations
-import json, os
+import os
+import json
 from hashlib import sha256
 from abc import ABCMeta, abstractmethod
 from numbers import Complex

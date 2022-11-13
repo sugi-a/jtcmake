@@ -1,4 +1,5 @@
-import hashlib, base64
+import base64
+import hashlib
 from pathlib import Path
 
 from jtcmake.group_tree.file import get_hash

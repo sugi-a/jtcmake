@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pytest
 
 from jtcmake.group_tree.atom import (

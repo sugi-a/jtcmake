@@ -133,7 +133,7 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
                 * `"**"`   matches all the offspring rules of `g`
                 * `"**/"`  matches all the offspring groups of `g`
                 * `"a/**"` matches all the offspring rules of the group `g.a`
-                * `"**/b"` matches all the offspring rules of `g` with a name "b"
+                * `"**/b"` matches all the offspring rules of `g` of name "b"
 
             group: ignored
 
@@ -167,7 +167,9 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
             For example, ::
 
                 g = create_group('group')
-                rule = g.add('dir/a.txt', func)  # this rule's name is "dir/a.txt"
+
+                # this rule's name is "dir/a.txt"
+                rule = g.add('dir/a.txt', func)
 
                 g.select(['dir/a.txt']) == [rule]  # OK
                 g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
