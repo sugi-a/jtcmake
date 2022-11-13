@@ -1,6 +1,7 @@
 # type: ignore
 from __future__ import annotations
-import os, sys
+import os
+import sys
 from pathlib import Path, WindowsPath, PosixPath
 from collections.abc import Container, Collection, Iterator
 

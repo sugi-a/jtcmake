@@ -18,4 +18,4 @@ def test_MemoMixin():
     assert store[id(c)].real_value == c
     assert store[id(c)].memo_value == str(c)
     assert store[id(d)].real_value == d
-    assert store[id(d)].memo_value == None
+    assert store[id(d)].memo_value is None

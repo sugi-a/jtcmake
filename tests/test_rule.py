@@ -1,4 +1,5 @@
-import os, time
+import os
+import time
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 import pytest
@@ -15,7 +16,11 @@ Infeasible = UpdateResults.Infeasible
 
 _args = (object(),)
 _kwargs = {"a": object()}
-_method = lambda: None
+
+
+def _method():
+    return None
+
 
 StrOrPath = Union[str, "os.PathLike[str]"]
 
@@ -26,7 +31,7 @@ def rm(*paths: StrOrPath):
     for p in paths:
         try:
             os.remove(p)
-        except:
+        except Exception:
             pass
 
 

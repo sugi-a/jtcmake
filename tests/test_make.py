@@ -378,7 +378,7 @@ def test_keyboard_interrupt(tmp_path):
     log.clear()
 
     with pytest.raises(KeyboardInterrupt):
-        res = make(id2rule, [0], False, False, callback)
+        make(id2rule, [0], False, False, callback)
 
     assert_same_log(
         log,

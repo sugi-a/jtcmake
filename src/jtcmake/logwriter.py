@@ -1,4 +1,6 @@
-import html, abc, os
+import abc
+import os
+import html
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -306,7 +308,7 @@ def _richstr_to_html(s: RichStr, basedir: str) -> str:
         else:
             link = attr.link
         starts.append(f'<a href="{Path(link).as_posix()}">')
-        ends.append(f"</a>")
+        ends.append("</a>")
 
     styles: List[str] = []
     if attr.c is not None:
@@ -320,7 +322,7 @@ def _richstr_to_html(s: RichStr, basedir: str) -> str:
     if len(styles) != 0:
         style = "".join(styles)
         starts.append(f'<span style="{style}">')
-        ends.append(f"</span>")
+        ends.append("</span>")
 
     starts.append(html.escape(s))
     starts.extend(ends[::-1])
@@ -343,14 +345,14 @@ def create_color_str(sl: Sequence[str]) -> str:
         if attr.bg != last_bg:
             last_bg = attr.bg
             if attr.bg is None:
-                res.append(f"\x1b[49m")
+                res.append("\x1b[49m")
             else:
                 res.append(f"\x1b[48;5;{_comp_8bit_term_color(*attr.bg)}m")
 
         if attr.c != last_c:
             last_c = attr.c
             if attr.c is None:
-                res.append(f"\x1b[39m")
+                res.append("\x1b[39m")
             else:
                 res.append(f"\x1b[38;5;{_comp_8bit_term_color(*attr.c)}m")
 
@@ -372,5 +374,5 @@ def term_is_jupyter() -> bool:
 
         name = get_ipython().__class__.__name__  # pyright: ignore
         return name == "ZMQInteractiveShell"  # pyright: ignore
-    except:
+    except Exception:
         return False

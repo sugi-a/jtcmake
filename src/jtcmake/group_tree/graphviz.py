@@ -1,4 +1,7 @@
-import os, shutil, subprocess, sys
+import os
+import sys
+import shutil
+import subprocess
 from html import escape
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union
@@ -106,7 +109,7 @@ def gen_dot_code(
             idt + f"  label = <<B>{escape(name)}</B> "
             f'(<FONT FACE="monospace">{escape(prefix)}</FONT>)>;'
         )
-        res.append(idt + f'  style = "rounded";')
+        res.append(idt + '  style = "rounded";')
 
         for child_group in g.groups.values():
             rec_group(child_group, idt + "  ", g.prefix)
@@ -121,7 +124,7 @@ def gen_dot_code(
 
         res.append(idt + f"subgraph cluster_r_{rid[r]} {{")
         res.append(idt + f"  label=<<B>{escape(name)}</B>>;")
-        res.append(idt + f'  bgcolor = "#E0FFFF";')
+        res.append(idt + '  bgcolor = "#E0FFFF";')
 
         par_prefix = os.path.abspath(par_prefix + "_")[:-1]
 
@@ -144,7 +147,7 @@ def gen_dot_code(
                 f'URL="{_mk_link(yf, basedir)}"; '
                 f"];"
             )
-        res.append(idt + f"}}")
+        res.append(idt + "}")
 
     rec_group(group, "  ", "")
 
@@ -203,7 +206,7 @@ def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
 
     try:
         return os.path.relpath(p, basedir)
-    except:
+    except Exception:
         pass
 
     return str(p)

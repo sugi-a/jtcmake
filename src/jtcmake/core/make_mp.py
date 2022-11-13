@@ -1,6 +1,9 @@
 from __future__ import annotations
 from multiprocessing.context import SpawnContext
-import sys, traceback, queue, pickle
+import sys
+import traceback
+import queue
+import pickle
 from multiprocessing import get_context
 from threading import Thread, Condition, Lock
 
@@ -279,7 +282,7 @@ def _test_interproc_portabability(
     for i in range(n):
         try:
             codes[i] = pickle.dumps(objs[i])
-        except:
+        except Exception:
             picklable[i] = False
 
     sys.stderr.write("Checking inter-process portability\n")

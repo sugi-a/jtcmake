@@ -1,5 +1,7 @@
 from __future__ import annotations
-import os, inspect, time
+import os
+import inspect
+import time
 import re
 from os import PathLike
 from typing import (
@@ -595,10 +597,8 @@ def _replace_obj_by_atom_in_structure(
         if id(o) in memo_store:
             return memo_store[id(o)]
         elif isinstance(o, dict):
-            return {
-                k: _rec(v)
-                for k, v in o.items()  # pyright: ignore [reportUnknownVariableType]
-            }
+            _o: Dict[object, object] = o
+            return {k: _rec(v) for k, v in _o.items()}
         elif isinstance(o, tuple):
             return tuple(map(_rec, o))
         elif isinstance(o, list):
@@ -682,7 +682,7 @@ def _assert_signature_match(
         inspect.signature(func).bind(*args, **kwargs)
     except Exception as e:
         raise TypeError(
-            f"Signature of the method does not match the arguments"
+            "Signature of the method does not match the arguments"
         ) from e
 
 

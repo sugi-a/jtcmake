@@ -2,7 +2,6 @@
 
 import pytest
 
-from jtcmake.group_tree.core import IGroup
 from jtcmake.group_tree.groups import UntypedGroup
 from jtcmake.group_tree.group_mixins import selector
 from jtcmake.group_tree.rule import SELF

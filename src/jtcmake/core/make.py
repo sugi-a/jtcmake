@@ -1,4 +1,5 @@
-import traceback, enum
+import traceback
+import enum
 from typing import Callable, List, NamedTuple, Set, Sequence
 
 from . import events
@@ -158,10 +159,10 @@ def process_rule(
     except Exception as e:
         callback(events.ExecError(rule, e))
         succ = False
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         try:
             rule.postprocess(callback, False)
-        except:
+        except Exception:
             pass
 
         raise KeyboardInterrupt()
