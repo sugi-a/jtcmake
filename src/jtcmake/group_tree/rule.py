@@ -81,7 +81,8 @@ def require_init(
 
         if self.name_tuple in info.rules_to_be_init:
             raise Exception(
-                "Rule must be initialized before calling this method"
+                f"Rule {self.name} must be initialized "
+                "before calling this method"
             )
 
         return rule_method(self, *args, **kwargs)
