@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple, List, Union
+from typing import Any, Tuple, List
 
 from ..utils.nest import ordered_map_structure, map_structure
 

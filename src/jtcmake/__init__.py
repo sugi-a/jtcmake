@@ -1,8 +1,8 @@
 from .group_tree.groups import (
     UntypedGroup,
     StaticGroupBase,
-    GroupOfGroups,
-    GroupOfRules,
+    GroupsGroup,
+    RulesGroup,
 )
 from .group_tree.core import make
 from .group_tree.atom import Atom, Mem, Memstr, Memnone
@@ -18,8 +18,8 @@ __all__ = [
     "SELF",
     "UntypedGroup",
     "StaticGroupBase",
-    "GroupOfRules",
-    "GroupOfGroups",
+    "RulesGroup",
+    "GroupsGroup",
     "make",
     "Atom",
     "Mem",

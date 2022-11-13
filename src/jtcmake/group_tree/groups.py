@@ -96,7 +96,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 T_Child = TypeVar("T_Child", bound=IGroup)
 
 
-class GroupOfGroups(
+class GroupsGroup(
     BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin, Generic[T_Child]
 ):
     _name: Tuple[str, ...]
@@ -118,7 +118,7 @@ class GroupOfGroups(
 
     def set_default_child(
         self, default_child_group_type: Type[T_Child]
-    ) -> GroupOfGroups[T_Child]:
+    ) -> GroupsGroup[T_Child]:
         tp = _parse_child_group_type(default_child_group_type)
         self._child_group_type = tp  # pyright: ignore
         return self
@@ -128,7 +128,7 @@ class GroupOfGroups(
         default_child_group_type: Optional[Type[T_Child]],
         dirname: Optional[StrOrPath] = None,
         prefix: Optional[StrOrPath] = None,
-    ) -> GroupOfGroups[T_Child]:
+    ) -> GroupsGroup[T_Child]:
         if default_child_group_type is not None:
             self.set_default_child(default_child_group_type)
 
@@ -154,8 +154,8 @@ class GroupOfGroups(
                     "No child group type is available. "
                     "You must provide `child_group_type` or, in advance, "
                     "set the default child group type by "
-                    "`GroupOfGroups.set_default_child(some_group_type)` or "
-                    "`GroupOfGroups.set_props(some_group_type)`. "
+                    "`GroupsGroup.set_default_child(some_group_type)` or "
+                    "`GroupsGroup.set_props(some_group_type)`. "
                 )
 
             tp: Type[T_Child] = self._child_group_type
@@ -198,7 +198,7 @@ class GroupOfGroups(
         return self._info
 
 
-class GroupOfRules(
+class RulesGroup(
     DynamicRuleContainerMixin,
     BasicMixin,
     BasicInitMixin,
