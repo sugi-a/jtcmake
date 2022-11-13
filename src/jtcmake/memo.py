@@ -32,17 +32,7 @@ class ILazyMemo(IMemo, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, args: object, lazy_args: List[ILazyMemoValue]) -> ILazyMemo:
-        ...
-
-
-class ILazyMemoValue(metaclass=ABCMeta):
-    @abstractmethod
-    def __call__(self) -> object:
-        """
-        Returns:
-            object to be memoized.
-        """
+    def create(cls, args: object, lazy_args: Callable[[], object]) -> ILazyMemo:
         ...
 
 
@@ -54,12 +44,12 @@ def create_lazy_memo_type(
     class LazyMemo(ILazyMemo):
         __slots__ = ("_memo", "lazy_args")
         _memo: IMemo
-        lazy_args: Union[List[ILazyMemoValue], IMemo]
+        lazy_args: Union[Callable[[], object], IMemo]
 
         def __init__(
             self,
             memo: IMemo,
-            lazy_args: Union[List[ILazyMemoValue], IMemo],
+            lazy_args: Union[Callable[[], object], IMemo],
         ):
             self._memo = memo
             self.lazy_args = lazy_args
@@ -70,11 +60,10 @@ def create_lazy_memo_type(
 
         @property
         def lazy_memo(self) -> IMemo:
-            if isinstance(self.lazy_args, list):
-                lazy_args = [v() for v in self.lazy_args]
-                return memo_factory(lazy_args)
-            else:
+            if isinstance(self.lazy_args, IMemo):
                 return self.lazy_args
+            else:
+                return memo_factory(self.lazy_args())
 
         def compare(self, other: IMemo) -> bool:
             if isinstance(other, ILazyMemo):
@@ -86,7 +75,7 @@ def create_lazy_memo_type(
 
         @classmethod
         def create(
-            cls, args: object, lazy_args: List[ILazyMemoValue]
+            cls, args: object, lazy_args: Callable[[], object]
         ) -> ILazyMemo:
             return cls(memo_factory(args), lazy_args)
 

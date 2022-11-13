@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Literal, Union
 
-from jtcmake import SELF, Rule, GroupOfGroups, StaticGroupBase
+from jtcmake import SELF, Rule, GroupsGroup, StaticGroupBase
 
 
 def write(dst: Path, c: str):
@@ -31,7 +31,7 @@ def assert_content(path: Path, content: Union[None, str]):
 |-- r2: Rule
 |   `-- r2: File "r2"
 |
-`-- g1: GroupOfGroups[Static2]
+`-- g1: GroupsGroup[Static2]
     |
     |-- sub1: Static2
     |   |
@@ -48,7 +48,7 @@ class Static1(StaticGroupBase):
     r1: Rule[Literal["a", "b"]]
     r2: Rule[str]
 
-    g1: GroupOfGroups[Static2]
+    g1: GroupsGroup[Static2]
 
     def init(self, text1: str, text2: str) -> Static1:
         @self.r1.init_deco({"a": "<R>-<F>", "b": "<R>-<F>"})

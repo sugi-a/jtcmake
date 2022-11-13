@@ -1,11 +1,11 @@
 from .group_tree.groups import (
     UntypedGroup,
     StaticGroupBase,
-    GroupOfGroups,
-    GroupOfRules,
+    GroupsGroup,
+    RulesGroup,
 )
 from .group_tree.core import make
-from .group_tree.atom import Atom
+from .group_tree.atom import Atom, Mem, Memstr, Memnone
 from .group_tree.rule import Rule, SELF
 from .group_tree.file import File, VFile, IFile
 from .group_tree.graphviz import print_graphviz
@@ -18,10 +18,13 @@ __all__ = [
     "SELF",
     "UntypedGroup",
     "StaticGroupBase",
-    "GroupOfRules",
-    "GroupOfGroups",
+    "RulesGroup",
+    "GroupsGroup",
     "make",
     "Atom",
+    "Mem",
+    "Memstr",
+    "Memnone",
     "File",
     "VFile",
     "IFile",

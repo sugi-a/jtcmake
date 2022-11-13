@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Literal
 from jtcmake import (
-    GroupOfRules,
-    GroupOfGroups,
+    RulesGroup,
+    GroupsGroup,
     StaticGroupBase,
     Rule,
     SELF,
@@ -21,7 +21,7 @@ def func2(a: Path, b: Path):
 class Static1(StaticGroupBase):
     r1: Rule[str]
     r2: Rule[Literal["a", "b"]]
-    g1: GroupOfGroups[GroupOfRules]
+    g1: GroupsGroup[RulesGroup]
 
     def __init__(self):
         self.r1.init({"a": "a.txt", "b": "b.txt"}, func2)(SELF.a, b=SELF[1])
@@ -31,5 +31,5 @@ class Static1(StaticGroupBase):
         self.r2.init({"a": "a.txt", "b": "b.txt"}, func2)(SELF.a, b=SELF[1])
         self.r2.init(Path("x"), func2)(SELF.a, b=SELF[1])
 
-        gr = self.g1.init(GroupOfRules)
+        gr = self.g1.init(RulesGroup)
         gr.add_group("a")

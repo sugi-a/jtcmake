@@ -7,8 +7,8 @@ import pytest
 
 from jtcmake import (
     SELF,
-    GroupOfGroups as GGroup,
-    GroupOfRules as RGroup,
+    GroupsGroup as GGroup,
+    RulesGroup as RGroup,
     StaticGroupBase,
 )
 from jtcmake.group_tree.core import IGroup

@@ -5,9 +5,8 @@ import pathlib
 from typing import Dict, Tuple
 
 from ..utils.strpath import StrOrPath
-from ..memo import ILazyMemoValue
 from .core import IFile
-from .atom import IMemoAtom
+from .atom import IMemoAtom, ILazyMemoValue
 
 
 if sys.platform == "win32":
@@ -30,6 +29,14 @@ class File(_Path, IFile):
 
     def is_value_file(self) -> bool:
         return False
+
+    @property
+    def memo_value(self) -> object:
+        """
+        Returns None.
+        But the return value could be Path(self). Which is better?
+        """
+        return None
 
 
 class _ContentHash(ILazyMemoValue):

@@ -26,6 +26,7 @@ from ..core.abc import IEvent
 from ..logwriter import IWriter
 from .event_logger import log_make_event
 from ..utils.strpath import StrOrPath, fspath2str
+from .atom import IAtom
 
 
 class INode(metaclass=ABCMeta):
@@ -149,14 +150,7 @@ class IRule(INode, metaclass=ABCMeta):
         ...
 
 
-class IAtom(metaclass=ABCMeta):
-    @property
-    @abstractmethod
-    def value(self) -> object:
-        ...
-
-
-class IFile(Path, metaclass=ABCMeta):
+class IFile(Path, IAtom, metaclass=ABCMeta):
     """
     Abstract base class to represent a file object.
     """
@@ -179,6 +173,10 @@ class IFile(Path, metaclass=ABCMeta):
             return super().__eq__(other)
         else:
             return False
+
+    @property
+    def real_value(self) -> object:
+        return Path(self)
 
 
 class RuleStore:
