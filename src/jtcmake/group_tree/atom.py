@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any, Tuple, List
 
-from ..utils.nest import ordered_map_structure, map_structure
+from ..utils.nest import map_structure
 
 
 class IMemoAtom(metaclass=ABCMeta):
@@ -46,7 +46,7 @@ def unwrap_memo_values(nest: object) -> Tuple[object, _EvalLazyMemoValues]:
         else:
             return atom
 
-    nest = ordered_map_structure(_unwrap_atom, nest)
+    nest = map_structure(_unwrap_atom, nest)
 
     return nest, _EvalLazyMemoValues(lazy_values)
 
