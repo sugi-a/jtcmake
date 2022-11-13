@@ -5,7 +5,7 @@ from .group_tree.groups import (
     GroupOfRules,
 )
 from .group_tree.core import make
-from .group_tree.atom import Atom
+from .group_tree.atom import Atom, Mem, Memstr, Memnone
 from .group_tree.rule import Rule, SELF
 from .group_tree.file import File, VFile, IFile
 from .group_tree.graphviz import print_graphviz
@@ -22,6 +22,9 @@ __all__ = [
     "GroupOfGroups",
     "make",
     "Atom",
+    "Mem",
+    "Memstr",
+    "Memnone",
     "File",
     "VFile",
     "IFile",

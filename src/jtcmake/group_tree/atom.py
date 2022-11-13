@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, List
+from typing import Any, Tuple, List, Union
 
 from ..utils.nest import ordered_map_structure, map_structure
 
@@ -126,7 +126,11 @@ class Atom(IAtom):
         return f"Atom(value={v}, memo_value={m})"
 
 
-def Memstr(arg: object) -> Atom:
+def Mem(arg: object, memo_value: object) -> Any:
+    return Atom(arg, memo_value)
+
+
+def Memstr(arg: object) -> Any:
     """
     Alias for `Atom(arg, str(arg))`.
     Use str(arg) as the value for memoization of arg
@@ -134,7 +138,7 @@ def Memstr(arg: object) -> Atom:
     return Atom(arg, str(arg))
 
 
-def Nomem(arg: object) -> Atom:
+def Memnone(arg: object) -> Any:
     """
     Alias for `Atom(arg, "")`.
     Let arg be not memoized.
