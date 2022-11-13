@@ -59,12 +59,12 @@ def ordered_map_structure(
 
         for src, dst in map_factory.items():
             if isinstance(nest, src):
-                keys = sorted(nest.keys(), key=lambda x: (hash(x), x))
+                keys = sorted(nest.keys())
                 return dst({k: rec(nest[k]) for k in keys})
 
         for src, dst in set_factory.items():
             if isinstance(nest, src):
-                values = sorted(nest, key=lambda x: (hash(x), x))
+                values = sorted(nest)
                 return dst(map(rec, values))
 
         return map_fn(nest)
