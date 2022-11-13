@@ -13,9 +13,9 @@ def test_MemoMixin():
 
     store = g._get_info().memo_store  # pyright: ignore [reportPrivateUsage]
 
-    assert store[id(a)].value == a
+    assert store[id(a)].real_value == a
     assert store[id(a)].memo_value == b
-    assert store[id(c)].value == c
+    assert store[id(c)].real_value == c
     assert store[id(c)].memo_value == str(c)
-    assert store[id(d)].value == d
+    assert store[id(d)].real_value == d
     assert store[id(d)].memo_value == None

@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os, inspect, time
 import re
-from pathlib import Path
 from os import PathLike
 from typing import (
     Any,
@@ -26,7 +25,7 @@ from ..core.make import MakeSummary
 from ..utils.dict_view import DictView
 from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
-from .atom import Atom
+from .atom import unwrap_real_values
 from .file import File, VFile
 from .core import (
     IRule,
@@ -237,9 +236,7 @@ class Rule(IRule, Generic[K]):
         xp2f = _find_xfiles_in_args(yp2f, args_)
 
         # Create final method arguments
-        method_args, method_kwargs = _replace_Atom_and_IFile(  # type: ignore
-            args_
-        )
+        method_args, method_kwargs = unwrap_real_values(args_)  # type: ignore
 
         # Validate method signature
         if not callable(method):
@@ -674,18 +671,6 @@ def _find_xfiles_in_args(
     map_structure(check, args)
 
     return res
-
-
-def _replace_Atom_and_IFile(args: object) -> object:
-    def repl(v: object):
-        if isinstance(v, Atom):
-            return v.value
-        elif isinstance(v, IFile):
-            return Path(v)
-        else:
-            return v
-
-    return map_structure(repl, args)
 
 
 def _assert_signature_match(

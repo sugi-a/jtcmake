@@ -13,7 +13,7 @@ from typing import (
     List,
 )
 
-from ..atom import unwrap_atoms_in_nest
+from ..atom import unwrap_memo_values
 
 from ...memo import ILazyMemo, create_lazy_memo_type, StrHashMemo, IMemo
 
@@ -206,7 +206,7 @@ def create_lazy_memo_factory(
     lazy_memo_type: Type[ILazyMemo],
 ) -> Callable[[object], IMemo]:
     def _res(args: object) -> IMemo:
-        args, lazy_args = unwrap_atoms_in_nest(args)
+        args, lazy_args = unwrap_memo_values(args)
         return lazy_memo_type.create(args, lazy_args)
 
     return _res

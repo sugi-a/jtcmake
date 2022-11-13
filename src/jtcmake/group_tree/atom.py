@@ -2,9 +2,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Tuple, List
 
-from ..utils.nest import ordered_map_structure
-from ..memo import ILazyMemoValue
-from .core import IAtom
+from ..utils.nest import ordered_map_structure, map_structure
 
 
 class IMemoAtom(metaclass=ABCMeta):
@@ -18,7 +16,23 @@ class IMemoAtom(metaclass=ABCMeta):
         ...
 
 
-def unwrap_atoms_in_nest(nest: object) -> Tuple[object, List[ILazyMemoValue]]:
+class ILazyMemoValue(metaclass=ABCMeta):
+    @abstractmethod
+    def __call__(self) -> object:
+        ...
+
+
+class _EvalLazyMemoValues:
+    __slots__ = ("lazy_memo_values",)
+
+    def __init__(self, lazy_memo_values: List[ILazyMemoValue]):
+        self.lazy_memo_values = lazy_memo_values
+
+    def __call__(self) -> List[object]:
+        return [v() for v in self.lazy_memo_values]
+
+
+def unwrap_memo_values(nest: object) -> Tuple[object, _EvalLazyMemoValues]:
     lazy_values: List[ILazyMemoValue] = []
 
     def _unwrap_atom(atom: object):
@@ -34,10 +48,27 @@ def unwrap_atoms_in_nest(nest: object) -> Tuple[object, List[ILazyMemoValue]]:
 
     nest = ordered_map_structure(_unwrap_atom, nest)
 
-    return nest, lazy_values
+    return nest, _EvalLazyMemoValues(lazy_values)
 
 
-class Atom(IAtom, IMemoAtom):
+class IAtom(IMemoAtom, metaclass=ABCMeta):
+    @property
+    @abstractmethod
+    def real_value(self) -> object:
+        ...
+
+
+def unwrap_real_values(args: object) -> object:
+    def repl(v: object) -> object:
+        if isinstance(v, IAtom):
+            return v.real_value
+        else:
+            return v
+
+    return map_structure(repl, args)
+
+
+class Atom(IAtom):
     __slots__ = ("_value", "_memo_value")
 
     def __init__(self, value: object, memo_value: object):
@@ -83,7 +114,7 @@ class Atom(IAtom, IMemoAtom):
         self._memo_value = memo_value
 
     @property
-    def value(self):
+    def real_value(self):
         return self._value
 
     @property
@@ -91,7 +122,7 @@ class Atom(IAtom, IMemoAtom):
         return self._memo_value
 
     def __repr__(self):
-        v, m = repr(self.value), repr(self.memo_value)
+        v, m = repr(self.real_value), repr(self.memo_value)
         return f"Atom(value={v}, memo_value={m})"
 
 

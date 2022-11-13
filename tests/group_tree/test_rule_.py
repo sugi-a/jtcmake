@@ -97,18 +97,6 @@ def test_assert_signature_match(func, args, kwargs, ok):
 
 
 @pytest.mark.parametrize(
-    "args,expect",
-    [
-        (Atom(1, 2), 1),
-        (DummyFile("a"), Path("a")),
-        ({1: [(Atom(1, 2), DummyFile("a"))]}, {1: [(1, Path("a"))]}),
-    ],
-)
-def test_replace_Atom_and_IFile(args, expect):
-    assert rule._replace_Atom_and_IFile(args) == expect
-
-
-@pytest.mark.parametrize(
     "ypaths,args,expect",
     [
         (
