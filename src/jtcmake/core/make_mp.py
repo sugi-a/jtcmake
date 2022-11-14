@@ -230,7 +230,7 @@ def _test_interproc_portabability(
     n = len(objs)
     picklable = [True] * n
 
-    sys.stderr.write("Checking picklability\n")
+    sys.stderr.write("Checking inter-process transferability of rules\n")
 
     with ctx.Pool(1) as pool:
         for i, obj in enumerate(objs):
