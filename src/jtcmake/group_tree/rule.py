@@ -82,9 +82,14 @@ def require_init(
         info = self._get_info()  # pyright: ignore [reportPrivateUsage]
 
         if self.name_tuple in info.rules_to_be_init:
+            try:
+                method_name = rule_method.__name__
+            except AttributeError:
+                method_name = "<unknown method>"
+
             raise Exception(
                 f"Rule {self.name} must be initialized "
-                "before calling this method"
+                f"before calling the method ({method_name})"
             )
 
         return rule_method(self, *args, **kwargs)
@@ -125,7 +130,7 @@ class Rule(IRule, Generic[K]):
         kwargs: Dict[str, object],
     ):
         if self.initialized:
-            raise RuntimeError("Already initialized")
+            raise RuntimeError(f"Rule {self.name} is already initialized")
 
         self._init_main(yfiles, method, args, kwargs)
         self._info.rules_to_be_init.remove(self._name)
@@ -153,11 +158,10 @@ class Rule(IRule, Generic[K]):
     def initialized(self) -> bool:
         return self._name not in self._info.rules_to_be_init
 
-    @require_init
     def __getattr__(self, key: K) -> IFile:
-        return self.__getitem__(key)
+        """Just for type checkers"""
+        raise AttributeError(key)
 
-    @require_init
     def __getitem__(self, key: Union[int, K]) -> IFile:
         if isinstance(key, int):
             return self._files[self._file_keys[key]]
@@ -261,6 +265,10 @@ class Rule(IRule, Generic[K]):
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
 
+        for k, f in yfiles.items():
+            if k.isidentifier() and not hasattr(self, k):
+                setattr(self, k, f)
+
     @overload
     def init(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
         ...
@@ -315,9 +323,6 @@ class Rule(IRule, Generic[K]):
         *,
         IFile_fact: Callable[[StrOrPath], IFile],
     ) -> Callable[P, Rule[K]]:
-        if self.initialized:
-            raise RuntimeError("Already initialized")
-
         if method is None:
             output_files, method = self.name_tuple[-1], output_files
 
@@ -363,9 +368,6 @@ class Rule(IRule, Generic[K]):
         *,
         IFile_fact: Callable[[StrOrPath], IFile],
     ) -> Callable[[_T_deco_f], _T_deco_f]:
-        if self.initialized:
-            raise RuntimeError("Already initialized")
-
         if output_files is None:
             output_files = self.name_tuple[-1]
 
