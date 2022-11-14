@@ -1,6 +1,7 @@
+from multiprocessing.pool import Pool
 import traceback
 import enum
-from typing import Callable, List, NamedTuple, Set, Sequence
+from typing import Callable, List, NamedTuple, Optional, Set, Sequence
 
 from . import events
 from .abc import IRule, IEvent, UpdateResults
@@ -74,7 +75,7 @@ def make(
 
         try:
             result = process_rule(
-                r, dry_run, par_updated, i in main_ids, callback
+                r, dry_run, par_updated, i in main_ids, callback, None
             )
         except Exception as e:
             result = Result.Fatal
@@ -118,6 +119,7 @@ def process_rule(
     par_updated: bool,
     is_main: bool,
     callback: Callable[[IEvent], None],
+    pool: Optional[Pool],
 ):
     if dry_run:
         res = rule.check_update(par_updated, True)
@@ -154,8 +156,12 @@ def process_rule(
         return Result.Fail
 
     try:
-        rule.method(*rule.args, **rule.kwargs)
-        succ = True
+        if pool is None:
+            rule.method(*rule.args, **rule.kwargs)
+            succ = True
+        else:
+            pool.apply(rule.method, rule.args, rule.kwargs)
+            succ = True
     except Exception as e:
         callback(events.ExecError(rule, e))
         succ = False

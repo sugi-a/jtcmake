@@ -22,6 +22,7 @@ from ...utils.strpath import StrOrPath
 
 P = ParamSpec("P")
 K = TypeVar("K", bound=str)
+_T_deco_f = TypeVar("_T_deco_f", bound=Callable[[], object])
 
 
 class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
@@ -114,7 +115,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             ]
         ] = None,
         /,
-    ) -> Callable[[Callable[[], object]], None]:
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
         return self._add_deco(name, output_files, IFile_fact=File)
 
     def addvf_deco(
@@ -129,7 +130,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             ]
         ] = None,
         /,
-    ) -> Callable[[Callable[[], object]], None]:
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
         return self._add_deco(name, output_files, IFile_fact=VFile)
 
     def _add_deco(
@@ -145,7 +146,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ] = None,
         *,
         IFile_fact: Callable[[StrOrPath], IFile],
-    ) -> Callable[[Callable[[], object]], None]:
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
         if output_files is None:
             output_files = name
 
@@ -158,9 +159,10 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             name_, None, output_files, IFile_fact
         )
 
-        def decorator(method: object):
+        def decorator(method: _T_deco_f):
             args, kwargs = Rule_init_parse_deco_func(method)
             self._add_rule(name_, output_files_, method, args, kwargs)
+            return method
 
         return decorator
 
