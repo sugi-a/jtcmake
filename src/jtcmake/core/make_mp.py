@@ -8,7 +8,6 @@ from threading import Thread, Condition, Lock
 
 from collections import defaultdict
 from typing import (
-    Any,
     Dict,
     Mapping,
     Optional,
@@ -163,7 +162,7 @@ def make_mp_spawn(
         callback_,
     )
 
-    threads = [Thread(target=worker, args=(*args, i)) for i in range(njobs)]
+    threads = [Thread(target=worker, args=args) for _ in range(njobs)]
 
     for t in threads:
         t.start()
@@ -197,9 +196,7 @@ def worker(
     sendable: Mapping[int, bool],
     dry_run: bool,
     callback: Callable[[IEvent], None],
-    name: Any,
 ):
-    name = f"worker{name}"
     with ctx.Pool(1) as pool:
         while True:
             i = get_job()
@@ -230,7 +227,7 @@ def worker(
 
 
 def _test_interproc_portabability(
-    objs: List[Any], ctx: SpawnContext
+    objs: Sequence[object], ctx: SpawnContext
 ) -> List[bool]:
     n = len(objs)
     picklable = [True] * n
