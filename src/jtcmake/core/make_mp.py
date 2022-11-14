@@ -2,7 +2,6 @@ from __future__ import annotations
 from multiprocessing.context import SpawnContext
 import sys
 import traceback
-import queue
 import pickle
 from multiprocessing import get_context
 from threading import Thread, Condition, Lock
@@ -11,6 +10,7 @@ from collections import defaultdict
 from typing import (
     Any,
     Dict,
+    Mapping,
     Optional,
     Set,
     Tuple,
@@ -77,7 +77,8 @@ def make_mp_spawn(
 
     # Check inter-process transferability
     rules = [id2rule[i] for i in ids]
-    sendable = _test_interproc_portabability(rules, ctx)
+    method_objs = [(r.method, r.args, r.kwargs) for r in rules]
+    sendable = _test_interproc_portabability(method_objs, ctx)
     _log_sendable_stats(sendable)
     sendable = {ids[j]: sendable[j] for j in range(len(ids))}
 
@@ -95,8 +96,6 @@ def make_mp_spawn(
 
     cv = Condition()  # for the above state vars
     cb_lock = Lock()  # used when callback()
-
-    event_q = ctx.Queue()
 
     # Add rules with no dependencies to the job queue
     for i in ids:
@@ -152,24 +151,10 @@ def make_mp_spawn(
         with cb_lock:
             callback(e)
 
-    def event_q_handler(workers: Sequence[Thread]):
-        # workers: list[Thread]
-        while True:
-            if all(not t.is_alive() for t in workers):
-                return
-
-            try:
-                callback_(event_q.get(True, 1))
-            except queue.Empty:
-                pass
-            except Exception:
-                traceback.print_exc()
-
     args = (
         ctx,
         get_job,
         set_result,
-        event_q,
         id2rule,
         updated_ids,
         main_ids,
@@ -183,14 +168,9 @@ def make_mp_spawn(
     for t in threads:
         t.start()
 
-    thread_event_q_handler = Thread(target=event_q_handler, args=(threads,))
-    thread_event_q_handler.start()
-
     try:
         for t in threads:
             t.join()
-
-        # thread_event_q_handler.join()
     except Exception:
         pass
     finally:
@@ -211,17 +191,16 @@ def worker(
     ctx: SpawnContext,
     get_job: Callable[[], Union[int, None]],
     set_result: Callable[[int, Union[Result, None]], None],
-    event_q: queue.Queue[IEvent],  # for process only
     id2rule: List[IRule],
     updated_ids: Set[int],
     main_ids: Set[int],
-    sendable: Sequence[int],
+    sendable: Mapping[int, bool],
     dry_run: bool,
     callback: Callable[[IEvent], None],
     name: Any,
 ):
     name = f"worker{name}"
-    with ctx.Pool(1, _init_event_q, (event_q,)) as pool:
+    with ctx.Pool(1) as pool:
         while True:
             i = get_job()
 
@@ -234,12 +213,12 @@ def worker(
 
             try:
                 par_updated = any(dep in updated_ids for dep in rule.deps)
-                args = (rule, dry_run, par_updated, i in main_ids)
+                args = (rule, dry_run, par_updated, i in main_ids, callback)
 
                 if sendable[i]:
-                    res = pool.apply(process_worker, args)
+                    res = process_rule(*args, pool)
                 else:
-                    res = process_rule(*args, callback)
+                    res = process_rule(*args, None)
             except (Exception, KeyboardInterrupt) as e:
                 traceback.print_exc()
                 callback(events.FatalError(rule, e))
@@ -248,25 +227,6 @@ def worker(
 
                 if res is None:
                     return
-
-
-_event_q: Optional[queue.Queue[IEvent]] = None  # used by worker Processes
-
-
-def _init_event_q(q: queue.Queue[IEvent]):
-    global _event_q
-    assert _event_q is None
-    _event_q = q
-
-
-def process_worker(
-    rule: IRule, dry_run: bool, par_updated: bool, is_main: bool
-):
-    def cb(e: IEvent):
-        assert _event_q is not None
-        _event_q.put(e)
-
-    return process_rule(rule, dry_run, par_updated, is_main, cb)
 
 
 def _test_interproc_portabability(
