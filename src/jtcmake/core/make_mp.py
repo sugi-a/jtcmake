@@ -2,7 +2,6 @@ from __future__ import annotations
 from multiprocessing.context import SpawnContext
 import sys
 import traceback
-import pickle
 from multiprocessing import get_context
 from threading import Thread, Condition, Lock
 
@@ -10,7 +9,6 @@ from collections import defaultdict
 from typing import (
     Dict,
     Mapping,
-    Optional,
     Set,
     Tuple,
     Callable,
@@ -232,32 +230,20 @@ def _test_interproc_portabability(
     n = len(objs)
     picklable = [True] * n
 
-    codes: List[Optional[bytes]] = [None] * n
-
     sys.stderr.write("Checking picklability\n")
 
-    for i in range(n):
-        try:
-            codes[i] = pickle.dumps(objs[i])
-        except Exception:
-            picklable[i] = False
-
-    sys.stderr.write("Checking inter-process portability\n")
-
     with ctx.Pool(1) as pool:
-        for i, code in enumerate(codes):
-            if code is not None:
-                picklable[i] = pool.apply(_test_transferability, (code,))
+        for i, obj in enumerate(objs):
+            try:
+                pool.apply(_dummy_func, (obj,))
+            except Exception:
+                picklable[i] = False
 
     return picklable
 
 
-def _test_transferability(pickle_code: bytes) -> bool:
-    try:
-        pickle.loads(pickle_code)
-        return True
-    except pickle.UnpicklingError:
-        return False
+def _dummy_func(_: object) -> bool:
+    ...
 
 
 def _log_sendable_stats(sendables: Sequence[bool]):
