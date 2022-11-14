@@ -304,7 +304,10 @@ def _richstr_to_html(s: RichStr, basedir: str) -> str:
 
     if attr.link is not None:
         if basedir is not None:
-            link = os.path.relpath(attr.link, basedir)
+            try:
+                link = os.path.relpath(attr.link, basedir)
+            except Exception:
+                link = attr.link
         else:
             link = attr.link
         starts.append(f'<a href="{Path(link).as_posix()}">')
