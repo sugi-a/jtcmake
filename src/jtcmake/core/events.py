@@ -1,21 +1,26 @@
+from __future__ import annotations
+from typing import TypeVar
 from traceback import TracebackException
 from .abc import IEvent, IRule
 
 
-class RuleEvent(IEvent):
-    def __init__(self, rule: IRule):
+_T_Rule = TypeVar("_T_Rule", bound=IRule)
+
+
+class RuleEvent(IEvent[_T_Rule]):
+    def __init__(self, rule: _T_Rule):
         self._rule = rule
 
     @property
-    def rule(self) -> IRule:
+    def rule(self) -> _T_Rule:
         return self._rule
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.rule})"
 
 
-class ErrorRuleEvent(RuleEvent):
-    def __init__(self, rule: IRule, err: BaseException):
+class ErrorRuleEvent(RuleEvent[_T_Rule]):
+    def __init__(self, rule: _T_Rule, err: BaseException):
         """
         Args:
             err (BaseException):
@@ -29,45 +34,45 @@ class ErrorRuleEvent(RuleEvent):
         self.trace_exc = TracebackException.from_exception(err)
 
 
-class Skip(RuleEvent):
-    def __init__(self, rule: IRule, is_direct_target: bool):
+class Skip(RuleEvent[_T_Rule]):
+    def __init__(self, rule: _T_Rule, is_direct_target: bool):
         super().__init__(rule)
         self.is_direct_target = is_direct_target
 
 
-class Start(RuleEvent):
+class Start(RuleEvent[_T_Rule]):
     ...
 
 
-class Done(RuleEvent):
+class Done(RuleEvent[_T_Rule]):
     ...
 
 
-class DryRun(RuleEvent):
+class DryRun(RuleEvent[_T_Rule]):
     ...
 
 
-class StopOnFail(IEvent):
+class StopOnFail(IEvent[_T_Rule]):
     ...
 
 
-class UpdateInfeasible(RuleEvent):
-    def __init__(self, rule: IRule, reason: str):
+class UpdateInfeasible(RuleEvent[_T_Rule]):
+    def __init__(self, rule: _T_Rule, reason: str):
         super().__init__(rule)
         self.reason = reason
 
 
-class PreProcError(ErrorRuleEvent):
+class PreProcError(ErrorRuleEvent[_T_Rule]):
     ...
 
 
-class ExecError(ErrorRuleEvent):
+class ExecError(ErrorRuleEvent[_T_Rule]):
     ...
 
 
-class PostProcError(ErrorRuleEvent):
+class PostProcError(ErrorRuleEvent[_T_Rule]):
     ...
 
 
-class FatalError(ErrorRuleEvent):
+class FatalError(ErrorRuleEvent[_T_Rule]):
     ...
