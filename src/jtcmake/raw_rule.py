@@ -9,13 +9,11 @@ from typing import (
     Optional,
     Sequence,
     Set,
-    Tuple,
     TypeVar,
-    Dict,
     Collection,
 )
 
-from .core.abc import IRule, UpdateResults, TUpdateResult, Callback
+from .core.abc import IRule, UpdateResults, UpdateResult
 
 
 class IMemo(metaclass=ABCMeta):
@@ -35,8 +33,10 @@ class IMemo(metaclass=ABCMeta):
 
 TId = TypeVar("TId")
 
+_T_method = TypeVar("_T_method", bound=Callable[[], object])
 
-class Rule(IRule, Generic[TId]):
+
+class Rule(IRule, Generic[TId, _T_method]):
     __slots__ = [
         "yfiles",
         "xfiles",
@@ -44,8 +44,6 @@ class Rule(IRule, Generic[TId]):
         "xfile_is_vf",
         "_deplist",
         "_method",
-        "_args",
-        "_kwargs",
         "_id",
         "memo",
     ]
@@ -57,9 +55,7 @@ class Rule(IRule, Generic[TId]):
         xfile_is_orig: Sequence[bool],
         xfile_is_vf: Sequence[bool],
         deplist: Set[int],
-        method: Callable[..., object],
-        args: Tuple[object, ...],
-        kwargs: Dict[str, object],
+        method: _T_method,
         memo: IMemo,
         id: TId,
     ):
@@ -71,12 +67,10 @@ class Rule(IRule, Generic[TId]):
         self.xfile_is_vf = xfile_is_vf
         self._deplist = deplist
         self._method = method
-        self._args = args
-        self._kwargs = kwargs
         self._id = id
         self.memo = memo
 
-    def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
+    def check_update(self, par_updated: bool, dry_run: bool) -> UpdateResult:
         """
         Prerequisite: the y-list has at least one item.
 
@@ -116,16 +110,14 @@ class Rule(IRule, Generic[TId]):
 
         return UpdateResults.UpToDate()
 
-    def preprocess(self, callback: Callback):
-        del callback
+    def preprocess(self):
         for f in self.yfiles:
             try:
                 os.makedirs(f.parent, exist_ok=True)
             except Exception:
                 pass
 
-    def postprocess(self, callback: Callback, succ: bool):
-        del callback
+    def postprocess(self, succ: bool):
         if succ:
             self.update_memo()
         else:
@@ -153,16 +145,8 @@ class Rule(IRule, Generic[TId]):
             f.writelines(self.memo.dumps())
 
     @property
-    def method(self):
+    def method(self) -> _T_method:
         return self._method
-
-    @property
-    def args(self):
-        return self._args
-
-    @property
-    def kwargs(self):
-        return self._kwargs
 
     @property
     def deps(self):
@@ -178,7 +162,7 @@ def _check_update_1(
     xisorig: Sequence[bool],
     dry_run: bool,
     **_: object,
-) -> Optional[TUpdateResult]:
+) -> Optional[UpdateResult]:
     for f, isorig in zip(xs, xisorig):
         if not f.exists():
             if not dry_run or isorig:
@@ -195,7 +179,7 @@ def _check_update_1(
 
 def _check_update_2(
     ys: Collection[Path], **_: object
-) -> Optional[TUpdateResult]:
+) -> Optional[UpdateResult]:
     if any(not f.exists() for f in ys):
         return UpdateResults.Necessary()
 
@@ -205,14 +189,14 @@ def _check_update_2(
 
 def _check_update_3(
     dry_run: bool, par_updated: bool, **_: object
-) -> Optional[TUpdateResult]:
+) -> Optional[UpdateResult]:
     if dry_run and par_updated:
         return UpdateResults.PossiblyNecessary()
 
 
 def _check_update_4(
     ys: Collection[Path], xs: Sequence[Path], xisvf: Sequence[bool], **_: object
-) -> Optional[TUpdateResult]:
+) -> Optional[UpdateResult]:
     assert all(y.exists() for y in ys)
     getmtime = os.path.getmtime
     oldest_y = min(os.path.getmtime(f) for f in ys)
@@ -222,7 +206,7 @@ def _check_update_4(
 
 def _check_update_5(
     memo: IMemo, old_memo_file: Path, **_: object
-) -> Optional[TUpdateResult]:
+) -> Optional[UpdateResult]:
     if not os.path.exists(old_memo_file):
         return UpdateResults.Necessary()
 

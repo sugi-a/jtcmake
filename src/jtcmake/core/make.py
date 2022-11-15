@@ -1,7 +1,7 @@
 from multiprocessing.pool import Pool
 import traceback
 import enum
-from typing import Callable, List, NamedTuple, Optional, Set, Sequence
+from typing import Callable, List, NamedTuple, Optional, Set, Sequence, TypeVar
 
 from . import events
 from .abc import IRule, IEvent, UpdateResults
@@ -45,12 +45,15 @@ def _toplogical_sort(
     return res
 
 
+_T_Rule = TypeVar("_T_Rule", bound=IRule)
+
+
 def make(
-    id2rule: Sequence[IRule],
+    id2rule: Sequence[_T_Rule],
     ids: Sequence[int],
     dry_run: bool,
     keep_going: bool,
-    callback: Callable[[IEvent], None],
+    callback: Callable[[IEvent[_T_Rule]], None],
 ):
     if len(ids) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
@@ -114,11 +117,11 @@ def make(
 
 
 def process_rule(
-    rule: IRule,
+    rule: _T_Rule,
     dry_run: bool,
     par_updated: bool,
     is_main: bool,
-    callback: Callable[[IEvent], None],
+    callback: Callable[[IEvent[_T_Rule]], None],
     pool: Optional[Pool],
 ):
     if dry_run:
@@ -150,31 +153,31 @@ def process_rule(
     callback(events.Start(rule))
 
     try:
-        rule.preprocess(callback)
+        rule.preprocess()
     except Exception as e:
         callback(events.PreProcError(rule, e))
         return Result.Fail
 
     try:
         if pool is None:
-            rule.method(*rule.args, **rule.kwargs)
+            rule.method()
             succ = True
         else:
-            pool.apply(rule.method, rule.args, rule.kwargs)
+            pool.apply(rule.method)
             succ = True
     except Exception as e:
         callback(events.ExecError(rule, e))
         succ = False
     except KeyboardInterrupt:
         try:
-            rule.postprocess(callback, False)
+            rule.postprocess(False)
         except Exception:
             pass
 
         raise KeyboardInterrupt()
 
     try:
-        rule.postprocess(callback, succ)
+        rule.postprocess(succ)
     except Exception as e:
         callback(events.PostProcError(rule, e))
         return Result.Fail

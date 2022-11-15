@@ -1,25 +1,41 @@
+from abc import ABCMeta, abstractmethod
 import inspect
-import warnings
-from typing import Any, Callable, List, Optional, Sequence, Mapping, Dict, Tuple
+from typing import Callable, List, Optional, Sequence, Mapping, Dict, Tuple
 from pathlib import Path
 
 from ..raw_rule import Rule
-from ..core.abc import IEvent, IRule
+from ..core.abc import IEvent
 from ..core import events
 from ..logwriter import IWriter, RichStr
 
 
-def get_rule_name(r: IRule, id2name: Callable[[int], str]):
-    if isinstance(r, Rule):
-        return id2name(r.id)  # pyright: ignore [reportUnknownMemberType]
-    else:
-        warnings.warn(
-            "Internal Error: an event of unnamed Rule has been emitted."
-        )
-        return "<unknown>"
+class INoArgFunc(metaclass=ABCMeta):
+    def __call__(self) -> object:
+        self.method(*self.args, **self.kwargs)
+
+    @property
+    @abstractmethod
+    def method(self) -> Callable[..., object]:
+        ...
+
+    @property
+    @abstractmethod
+    def args(self) -> Tuple[object, ...]:
+        ...
+
+    @property
+    @abstractmethod
+    def kwargs(self) -> Dict[str, object]:
+        ...
 
 
-def log_make_event(w: IWriter, e: IEvent, id2name: Callable[[int], str]):
+def get_rule_name(r: Rule[int, INoArgFunc], id2name: Callable[[int], str]):
+    return id2name(r.id)
+
+
+def log_make_event(
+    w: IWriter, e: IEvent[Rule[int, INoArgFunc]], id2name: Callable[[int], str]
+):
     if isinstance(e, events.ErrorRuleEvent):
         # Show stack trace and error message
         w.warning("".join(e.trace_exc.format()))
@@ -65,14 +81,16 @@ def log_make_event(w: IWriter, e: IEvent, id2name: Callable[[int], str]):
                 w.debug("Skip ", name)
         elif isinstance(e, events.Start):
             msg = []
-            tostrs_func_call(msg, r.method, r.args, r.kwargs)
+            method_ = r.method
+            tostrs_func_call(msg, method_.method, method_.args, method_.kwargs)
             msg = add_indent(msg, "  ")
             w.info("Make ", name, "\n", *msg)
         elif isinstance(e, events.Done):
             w.info("Done ", name)
         elif isinstance(e, events.DryRun):
             msg = []
-            tostrs_func_call(msg, r.method, r.args, r.kwargs)
+            method_ = r.method
+            tostrs_func_call(msg, method_.method, method_.args, method_.kwargs)
             msg = add_indent(msg, "  ")
             w.info("Make (dry) ", name, "\n", *msg)
         elif isinstance(e, events.UpdateInfeasible):
@@ -132,7 +150,7 @@ def tostrs_func_call(
     dst.append(")\n")
 
 
-def tostrs_obj(dst: List[str], o: Any, capacity: Optional[int] = None):
+def tostrs_obj(dst: List[str], o: object, capacity: Optional[int] = None):
     _tostrs_obj(dst, o, capacity or 10**10)
 
 

@@ -1,23 +1,24 @@
+from typing import Any, Callable, Iterable, List, Optional
 import pytest
 
-from jtcmake.core.abc import IEvent, IRule, UpdateResults
+from jtcmake.core.abc import IEvent, IRule, UpdateResult, UpdateResults
 from jtcmake.core.make import make, MakeSummary
 from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
 
 
-def fail(*args, exc=None, **kwargs):
+def fail(*args: object, exc: Optional[Exception] = None, **kwargs: object):
     if exc is None:
         exc = Exception()
     raise exc
 
 
-def assert_same_event(e1, e2):
+def assert_same_event(e1: IEvent[IRule], e2: IEvent[IRule]):
     assert type(e1) == type(e2)
     assert e1.__dict__ == e2.__dict__
 
 
-def assert_same_log_item(x1, x2):
+def assert_same_log_item(x1: object, x2: object):
     if isinstance(x1, IEvent):
         assert_same_event(x1, x2)
     else:
@@ -34,44 +35,40 @@ def assert_same_log(log1, log2):
         assert_same_log_item(x1, x2)
 
 
-log = []
+log: List[object] = []
 
 
-def callback(event):
+def callback(event: IEvent[IRule]):
     log.append(event)
 
 
 class MockRule(IRule):
     def __init__(
         self,
-        deplist,
-        args,
-        kwargs,
-        method,
-        check_update=UpdateResults.Necessary(),
-        preprocess_err=None,
-        postprocess_err=None,
+        deplist: Iterable[int],
+        method: Callable[[], object],
+        check_update: UpdateResult = UpdateResults.Necessary(),
+        preprocess_err: Optional[Exception] = None,
+        postprocess_err: Optional[Exception] = None,
     ):
-        self._deplist = deplist
-        self._check_update = check_update
-        self._args = args
-        self._kwargs = kwargs
+        self._deplist = set(deplist)
+        self.check_update_ = check_update
         self._method = method
         self._preprocess_err = preprocess_err
         self._postprocess_err = postprocess_err
 
-    def check_update(self, par_updated, dry_run):
+    def check_update(self, par_updated: bool, dry_run: bool):
         log.append(("check_update", self, par_updated, dry_run))
-        if isinstance(self._check_update, Exception):
-            raise self._check_update
-        return self._check_update
+        if isinstance(self.check_update_, Exception):
+            raise self.check_update_
+        return self.check_update_
 
-    def preprocess(self, callback):
+    def preprocess(self):
         log.append(("preprocess", self))
         if self._preprocess_err is not None:
             raise self._preprocess_err
 
-    def postprocess(self, callback, succ):
+    def postprocess(self, succ: bool):
         log.append(("postprocess", self, succ))
         if self._postprocess_err is not None:
             raise self._postprocess_err
@@ -79,14 +76,6 @@ class MockRule(IRule):
     @property
     def method(self):
         return self._method
-
-    @property
-    def args(self):
-        return self._args
-
-    @property
-    def kwargs(self):
-        return self._kwargs
 
     @property
     def deps(self):
@@ -98,27 +87,23 @@ class MockRule(IRule):
 
 
 @pytest.mark.parametrize("mp", [False, True])
-def test_basic(mp):
+def test_basic(mp: bool):
     """
     * Two rules r1 and r2, where r2 depends on r1
     * Single task mode and multi task mode must yield the same results
     """
 
-    def make_(*args, **kwargs):
+    def make_(*args: Any, **kwargs: Any):
         if mp:
             return make_mp_spawn(*args, **kwargs, njobs=2)
         else:
             return make(*args, **kwargs)
 
-    args, kwargs = (object(),), {"a": object()}
-
-    def method(*args_, **kwargs_):
-        assert args_ == args
-        assert kwargs_ == kwargs
+    def method():
         log.append(("method",))
 
-    r1 = MockRule([], args, kwargs, method)
-    r2 = MockRule([0], args, kwargs, method)
+    r1 = MockRule([], method)
+    r2 = MockRule([0], method)
 
     id2rule = [r1, r2]
 
@@ -187,34 +172,30 @@ def test_basic(mp):
 
 
 @pytest.mark.parametrize("mp", [False, True])
-def test_skip(mp):
+def test_skip(mp: bool):
     """
     * Two rules r1 and r2, where r2 depends on r1
     * Single task mode and multi task mode must yield the same results
     """
 
-    def make_(*args, **kwargs):
+    def make_(*args: Any, **kwargs: Any):
         if mp:
             return make_mp_spawn(*args, **kwargs, njobs=2)
         else:
             return make(*args, **kwargs)
 
-    args, kwargs = (object(),), {"a": object()}
-
-    def method(*args_, **kwargs_):
-        assert args_ == args
-        assert kwargs_ == kwargs
+    def method():
         log.append(("method",))
 
-    r1 = MockRule([], args, kwargs, method)
-    r2 = MockRule([1], args, kwargs, method)
+    r1 = MockRule([], method)
+    r2 = MockRule([1], method)
 
     id2rule = {1: r1, 2: r2}
 
     # skip both
     log.clear()
-    r1._check_update = UpdateResults.UpToDate()
-    r2._check_update = UpdateResults.UpToDate()
+    r1.check_update_ = UpdateResults.UpToDate()
+    r2.check_update_ = UpdateResults.UpToDate()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -231,8 +212,8 @@ def test_skip(mp):
 
     # skip r1
     log.clear()
-    r1._check_update = UpdateResults.UpToDate()
-    r2._check_update = UpdateResults.Necessary()
+    r1.check_update_ = UpdateResults.UpToDate()
+    r2.check_update_ = UpdateResults.Necessary()
 
     res = make_(id2rule, [2], False, False, callback)
 
@@ -253,20 +234,20 @@ def test_skip(mp):
 
 
 @pytest.mark.parametrize("mp", [False, True])
-def test_dryrun(mp):
+def test_dryrun(mp: bool):
     """
     * Two rules r1 and r2, where r2 depends on r1
     * Single task mode and multi task mode must yield the same results
     """
 
-    def make_(*args, **kwargs):
+    def make_(*args: Any, **kwargs: Any):
         if mp:
             return make_mp_spawn(*args, **kwargs, njobs=2)
         else:
             return make(*args, **kwargs)
 
-    r1 = MockRule([], (), {}, lambda: None)
-    r2 = MockRule([1], (), {}, lambda: None)
+    r1 = MockRule([], lambda: None)
+    r2 = MockRule([1], lambda: None)
 
     id2rule = {1: r1, 2: r2}
 
@@ -295,7 +276,7 @@ def test_dryrun(mp):
 
 def test_preprocess_error():
     e = Exception()
-    r1 = MockRule([], (), {}, lambda: None, preprocess_err=e)
+    r1 = MockRule([], lambda: None, preprocess_err=e)
 
     id2rule = [r1]
 
@@ -321,7 +302,7 @@ def test_exec_error():
     def raiser():
         raise e
 
-    r1 = MockRule([], (), {}, raiser)
+    r1 = MockRule([], raiser)
 
     id2rule = [r1]
 
@@ -342,9 +323,9 @@ def test_exec_error():
     )
 
 
-def test_postprocess_error(tmp_path):
+def test_postprocess_error():
     e = Exception()
-    r1 = MockRule([], (), {}, lambda: None, postprocess_err=e)
+    r1 = MockRule([], lambda: None, postprocess_err=e)
 
     id2rule = [r1]
 
@@ -366,14 +347,14 @@ def test_postprocess_error(tmp_path):
     )
 
 
-def test_keyboard_interrupt(tmp_path):
+def test_keyboard_interrupt():
     # raise KeyboardInterrupt while executing method
     e = KeyboardInterrupt()
 
     def _func():
         raise e
 
-    r1 = MockRule([], (), {}, _func)
+    r1 = MockRule([], _func)
     id2rule = [r1]
     log.clear()
 

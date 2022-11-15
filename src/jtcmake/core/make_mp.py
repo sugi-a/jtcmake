@@ -3,7 +3,7 @@ from multiprocessing.context import SpawnContext
 import sys
 import traceback
 from multiprocessing import get_context
-from threading import Thread, Condition, Lock
+from threading import Thread, Condition
 
 from collections import defaultdict
 from typing import (
@@ -15,6 +15,7 @@ from typing import (
     List,
     Union,
     Sequence,
+    TypeVar,
 )
 
 from . import events
@@ -45,14 +46,20 @@ def _collect_rules(
     return list(ids), b2a
 
 
+_T_Rule = TypeVar("_T_Rule", bound=IRule)
+
+
 def make_mp_spawn(
-    id2rule: Sequence[IRule],
+    id2rule: Sequence[_T_Rule],
     ids: Sequence[int],
     dry_run: bool,
     keep_going: bool,
-    callback: Callable[[IEvent], None],
+    callback: Callable[[IEvent[_T_Rule]], None],
     njobs: int,
 ):
+    """
+    callback must be thread safe
+    """
     if len(ids) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
 
@@ -74,8 +81,7 @@ def make_mp_spawn(
 
     # Check inter-process transferability
     rules = [id2rule[i] for i in ids]
-    method_objs = [(r.method, r.args, r.kwargs) for r in rules]
-    sendable = _test_interproc_portabability(method_objs, ctx)
+    sendable = _test_interproc_portabability([r.method for r in rules], ctx)
     _log_sendable_stats(sendable)
     sendable = {ids[j]: sendable[j] for j in range(len(ids))}
 
@@ -92,7 +98,6 @@ def make_mp_spawn(
     stop = False
 
     cv = Condition()  # for the above state vars
-    cb_lock = Lock()  # used when callback()
 
     # Add rules with no dependencies to the job queue
     for i in ids:
@@ -144,10 +149,6 @@ def make_mp_spawn(
 
             cv.notify_all()
 
-    def callback_(e: IEvent):
-        with cb_lock:
-            callback(e)
-
     args = (
         ctx,
         get_job,
@@ -157,7 +158,7 @@ def make_mp_spawn(
         main_ids,
         sendable,
         dry_run,
-        callback_,
+        callback,
     )
 
     threads = [Thread(target=worker, args=args) for _ in range(njobs)]
@@ -188,12 +189,12 @@ def worker(
     ctx: SpawnContext,
     get_job: Callable[[], Union[int, None]],
     set_result: Callable[[int, Union[Result, None]], None],
-    id2rule: List[IRule],
+    id2rule: List[_T_Rule],
     updated_ids: Set[int],
     main_ids: Set[int],
     sendable: Mapping[int, bool],
     dry_run: bool,
-    callback: Callable[[IEvent], None],
+    callback: Callable[[IEvent[_T_Rule]], None],
 ):
     with ctx.Pool(1) as pool:
         while True:

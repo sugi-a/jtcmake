@@ -14,9 +14,6 @@ PossiblyNecessary = UpdateResults.PossiblyNecessary
 UpToDate = UpdateResults.UpToDate
 Infeasible = UpdateResults.Infeasible
 
-_args = (object(),)
-_kwargs = {"a": object()}
-
 
 def _method():
     return None
@@ -98,7 +95,7 @@ def test_metadata_fname(mocker: Any):
     """
     y1, y2 = Path("a/b.c"), Path("d/e.f")
     memo = mocker.MagicMock()
-    r = Rule([y1, y2], [], [], [], set(), _method, _args, _kwargs, memo, 0)
+    r = Rule([y1, y2], [], [], [], set(), _method, memo, 0)
     assert os.path.abspath(r.metadata_fname) == os.path.abspath(
         "a/.jtcmake/b.c"
     )
@@ -221,12 +218,9 @@ def test_preprocess(tmp_path: Path, mocker: Any):
     """Rule.preprocess(callaback) should make dirs for all its output files."""
     mock_memo = mocker.MagicMock(IMemo)
     y = tmp_path / "a"
-    r = Rule([y], [], [], [], set(), _method, _args, _kwargs, mock_memo, 0)
+    r = Rule([y], [], [], [], set(), _method, mock_memo, 0)
 
-    def _(*_: Any):
-        ...
-
-    r.preprocess(_)
+    r.preprocess()
     assert os.path.exists(y.parent)
     assert os.path.isdir(y.parent)
 
@@ -253,18 +247,13 @@ def test_postprocess(tmp_path: Path, mocker: Any):
         [True, False],
         set(),
         _method,
-        _args,
-        _kwargs,
         mock_memo,
         0,
     )
 
     touch(x1, x2)
 
-    def _(*_: Any):
-        ...
-
-    r.postprocess(_, True)
+    r.postprocess(True)
 
     mock_memo.dumps.assert_called_once_with()
 

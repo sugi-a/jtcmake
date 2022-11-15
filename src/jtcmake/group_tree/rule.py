@@ -39,10 +39,37 @@ from .core import (
     IFile,
     IAtom,
 )
+from .event_logger import INoArgFunc
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class _NoArgFunc(INoArgFunc):
+    __slots__ = ("_method", "_args", "_kwargs")
+
+    def __init__(
+        self,
+        method: Callable[..., object],
+        args: Tuple[object, ...],
+        kwargs: Dict[str, object],
+    ) -> None:
+        self._method = method
+        self._args = args
+        self._kwargs = kwargs
+
+    @property
+    def method(self) -> Callable[..., object]:
+        return self._method
+
+    @property
+    def args(self) -> Tuple[object, ...]:
+        return self._args
+
+    @property
+    def kwargs(self) -> Dict[str, object]:
+        return self._kwargs
 
 
 class SelfRule:
@@ -250,13 +277,14 @@ class Rule(IRule, Generic[K]):
             raise TypeError(f"method must be callable. Given {method}")
 
         _assert_signature_match(method, method_args, method_kwargs)
+        method_ = _NoArgFunc(method, method_args, method_kwargs)
 
         # Create memo
         memo = self._info.memo_factory(args_)
 
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
-            yp2f, xp2f, method, method_args, method_kwargs, memo, self._name
+            yp2f, xp2f, method_, memo, self._name
         )
 
         # Update self

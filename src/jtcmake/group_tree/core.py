@@ -25,7 +25,7 @@ from ..core.make import MakeSummary, make as _make
 from ..core.make_mp import make_mp_spawn
 from ..core.abc import IEvent
 from ..logwriter import IWriter
-from .event_logger import log_make_event
+from .event_logger import log_make_event, INoArgFunc
 from ..utils.strpath import StrOrPath, fspath2str
 from .atom import IAtom
 
@@ -189,7 +189,7 @@ class RuleStore:
         "idx2name",
     )
 
-    rules: List[_RawRule[int]]
+    rules: List[_RawRule[int, INoArgFunc]]
     ypath2idx: Dict[str, int]
     idx2xpaths: Dict[int, Sequence[str]]
     path2file: Dict[str, IFile]
@@ -206,12 +206,10 @@ class RuleStore:
         self,
         yp2f: Mapping[str, IFile],  # abspath(str) => IFile
         xp2f: Mapping[str, IFile],  # abspath(str) => IFile
-        method: Callable[..., object],
-        method_args: Tuple[object, ...],
-        method_kwargs: Dict[str, object],
+        method: INoArgFunc,
         memo: IMemo,
         name: Tuple[str, ...],
-    ) -> _RawRule[int]:
+    ) -> _RawRule[int, INoArgFunc]:
         # Check duplicated registration of yfiles
         for p, f in yp2f.items():
             if p in self.ypath2idx:
@@ -239,8 +237,6 @@ class RuleStore:
             xfile_is_vf=[f.is_value_file() for f in xp2f.values()],
             deplist=set(xids) - {-1},
             method=method,
-            args=method_args,
-            kwargs=method_kwargs,
             memo=memo,
             id=id,
         )
@@ -373,7 +369,7 @@ def make(
 
     ids = gather_raw_rule_ids(rule_or_groups)
 
-    def callback_(event: IEvent):
+    def callback_(event: IEvent[_RawRule[int, INoArgFunc]]):
         def id2name(i: int) -> str:
             return "/".join(info.rule_store.idx2name[i])
 

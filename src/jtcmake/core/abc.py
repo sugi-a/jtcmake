@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Union, Set
+from typing import Callable, Union, Set, TypeVar, Generic
 from typing_extensions import TypeAlias
 
 
@@ -33,44 +33,34 @@ class UpdateResults:
     Infeasible = Infeasible
 
 
-TUpdateResult: TypeAlias = Union[
+UpdateResult: TypeAlias = Union[
     UpToDate, Necessary, PossiblyNecessary, Infeasible
 ]
 
 
-class IEvent:
+_T_Rule = TypeVar("_T_Rule", bound="IRule", covariant=True)
+
+
+class IEvent(Generic[_T_Rule]):
     ...
-
-
-Callback = Callable[[IEvent], None]
 
 
 class IRule(metaclass=ABCMeta):
     @abstractmethod
-    def check_update(self, par_updated: bool, dry_run: bool) -> TUpdateResult:
+    def check_update(self, par_updated: bool, dry_run: bool) -> UpdateResult:
         ...
 
     @abstractmethod
-    def preprocess(self, callback: Callback) -> None:
+    def preprocess(self) -> None:
         ...
 
     @abstractmethod
-    def postprocess(self, callback: Callback, succ: bool) -> None:
-        ...
-
-    @property
-    @abstractmethod
-    def method(self) -> Callable[..., object]:
+    def postprocess(self, succ: bool) -> None:
         ...
 
     @property
     @abstractmethod
-    def args(self) -> Any:
-        ...
-
-    @property
-    @abstractmethod
-    def kwargs(self) -> Any:
+    def method(self) -> Callable[[], object]:
         ...
 
     @property
