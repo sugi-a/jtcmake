@@ -1,9 +1,7 @@
 API Reference
 =============
 
-.. autofunction:: jtcmake.create_group
 
-
-.. autoclass:: jtcmake.frontend.group.Group
+.. autoclass:: jtcmake.StaticGroupBase
   :members:
 

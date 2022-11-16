@@ -33,6 +33,66 @@ V = TypeVar("V")
 
 
 class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
+    """
+    Base class for static groups.
+
+    A static group should be defined by subclassing StaticGroupBase.
+    It must have type annotations to represent its child groups and rules.  ::
+
+        class CustomStaticGroup(StaticGroupBase):
+            child_rule1: Rule[str]
+            child_rule2: Rule[Literal["a"]]
+            child_group1: AnotherStaticGroup
+            child_group2: RulesGroup
+
+            '''
+            Generic type parameters like ``[str]`` in this example is ignored
+            at runtime. They are just hints for the type checker and IDE.
+            '''
+
+    The child nodes are automatically instanciated when the parent is
+    instanciated. So you can read them without assigning values::
+
+        g = CustomStaticGroup()
+        print(g.child_rule1)
+        print(g.child_group1)
+
+    Remember that the child rules are automatically instanciated but not
+    *initialized* . you have to manually initialize them with
+    ``Rule.init`` ::
+
+        g.child_rule1.init("child_file1.txt", copy)(souce_file, SELF)
+
+    As a design pattern, it is recommended to have an initializer method
+    that initializes the child rules and calls the initializer of the child
+    groups to recursively initialize all the rules in the sub-tree. ::
+
+        class CustomStaticGroup(StaticGroupBase):
+            rule: Rule[str]
+            group: AnotherStaticGroup
+
+            def init(self, some_file: Path) -> CustomStaticGroup:
+                # Initializer for this class. The method name "init" is not
+                # reserved so you can choose your own one.
+
+                # Initialize the direct child rules
+                self.rule.init(...)(...)
+
+                # Initialize the child group (assuming ``AnotherStaticGroup``
+                # has ``init`` to initialize itself)
+                self.group.init(...)
+
+                return self
+
+        g = CustomStaticGroup().init(some_file)
+        g.make()
+
+    .. note::
+       When you override the ``__init__`` method, you have to call
+       ``super().__init__`` in it with appropriate arguments.
+
+    """
+
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
     _groups: Dict[str, IGroup]
