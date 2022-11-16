@@ -22,6 +22,8 @@ jobs:
                 python docs_src/make.py
             - name: Push docs
               run: |
+                git config --global user.name "Amane Sugiyama"
+                git config --global user.email "42127588+sugi-a@users.noreply.github.com"
                 git fetch origin gh-pages
                 git checkout gh-pages
                 git add docs
