@@ -52,7 +52,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     The child nodes are automatically instanciated when the parent is
     instanciated. So you can read them without assigning values::
-        
+
         g = CustomStaticGroup()
         print(g.child_rule1)
         print(g.child_group1)
@@ -60,9 +60,9 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
     Remember that the child rules are automatically instanciated but not
     *initialized* . you have to manually initialize them with
     ``Rule.init`` ::
-        
+
         g.child_rule1.init("child_file1.txt", copy)(souce_file, SELF)
-    
+
     As a design pattern, it is recommended to have an initializer method
     that initializes the child rules and calls the initializer of the child
     groups to recursively initialize all the rules in the sub-tree. ::
@@ -70,9 +70,9 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         class CustomStaticGroup(StaticGroupBase):
             rule: Rule[str]
             group: AnotherStaticGroup
-            
+
             def init(self, some_file: Path) -> CustomStaticGroup:
-                # Initializer for this class. The method name "init" is not 
+                # Initializer for this class. The method name "init" is not
                 # reserved so you can choose your own one.
 
                 # Initialize the direct child rules
@@ -92,6 +92,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
        ``super().__init__`` in it with appropriate arguments.
 
     """
+
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
     _groups: Dict[str, IGroup]
