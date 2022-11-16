@@ -1,0 +1,11 @@
+tmp*
+__pycache__/
+.ipynb_checkpoints/
+Untitled.ipynb
+.*.swp
+node_modules/
+.jtcmake
+
+/.venv/
+/dist/
+/src/jtcmake.egg-info/
