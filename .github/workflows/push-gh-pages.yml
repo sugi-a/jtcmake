@@ -22,6 +22,7 @@ jobs:
                 python docs_src/make.py
             - name: Push docs
               run: |
+                git fetch origin gh-pages
                 git checkout gh-pages
                 git add docs
                 git commit -m "auto update"
