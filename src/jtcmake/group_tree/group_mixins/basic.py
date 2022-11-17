@@ -60,6 +60,19 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
     ):
+        """
+        Args:
+            driname: directory name of this group.
+                ``dirname="foo"`` is equivalent to ``prefix="foo/"``
+            prefix: path prefix of this group.
+                You may not specify ``dirname`` and ``prefix`` at the same time.
+                If both ``dirname`` and ``prefix`` is none, prefix will be ""
+            use_default_logger: if True, logs will be printed to stderr or
+                displayed as HTML if the code is running on Jupyter Notebook.
+            logfile: str, PathLike, Logger, object with a ``write(str)`` method,
+                or list/tuple of them, indicating the target(s) to which logs
+                should be output.
+        """
         writer = basic_init_create_logwriter(
             loglevel, use_default_logger, logfile
         )
@@ -85,6 +98,9 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
 
 class BasicMixin(IGroup, metaclass=ABCMeta):
     def clean(self) -> None:
+        """
+        Delete all the existing files in the group.
+        """
         for g in get_offspring_groups(self):
             for r in g.rules.values():
                 r.clean()
@@ -96,6 +112,17 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
         create: bool = True,
         t: Optional[float] = None,
     ) -> None:
+        """
+        For every rule in the group, touch (set mtime to now) the output files
+        and force the memo to record the current input state.
+
+        Args:
+            file (bool): if False, files won't be touched. Defaults to True.
+            memo (bool): if False, memos won't be modified. Defaults to True.
+            create (bool): if True, missing files will be created. Otherwise,
+                only the existing files will be touched.
+                This option has no effect with ``file=False``.
+        """
         if t is None:
             t = time.time()
 
@@ -121,7 +148,8 @@ class BasicMixin(IGroup, metaclass=ABCMeta):
                 If True, when a rule fails, keep executing other rules
                 except the ones depend on the failed rule.
             njobs (int):
-                Maximum number of rules that can be made concurrently.
+                Maximum number of rules that can be made simultaneously using
+                multiple threads and processes.
                 Defaults to 1 (single process, single thread).
 
         See also:

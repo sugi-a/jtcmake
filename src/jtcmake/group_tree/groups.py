@@ -225,16 +225,25 @@ class GroupsGroup(
     def set_default_child(
         self, default_child_group_type: Type[T_Child]
     ) -> GroupsGroup[T_Child]:
+        """
+        Sets the default child class. It will be used when
+        ``GroupsGroup.add_group`` is called with ``child_group_type``
+        unspecified.
+        """
         tp = _parse_child_group_type(default_child_group_type)
         self._child_group_type = tp  # pyright: ignore
         return self
 
     def set_props(
         self,
-        default_child_group_type: Optional[Type[T_Child]],
+        default_child_group_type: Optional[Type[T_Child]] = None,
         dirname: Optional[StrOrPath] = None,
         prefix: Optional[StrOrPath] = None,
     ) -> GroupsGroup[T_Child]:
+        """
+        Convenient method that works as ``GroupsGroup.set_default_child``
+        and ``GroupsGroup.set_prefix`` combined.
+        """
         if default_child_group_type is not None:
             self.set_default_child(default_child_group_type)
 
@@ -246,6 +255,17 @@ class GroupsGroup(
     def add_group(
         self, name: str, child_group_type: Optional[Type[T_Child]] = None
     ) -> T_Child:
+        """
+        Append a child group to this group.
+
+        Args:
+            name (str): name of the new child group.
+            child_group_type:
+                class of the new child group. If not specified, and if the
+                default child group class is available (set by
+                ``self.set_default_child``), it will be used. Otherwise,
+                an exception will be raised.
+        """
         if not isinstance(
             name, str
         ):  # pyright: ignore [reportUnnecessaryIsInstance]
@@ -394,7 +414,7 @@ class UntypedGroup(
     A group that have groups and rules as children.
 
     .. note::
-        Static typing for this class is weak and you won't get much support
+        Type annotation for this class is weak and you won't get much support
         from static type checkers and IDEs.
         It is recommended to use ``StaticGroupBase``, ``GroupsGroup``, and
         ``RulesGroup`` when writing a long code.
@@ -475,6 +495,14 @@ class UntypedGroup(
         ...
 
     def add_group(self, name: object, child_group_type: Any = None) -> IGroup:
+        """
+        Append a child group to this group.
+
+        Args:
+            name (str): name of the new child group.
+            child_group_type: class of the new child group.
+                If not specified, ``UntypedGroup`` will be used.
+        """
         if child_group_type is None:
             tp = UntypedGroup
         else:
