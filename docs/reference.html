@@ -42,10 +42,30 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="howto.html">JTCMake Tutorial</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#jtcmake.StaticGroupBase"><code class="docutils literal notranslate"><span class="pre">StaticGroupBase</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#jtcmake.GroupsGroup"><code class="docutils literal notranslate"><span class="pre">GroupsGroup</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#jtcmake.RulesGroup"><code class="docutils literal notranslate"><span class="pre">RulesGroup</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#jtcmake.UntypedGroup"><code class="docutils literal notranslate"><span class="pre">UntypedGroup</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.StaticGroupBase"><code class="docutils literal notranslate"><span class="pre">StaticGroupBase</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.StaticGroupBase.__init__"><code class="docutils literal notranslate"><span class="pre">StaticGroupBase.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.StaticGroupBase.make"><code class="docutils literal notranslate"><span class="pre">StaticGroupBase.make()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.StaticGroupBase.select_groups"><code class="docutils literal notranslate"><span class="pre">StaticGroupBase.select_groups()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.GroupsGroup"><code class="docutils literal notranslate"><span class="pre">GroupsGroup</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.GroupsGroup.__init__"><code class="docutils literal notranslate"><span class="pre">GroupsGroup.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.GroupsGroup.make"><code class="docutils literal notranslate"><span class="pre">GroupsGroup.make()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.GroupsGroup.select_groups"><code class="docutils literal notranslate"><span class="pre">GroupsGroup.select_groups()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.RulesGroup"><code class="docutils literal notranslate"><span class="pre">RulesGroup</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.RulesGroup.__init__"><code class="docutils literal notranslate"><span class="pre">RulesGroup.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.RulesGroup.make"><code class="docutils literal notranslate"><span class="pre">RulesGroup.make()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.RulesGroup.select_groups"><code class="docutils literal notranslate"><span class="pre">RulesGroup.select_groups()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.UntypedGroup"><code class="docutils literal notranslate"><span class="pre">UntypedGroup</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.UntypedGroup.__init__"><code class="docutils literal notranslate"><span class="pre">UntypedGroup.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.UntypedGroup.make"><code class="docutils literal notranslate"><span class="pre">UntypedGroup.make()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.UntypedGroup.select_groups"><code class="docutils literal notranslate"><span class="pre">UntypedGroup.select_groups()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -136,22 +156,474 @@ groups to recursively initialize all the rules in the sub-tree.</p>
 <p>When you override the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method, you have to call
 <code class="docutils literal notranslate"><span class="pre">super().__init__</span></code> in it with appropriate arguments.</p>
 </div>
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.StaticGroupBase.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.StaticGroupBase.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.StaticGroupBase.make">
+<span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_going</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">njobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.StaticGroupBase.make" title="Permalink to this definition"></a></dt>
+<dd><p>Make rules in this group and their dependencies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dry_run</strong> (<em>bool</em>) – instead of actually excuting the methods,
+print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> (<em>bool</em>) – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> (<em>int</em>) – Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>See the description of jtcmake.make for more detail of njobs</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.StaticGroupBase.select_groups">
+<span class="sig-name descname"><span class="pre">select_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">IGroup</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jtcmake.StaticGroupBase.select_groups" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain child groups or rules of this group.</p>
+<p>Signatures:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><cite>select(group_tree_pattern: str)</cite></p></li>
+<li><p><cite>select(group_tree_pattern: Sequence[str], group:bool=False)</cite></p></li>
+</ol>
+</div></blockquote>
+<dl>
+<dt>Args for Signature 1:</dt><dd><dl>
+<dt>group_tree_pattern (str):</dt><dd><p>Pattern of the relative name of child nodes of this group.
+Pattern consists of names concatenated with the delimiter ‘/’.
+Double star ‘**’ can appear as a name indicating zero or
+more repetition of arbitrary names.</p>
+<p>Single star can appear as a part of a name indicating zero
+or more repetition of arbitrary character.</p>
+<p>If <cite>group_tree_pattern[-1] == ‘/’</cite>, it matches groups only.
+Otherwise, it matches rules only.</p>
+<p>For example, calling g.select(pattern) with a pattern</p>
+<ul class="simple">
+<li><p><cite>“a/b”  matches a rule `g.a.b</cite></p></li>
+<li><p>“a/b/” matches a group <cite>g.a.b</cite></p></li>
+<li><p>“a*”   matches rules <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p>“a*/”  matches groups <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p><cite>“**”</cite>   matches all the offspring rules of <cite>g</cite></p></li>
+<li><p><cite>“**/”</cite>  matches all the offspring groups of <cite>g</cite></p></li>
+<li><p><cite>“a/**”</cite> matches all the offspring rules of the group <cite>g.a</cite></p></li>
+<li><p><cite>“**/b”</cite> matches all the offspring rules of <cite>g</cite> of name “b”</p></li>
+</ul>
+</dd>
+</dl>
+<p>group: ignored</p>
+</dd>
+<dt>Args for Signature-2:</dt><dd><dl>
+<dt>group_tree_pattern (list[str] | tuple[str]):</dt><dd><p>Pattern representation using a sequence of names.</p>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”])</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**”)</cite></p></li>
+</ul>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”], True)</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**/”)</cite></p></li>
+</ul>
+</dd>
+<dt>group (bool):</dt><dd><p>if False (default), select rules only.
+if True, select groups only.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>rule nodes or group nodes.</p>
+<ul class="simple">
+<li><p>called with Signature-1 and pattern[-1] != ‘/’ or</p></li>
+<li><p>called with Signature-2 and group is False</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list[RuleNodeLike]|list[Group]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cases where Signature-2 is absolutely necessary is when you need
+to select a node whose name contains “/”.
+For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">)</span>
+
+<span class="c1"># this rule&#39;s name is &quot;dir/a.txt&quot;</span>
+<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="p">[</span><span class="n">rule</span><span class="p">]</span>  <span class="c1"># OK</span>
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="p">[]</span>  <span class="c1"># trying to match g[&#39;dir&#39;][&#39;a.txt&#39;]</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="jtcmake.GroupsGroup">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">GroupsGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.GroupsGroup" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.GroupsGroup.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.GroupsGroup.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.GroupsGroup.make">
+<span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_going</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">njobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.GroupsGroup.make" title="Permalink to this definition"></a></dt>
+<dd><p>Make rules in this group and their dependencies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dry_run</strong> (<em>bool</em>) – instead of actually excuting the methods,
+print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> (<em>bool</em>) – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> (<em>int</em>) – Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>See the description of jtcmake.make for more detail of njobs</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.GroupsGroup.select_groups">
+<span class="sig-name descname"><span class="pre">select_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">IGroup</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jtcmake.GroupsGroup.select_groups" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain child groups or rules of this group.</p>
+<p>Signatures:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><cite>select(group_tree_pattern: str)</cite></p></li>
+<li><p><cite>select(group_tree_pattern: Sequence[str], group:bool=False)</cite></p></li>
+</ol>
+</div></blockquote>
+<dl>
+<dt>Args for Signature 1:</dt><dd><dl>
+<dt>group_tree_pattern (str):</dt><dd><p>Pattern of the relative name of child nodes of this group.
+Pattern consists of names concatenated with the delimiter ‘/’.
+Double star ‘**’ can appear as a name indicating zero or
+more repetition of arbitrary names.</p>
+<p>Single star can appear as a part of a name indicating zero
+or more repetition of arbitrary character.</p>
+<p>If <cite>group_tree_pattern[-1] == ‘/’</cite>, it matches groups only.
+Otherwise, it matches rules only.</p>
+<p>For example, calling g.select(pattern) with a pattern</p>
+<ul class="simple">
+<li><p><cite>“a/b”  matches a rule `g.a.b</cite></p></li>
+<li><p>“a/b/” matches a group <cite>g.a.b</cite></p></li>
+<li><p>“a*”   matches rules <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p>“a*/”  matches groups <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p><cite>“**”</cite>   matches all the offspring rules of <cite>g</cite></p></li>
+<li><p><cite>“**/”</cite>  matches all the offspring groups of <cite>g</cite></p></li>
+<li><p><cite>“a/**”</cite> matches all the offspring rules of the group <cite>g.a</cite></p></li>
+<li><p><cite>“**/b”</cite> matches all the offspring rules of <cite>g</cite> of name “b”</p></li>
+</ul>
+</dd>
+</dl>
+<p>group: ignored</p>
+</dd>
+<dt>Args for Signature-2:</dt><dd><dl>
+<dt>group_tree_pattern (list[str] | tuple[str]):</dt><dd><p>Pattern representation using a sequence of names.</p>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”])</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**”)</cite></p></li>
+</ul>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”], True)</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**/”)</cite></p></li>
+</ul>
+</dd>
+<dt>group (bool):</dt><dd><p>if False (default), select rules only.
+if True, select groups only.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>rule nodes or group nodes.</p>
+<ul class="simple">
+<li><p>called with Signature-1 and pattern[-1] != ‘/’ or</p></li>
+<li><p>called with Signature-2 and group is False</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list[RuleNodeLike]|list[Group]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cases where Signature-2 is absolutely necessary is when you need
+to select a node whose name contains “/”.
+For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">)</span>
+
+<span class="c1"># this rule&#39;s name is &quot;dir/a.txt&quot;</span>
+<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="p">[</span><span class="n">rule</span><span class="p">]</span>  <span class="c1"># OK</span>
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="p">[]</span>  <span class="c1"># trying to match g[&#39;dir&#39;][&#39;a.txt&#39;]</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="jtcmake.RulesGroup">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">RulesGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.RulesGroup" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.RulesGroup.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.RulesGroup.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.RulesGroup.make">
+<span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_going</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">njobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.RulesGroup.make" title="Permalink to this definition"></a></dt>
+<dd><p>Make rules in this group and their dependencies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dry_run</strong> (<em>bool</em>) – instead of actually excuting the methods,
+print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> (<em>bool</em>) – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> (<em>int</em>) – Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>See the description of jtcmake.make for more detail of njobs</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.RulesGroup.select_groups">
+<span class="sig-name descname"><span class="pre">select_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">IGroup</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jtcmake.RulesGroup.select_groups" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain child groups or rules of this group.</p>
+<p>Signatures:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><cite>select(group_tree_pattern: str)</cite></p></li>
+<li><p><cite>select(group_tree_pattern: Sequence[str], group:bool=False)</cite></p></li>
+</ol>
+</div></blockquote>
+<dl>
+<dt>Args for Signature 1:</dt><dd><dl>
+<dt>group_tree_pattern (str):</dt><dd><p>Pattern of the relative name of child nodes of this group.
+Pattern consists of names concatenated with the delimiter ‘/’.
+Double star ‘**’ can appear as a name indicating zero or
+more repetition of arbitrary names.</p>
+<p>Single star can appear as a part of a name indicating zero
+or more repetition of arbitrary character.</p>
+<p>If <cite>group_tree_pattern[-1] == ‘/’</cite>, it matches groups only.
+Otherwise, it matches rules only.</p>
+<p>For example, calling g.select(pattern) with a pattern</p>
+<ul class="simple">
+<li><p><cite>“a/b”  matches a rule `g.a.b</cite></p></li>
+<li><p>“a/b/” matches a group <cite>g.a.b</cite></p></li>
+<li><p>“a*”   matches rules <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p>“a*/”  matches groups <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p><cite>“**”</cite>   matches all the offspring rules of <cite>g</cite></p></li>
+<li><p><cite>“**/”</cite>  matches all the offspring groups of <cite>g</cite></p></li>
+<li><p><cite>“a/**”</cite> matches all the offspring rules of the group <cite>g.a</cite></p></li>
+<li><p><cite>“**/b”</cite> matches all the offspring rules of <cite>g</cite> of name “b”</p></li>
+</ul>
+</dd>
+</dl>
+<p>group: ignored</p>
+</dd>
+<dt>Args for Signature-2:</dt><dd><dl>
+<dt>group_tree_pattern (list[str] | tuple[str]):</dt><dd><p>Pattern representation using a sequence of names.</p>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”])</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**”)</cite></p></li>
+</ul>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”], True)</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**/”)</cite></p></li>
+</ul>
+</dd>
+<dt>group (bool):</dt><dd><p>if False (default), select rules only.
+if True, select groups only.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>rule nodes or group nodes.</p>
+<ul class="simple">
+<li><p>called with Signature-1 and pattern[-1] != ‘/’ or</p></li>
+<li><p>called with Signature-2 and group is False</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list[RuleNodeLike]|list[Group]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cases where Signature-2 is absolutely necessary is when you need
+to select a node whose name contains “/”.
+For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">)</span>
+
+<span class="c1"># this rule&#39;s name is &quot;dir/a.txt&quot;</span>
+<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="p">[</span><span class="n">rule</span><span class="p">]</span>  <span class="c1"># OK</span>
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="p">[]</span>  <span class="c1"># trying to match g[&#39;dir&#39;][&#39;a.txt&#39;]</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="jtcmake.UntypedGroup">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">UntypedGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.UntypedGroup" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.UntypedGroup.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.UntypedGroup.__init__" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.UntypedGroup.make">
+<span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_going</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">njobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.UntypedGroup.make" title="Permalink to this definition"></a></dt>
+<dd><p>Make rules in this group and their dependencies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dry_run</strong> (<em>bool</em>) – instead of actually excuting the methods,
+print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> (<em>bool</em>) – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> (<em>int</em>) – Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>See the description of jtcmake.make for more detail of njobs</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.UntypedGroup.select_groups">
+<span class="sig-name descname"><span class="pre">select_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">IGroup</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jtcmake.UntypedGroup.select_groups" title="Permalink to this definition"></a></dt>
+<dd><p>Obtain child groups or rules of this group.</p>
+<p>Signatures:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><cite>select(group_tree_pattern: str)</cite></p></li>
+<li><p><cite>select(group_tree_pattern: Sequence[str], group:bool=False)</cite></p></li>
+</ol>
+</div></blockquote>
+<dl>
+<dt>Args for Signature 1:</dt><dd><dl>
+<dt>group_tree_pattern (str):</dt><dd><p>Pattern of the relative name of child nodes of this group.
+Pattern consists of names concatenated with the delimiter ‘/’.
+Double star ‘**’ can appear as a name indicating zero or
+more repetition of arbitrary names.</p>
+<p>Single star can appear as a part of a name indicating zero
+or more repetition of arbitrary character.</p>
+<p>If <cite>group_tree_pattern[-1] == ‘/’</cite>, it matches groups only.
+Otherwise, it matches rules only.</p>
+<p>For example, calling g.select(pattern) with a pattern</p>
+<ul class="simple">
+<li><p><cite>“a/b”  matches a rule `g.a.b</cite></p></li>
+<li><p>“a/b/” matches a group <cite>g.a.b</cite></p></li>
+<li><p>“a*”   matches rules <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p>“a*/”  matches groups <cite>g.a</cite>, <cite>g.a1</cite>, <cite>g.a2</cite>, etc</p></li>
+<li><p><cite>“**”</cite>   matches all the offspring rules of <cite>g</cite></p></li>
+<li><p><cite>“**/”</cite>  matches all the offspring groups of <cite>g</cite></p></li>
+<li><p><cite>“a/**”</cite> matches all the offspring rules of the group <cite>g.a</cite></p></li>
+<li><p><cite>“**/b”</cite> matches all the offspring rules of <cite>g</cite> of name “b”</p></li>
+</ul>
+</dd>
+</dl>
+<p>group: ignored</p>
+</dd>
+<dt>Args for Signature-2:</dt><dd><dl>
+<dt>group_tree_pattern (list[str] | tuple[str]):</dt><dd><p>Pattern representation using a sequence of names.</p>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”])</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**”)</cite></p></li>
+</ul>
+<p>Following two are equivalent:</p>
+<ul class="simple">
+<li><p><cite>g.select([“a”, “*”, “c”, “**”], True)</cite></p></li>
+<li><p><cite>g.select(“a/*/c/**/”)</cite></p></li>
+</ul>
+</dd>
+<dt>group (bool):</dt><dd><p>if False (default), select rules only.
+if True, select groups only.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><p>rule nodes or group nodes.</p>
+<ul class="simple">
+<li><p>called with Signature-1 and pattern[-1] != ‘/’ or</p></li>
+<li><p>called with Signature-2 and group is False</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>list[RuleNodeLike]|list[Group]</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cases where Signature-2 is absolutely necessary is when you need
+to select a node whose name contains “/”.
+For example,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">)</span>
+
+<span class="c1"># this rule&#39;s name is &quot;dir/a.txt&quot;</span>
+<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="p">[</span><span class="n">rule</span><span class="p">]</span>  <span class="c1"># OK</span>
+<span class="n">g</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;dir/a.txt&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="p">[]</span>  <span class="c1"># trying to match g[&#39;dir&#39;][&#39;a.txt&#39;]</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+</dd></dl>
 
 </section>
 
