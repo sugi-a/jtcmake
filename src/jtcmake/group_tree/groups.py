@@ -397,7 +397,7 @@ class UntypedGroup(
         Static typing for this class is weak and you won't get much support
         from static type checkers and IDEs.
         It is recommended to use ``StaticGroupBase``, ``GroupsGroup``, and
-        ``RulesGroup`` when you writing a long code.
+        ``RulesGroup`` when writing a long code.
 
     ::
 
