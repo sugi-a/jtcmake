@@ -27,7 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 pytest pytest-mock pyright
+        python -m pip install flake8 pytest pytest-mock pyright, black
         python -m pip install -e .
     - name: Lint with flake8 and black
       run: |
