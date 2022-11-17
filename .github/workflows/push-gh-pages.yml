@@ -25,13 +25,16 @@ jobs:
             - name: Push docs
               run: |
                 ls -l docs
+                git status
                 git config --global user.name "Amane Sugiyama"
                 git config --global user.email "42127588+sugi-a@users.noreply.github.com"
                 git fetch origin gh-pages
                 git checkout gh-pages
                 ls -l docs
+                git status
                 git add docs
                 ls -l docs
+                git status
                 git commit -m "auto update"
                 git push origin gh-pages
 
