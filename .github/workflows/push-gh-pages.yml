@@ -21,14 +21,16 @@ jobs:
                 python -m pip install jtcmake sphinx sphinx-rtd-theme
             - name: Build docs
               run: |
-                git config --global user.name "Amane Sugiyama"
-                git config --global user.email "42127588+sugi-a@users.noreply.github.com"
-                cp -r docs_src docs_src_
-                git fetch origin gh-pages
-                git checkout gh-pages
-                python docs_src_/make.py
+                python docs_src/make.py
             - name: Push docs
               run: |
+                mv docs docs_
+                git config --global user.name "Amane Sugiyama"
+                git config --global user.email "42127588+sugi-a@users.noreply.github.com"
+                git fetch origin gh-pages
+                git checkout gh-pages
+                rm -r docs
+                mv docs_ docs
                 git add docs
                 git commit -m "auto update" && git push origin gh-pages || echo "no update"
 
