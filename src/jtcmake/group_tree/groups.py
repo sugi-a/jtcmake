@@ -159,6 +159,52 @@ T_Child = TypeVar("T_Child", bound=IGroup)
 class GroupsGroup(
     BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin, Generic[T_Child]
 ):
+    """
+    A group that contains groups as children.
+
+    When writing type hints, children's type can be passed as a generic
+    type parameter like ``GroupsGroup[SomeGroupClass]`` .  ::
+
+        from pathlib import Path
+        from typing import Union
+        from jtcmake import SELF, StaticGroupBase, GroupsGroup, Rule
+
+        def write_num(path: Path, num: int):
+            path.write_text(str(num))
+
+        class Child1(StaticGroupBase):
+            rule1: Rule[str]
+
+            def init(self, num: int):
+                self.rule1.init("<R>.txt", write_num)(SELF, num)
+
+        class Child2(StaticGroupBase):
+            rule2: Rule[str]
+
+            def init(self, num: int):
+                self.rule2.init("<R>.txt", write_num)(SELF, num)
+
+        g: GroupsGroup[Union[Child1, Child2]] = GroupsGroup("out")
+
+        # Set the child class to use by default
+        g.set_default_child(Child1)
+
+        for i in range(2):
+            # Child1 will be the child class
+            g.add_group(f"child{i}").init(i)
+
+        for i in range(2, 4):
+            # Explicity giving the child class Child2
+            g.add_group(f"child{i}", Child2).init(i)
+
+        g.make()
+
+        assert Path("out/child0/rule1.txt").read_text() == "0"
+        assert Path("out/child1/rule1.txt").read_text() == "1"
+        assert Path("out/child2/rule2.txt").read_text() == "2"
+        assert Path("out/child3/rule2.txt").read_text() == "3"
+    """
+
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -265,6 +311,24 @@ class RulesGroup(
     SelectorMixin,
     MemoMixin,
 ):
+    """
+    A group that contains rules as children. ::
+
+        from pathlib import Path
+        from jtcmake import RulesGroup, SELF
+
+        g = RulesGroup("out")
+
+        for i in range(3):
+            g.add(f"child{i}.txt", lambda p, i: p.write_text(str(i)))(SELF, i)
+
+        g.make()
+
+        print(Path("out/child0.txt").read_text())  # 0
+        print(Path("out/child1.txt").read_text())  # 1
+        print(Path("out/child2.txt").read_text())  # 2
+    """
+
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -326,6 +390,52 @@ class UntypedGroup(
     SelectorMixin,
     MemoMixin,
 ):
+    """
+    A group that have groups and rules as children.
+
+    .. note::
+        Static typing for this class is weak and you won't get much support
+        from static type checkers and IDEs.
+        It is recommended to use ``StaticGroupBase``, ``GroupsGroup``, and
+        ``RulesGroup`` when you writing a long code.
+
+    ::
+
+        from pathlib import Path
+        from jtcmake import UntypedGroup, SELF, Rule, StaticGroupBase
+
+        def add1(src: Path, dst: Path):
+            dst.write_text(str(int(src.read_text()) + 1))
+
+        g = UntypedGroup("out")
+
+        @g.add_deco("rule0")
+        def _write_0(p: Path = SELF):
+            p.write_text("0")
+
+        g.add("rule1", add1)(g.rule0[0], SELF)
+
+        # ``add_group`` with ``child_group_type=None`` adds an UntypedGroup
+        g.add_group("group1")
+
+        g.group1.add("rule2", add1)(g.rule1[0], SELF)
+
+        class Child(StaticGroupBase):
+            rule: Rule
+
+        g.add_group("group2", Child)
+
+        g.group2.rule.init("rule3", add1)(g.group1.rule2[0], SELF)
+
+        g.make()
+
+        assert Path("out/rule0").read_text() == "0"
+        assert Path("out/rule1").read_text() == "1"
+        assert Path("out/group1/rule2").read_text() == "2"
+        assert Path("out/group2/rule3").read_text() == "3"
+
+    """
+
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
