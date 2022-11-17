@@ -32,7 +32,7 @@ jobs:
     - name: Lint with flake8 and black
       run: |
         flake8 --ignore=E501,E203,W504 --count --max-line-length=80 --show-source --statistics src/jtcmake tests
-        black --check
+        black --check src tests
     - name: Type check with Pyright
       run: |
         pyright
