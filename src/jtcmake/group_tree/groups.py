@@ -188,7 +188,7 @@ class GroupsGroup(
 
         # Set the child class to use by default
         g.set_default_child(Child1)
-        
+
         for i in range(2):
             # Child1 will be the child class
             g.add_group(f"child{i}").init(i)
@@ -328,6 +328,7 @@ class RulesGroup(
         print(Path("out/child1.txt").read_text())  # 1
         print(Path("out/child2.txt").read_text())  # 2
     """
+
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
@@ -397,7 +398,7 @@ class UntypedGroup(
         from static type checkers and IDEs.
         It is recommended to use ``StaticGroupBase``, ``GroupsGroup``, and
         ``RulesGroup`` when you writing a long code.
-    
+
     ::
 
         from pathlib import Path
@@ -434,6 +435,7 @@ class UntypedGroup(
         assert Path("out/group2/rule3").read_text() == "3"
 
     """
+
     _name: Tuple[str, ...]
     _parent: IGroup
     _info: GroupTreeInfo
