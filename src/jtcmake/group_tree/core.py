@@ -104,10 +104,18 @@ class IGroup(INode, metaclass=ABCMeta):
         its start. Absolute paths do not undergo this prefixing.
 
         Note:
-            * You can invoke this method at most once.
-                * Default prefix is ``"{group's base name}/"``
-            * You cannot invoke this method after initializing any rule of
-              this group.
+            This method may be called only when the prefix is not yet 
+            determined. i.e. You may NOT call this method whenever,
+
+            * You have created this group as a root group
+            * You have once called it
+            * You have once read :attr:`self.prefix <.prefix>`:
+              reading :attr:`self.prefix <.prefix>` internally finalizes
+              the prefix to ``"{name of this group}/"``
+            * You have once read the prefix of a child group:
+              reading a child's prefix internally reads the parent's prefix
+            * You have initialized any rule in the sub-tree:
+              initializing a rule internally reads its parent's prefix
 
         Example:
 
@@ -119,14 +127,16 @@ class IGroup(INode, metaclass=ABCMeta):
 
                 g = UntypedGroup("root")
 
-                g.add_group("foo").set_prefix("foo-dir")
-                g.add_group("bar").set_prefix(prefix="bar-")
-                g.add_group("baz").set_prefix("/tmp/baz")
+                g.add_group("foo").set_prefix("foo-dir")  # dirname
+                g.add_group("bar").set_prefix(prefix="bar-")  # prefix
+                g.add_group("baz").set_prefix("/tmp/baz")  # dirname abspath
+                g.add_group("qux")  # no explicit setting
 
                 assert g.prefix == "root/"
                 assert g.foo.prefix == "root/foo-dir/"
                 assert g.bar.prefix == "root/bar-"
                 assert g.baz.prefix == "/tmp/baz/"
+                assert g.qux.prefix == "root/qux/"
         """
         if self.__prefix is not None:
             raise Exception(
@@ -157,6 +167,9 @@ class IGroup(INode, metaclass=ABCMeta):
     def prefix(self) -> str:
         """
         Path prefix of this group.
+
+        Seealso:
+            :func:`set_prefix`
         """
         if self.__prefix is None:
             # Root node must get prefix in __init__
