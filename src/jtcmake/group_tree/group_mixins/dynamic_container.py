@@ -51,38 +51,24 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         self, name: object, outs: object, method: object = None
     ) -> Callable[..., Rule[str]]:
         """
-        Create a temporary function for adding a rule to the group.
+        Create a temporary function to add a rule to this group.
+
+        This method works similarly to :func:`Rule.init`.
+        See its documentation for details.
 
         Args:
             name: name of the rule.
-            output_files: if not specified, ``name`` will be used for
-                ``output_files``.
-                The following three forms are accepted.
-
-                * **dict-style** (``{"foo": foo_file, "bar": bar_file, ...}``):
-
-                  ``foo``, ``bar``, ... are the *file keys* and ``foo_file``,
-                  ``bar_file``, ... are the file paths.
-                  File keys must be str. File paths may be either str or
-                  PathLike including ``jtcmake.File`` and ``jtcmake.VFile``.
-                  If a given file path is neither ``File`` or ``VFile``, it
-                  will be converted to ``File`` by ``jtcmake.File(file_path)``.
-                * **list-style** (``[foo_file, bar_file, ...]``):
-
-                  It is equivalent to
-                  ``{str(foo_file): foo_file, str(bar_file): bar_file}``
-                * **Atom-style** (``foo_file``):
-
-                  It is equivalent to ``{str(foo_file): foo_file}``
+            output_files: if not specified, ``name`` will be used.
             method: function to create the output files
+
 
         Returns:
             *rule_adder*, a temporary function whose signature is the same as
-            the argument ``method``.
-            When called as ``rule_adder(*args, **kwargs)``, it appends
+            the given ``method``.
+            Calling it as ``rule_adder(*args, **kwargs)`` appends
             a new rule to the group.
 
-            On making the rule, ``method`` is called as
+            While executing this rule, ``method`` is called as
             ``method(*args, **kwargs)``.
 
         Example:
@@ -126,6 +112,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
                 assert Path("out/x.txt").read_text() == "ef"
                 assert Path("out/y.txt").read_text() == "gh"
                 assert Path("out/baz.txt").read_text() == "abcdefgh"
+
         """
 
         return self._add(name, outs, method, IFile_fact=File)
@@ -155,13 +142,12 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         self, name: object, outs: object, method: object = None
     ) -> Callable[..., Rule[str]]:
         """
-        Create a temporary function for adding a rule to the group.
+        Create a temporary function to add a rule to this group.
 
-        This method is equal to ``self.add`` except the default file
-        constructor is ``jtcmake.VFile`` instead of ``File``.
+        This method is equal to :func:`self.add` except the default file
+        class is :class:`jtcmake.VFile` instead of :class:`File`.
 
-        See the doc of ``self.add`` for more information.
-
+        See the documentation of :func:`self.add` for more information.
         """
         return self._add(name, outs, method, IFile_fact=VFile)
 
@@ -185,10 +171,10 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             name_, None, outs, IFile_fact
         )
 
-        def _add(*args: object, **kwargs: object) -> Rule[str]:
+        def _rule_adder(*args: object, **kwargs: object) -> Rule[str]:
             return self._add_rule(name_, outs_, method, args, kwargs)
 
-        return _add
+        return _rule_adder
 
     def add_deco(
         self,
@@ -203,6 +189,56 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ] = None,
         /,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
+        """
+        Create a temporary decorator function to add a rule to this group.
+        This is a decorator version of :func:`add`.
+        It's useful when you want to define a method for the new rule
+        on-the-fly instead of passing an existing function
+        (see the examples below).
+
+        This method workds similarly to :func:`Rule.init_deco`.
+        See its documentation for detail.
+
+        Args:
+            name: name of the rule to be added
+            output_files: output files of the rule.
+                See :func:`add` for more information.
+                Just like :func:`add`, file paths will be internally
+                converted to :class:`jtcmake.File` if they aren't either
+                :class:`jtcmake.File` or :class:`jtcmake.VFile`.
+
+        Returns:
+            **rule_method_decorator**.
+
+        Usage:
+            Invoking the ``rule_method_decorator`` with the method you want to
+            bind to the new rule creates the rule and append it to this group.
+
+            All the arguments to the method must have a default value. ::
+
+                g.add_deco("myrule1")(lambda p=SELF: p.write_text("abc"))
+
+                @g.add_deco("myrule2", "out.txt")
+                def method_for_myrule2(src=g.myrule1[0], dst=SELF, n=2):
+                    text = src.read_text()
+                    dst.write_text(text * 2)
+
+                g.make()
+
+                assert g.myrule2[0].read_text() == "abcabc"
+
+            The above is equivalent to ::
+
+                g.add("myrule1", lambda p=SELF: p.write_text("abc"))(SELF)
+
+                def method_for_myrule2(src=g.myrule1[0], dst=SELF, n=2):
+                    text = src.read_text()
+                    dst.write_text(text * 2)
+
+                g.add("myrule2", "out.txt", method_for_myrule2)(
+                    g.myrule1[0], SELF, 2
+                )
+        """
         return self._add_deco(name, output_files, IFile_fact=File)
 
     def addvf_deco(
@@ -218,6 +254,14 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ] = None,
         /,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
+        """
+        Create a temporary decorator function to add a rule to this group.
+
+        This method is equal to :func:`add_deco` except the default file
+        constructor is :class:`jtcmake.VFile` instead of :class:`File`.
+
+        See :func:`add_deco` and :func:`add` for more information.
+        """
         return self._add_deco(name, output_files, IFile_fact=VFile)
 
     def _add_deco(
@@ -246,12 +290,12 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             name_, None, output_files, IFile_fact
         )
 
-        def decorator(method: _T_deco_f):
+        def rule_method_decorator(method: _T_deco_f):
             args, kwargs = Rule_init_parse_deco_func(method)
             self._add_rule(name_, output_files_, method, args, kwargs)
             return method
 
-        return decorator
+        return rule_method_decorator
 
     def _add_rule(
         self,

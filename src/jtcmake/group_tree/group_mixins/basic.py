@@ -99,7 +99,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
 class BasicMixin(IGroup, metaclass=ABCMeta):
     def clean(self) -> None:
         """
-        Delete all the existing files in the group.
+        Delete all the existing files of this group.
         """
         for g in get_offspring_groups(self):
             for r in g.rules.values():
