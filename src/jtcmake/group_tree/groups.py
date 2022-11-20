@@ -65,27 +65,53 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     As a design pattern, it is recommended to have an initializer method
     that initializes the child rules and calls the initializer of the child
-    groups to recursively initialize all the rules in the sub-tree. ::
+    groups to recursively initialize all the rules in the sub-tree.
 
-        class CustomStaticGroup(StaticGroupBase):
-            rule: Rule[str]
-            group: AnotherStaticGroup
+    .. testcode::
 
-            def init(self, some_file: Path) -> CustomStaticGroup:
+        from __future__ import annotations
+        from pathlib import Path
+        from jtcmake import StaticGroupBase, Rule, SELF
+
+
+        class MyGroup(StaticGroupBase):
+            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            child_rule: Rule[str]
+            child_group: MyChildGroup
+
+            def init(self, text: str, repeat: int) -> MyGroup:
                 # Initializer for this class. The method name "init" is not
                 # reserved so you can choose your own one.
 
                 # Initialize the direct child rules
-                self.rule.init(...)(...)
+                self.child_rule.init("<R>.txt", Path.write_text)(SELF, text)
 
-                # Initialize the child group (assuming ``AnotherStaticGroup``
-                # has ``init`` to initialize itself)
-                self.group.init(...)
+                # Initialize the child group
+                self.child_group.init(self.child_rule[0], repeat)
 
                 return self
 
-        g = CustomStaticGroup().init(some_file)
+
+        class MyChildGroup(StaticGroupBase):
+            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            foo: Rule[str]
+
+            def init(self, src: Path, repeat: int) -> MyChildGroup:
+                @self.foo.init_deco("<R>.txt")
+                def _(src=src, dst=SELF, repeat=repeat):
+                    text = src.read_text()
+                    dst.write_text(text * repeat)
+
+                return self
+
+
+        g = MyGroup("out").init("abc", 2)
         g.make()
+
+        assert Path("out/child_rule.txt").read_text() == "abc"
+        assert Path("out/child_group/foo.txt").read_text() == "abcabc"
+
+        import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
 
     .. note::
        When you override the ``__init__`` method, you have to call
@@ -174,26 +200,28 @@ class GroupsGroup(
     A group that contains groups as children.
 
     When writing type hints, children's type can be passed as a generic
-    type parameter like ``GroupsGroup[SomeGroupClass]`` .  ::
+    type parameter like ``GroupsGroup[SomeGroupClass]`` .
+
+    .. testcode::
 
         from pathlib import Path
         from typing import Union
         from jtcmake import SELF, StaticGroupBase, GroupsGroup, Rule
 
-        def write_num(path: Path, num: int):
-            path.write_text(str(num))
-
         class Child1(StaticGroupBase):
+            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
             rule1: Rule[str]
 
-            def init(self, num: int):
-                self.rule1.init("<R>.txt", write_num)(SELF, num)
+            def init(self, text: str):
+                self.rule1.init("<R>.txt", Path.write_text)(SELF, text)
+                return self
 
         class Child2(StaticGroupBase):
+            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
             rule2: Rule[str]
 
-            def init(self, num: int):
-                self.rule2.init("<R>.txt", write_num)(SELF, num)
+            def init(self, text: str):
+                self.rule2.init("<R>.txt", Path.write_text)(SELF, text * 2)
 
         g: GroupsGroup[Union[Child1, Child2]] = GroupsGroup("out")
 
@@ -202,18 +230,20 @@ class GroupsGroup(
 
         for i in range(2):
             # Child1 will be the child class
-            g.add_group(f"child{i}").init(i)
+            g.add_group(f"child1-{i}").init(str(i))
 
-        for i in range(2, 4):
+        for i in range(2):
             # Explicity giving the child class Child2
-            g.add_group(f"child{i}", Child2).init(i)
+            g.add_group(f"child2-{i}", Child2).init(str(i))
 
         g.make()
 
-        assert Path("out/child0/rule1.txt").read_text() == "0"
-        assert Path("out/child1/rule1.txt").read_text() == "1"
-        assert Path("out/child2/rule2.txt").read_text() == "2"
-        assert Path("out/child3/rule2.txt").read_text() == "3"
+        assert Path("out/child1-0/rule1.txt").read_text() == "0"
+        assert Path("out/child1-1/rule1.txt").read_text() == "1"
+        assert Path("out/child2-0/rule2.txt").read_text() == "00"
+        assert Path("out/child2-1/rule2.txt").read_text() == "11"
+
+        import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
     """
 
     _name: Tuple[str, ...]
@@ -343,7 +373,9 @@ class RulesGroup(
     MemoMixin,
 ):
     """
-    A group that contains rules as children. ::
+    A group that contains rules as children.
+
+    .. testcode::
 
         from pathlib import Path
         from jtcmake import RulesGroup, SELF
@@ -351,13 +383,15 @@ class RulesGroup(
         g = RulesGroup("out")
 
         for i in range(3):
-            g.add(f"child{i}.txt", lambda p, i: p.write_text(str(i)))(SELF, i)
+            g.add(f"child{i}.txt", Path.write_text)(SELF, str(i))
 
         g.make()
 
-        print(Path("out/child0.txt").read_text())  # 0
-        print(Path("out/child1.txt").read_text())  # 1
-        print(Path("out/child2.txt").read_text())  # 2
+        assert Path("out/child0.txt").read_text() == "0"
+        assert Path("out/child1.txt").read_text() == "1"
+        assert Path("out/child2.txt").read_text() == "2"
+
+        import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
     """
 
     _name: Tuple[str, ...]
@@ -430,7 +464,7 @@ class UntypedGroup(
         It is recommended to use :class:`StaticGroupBase`, :class:`GroupsGroup`, and
         :class:`RulesGroup` when writing a long code.
 
-    ::
+    .. testcode::
 
         from pathlib import Path
         from jtcmake import UntypedGroup, SELF, Rule, StaticGroupBase
@@ -452,6 +486,7 @@ class UntypedGroup(
         g.group1.add("rule2", add1)(g.rule1[0], SELF)
 
         class Child(StaticGroupBase):
+            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
             rule: Rule
 
         g.add_group("group2", Child)
@@ -465,6 +500,7 @@ class UntypedGroup(
         assert Path("out/group1/rule2").read_text() == "2"
         assert Path("out/group2/rule3").read_text() == "3"
 
+        import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
     """
 
     _name: Tuple[str, ...]
