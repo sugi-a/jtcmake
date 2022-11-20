@@ -66,6 +66,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.UntypedGroup.select_groups"><code class="docutils literal notranslate"><span class="pre">UntypedGroup.select_groups()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.Rule"><code class="docutils literal notranslate"><span class="pre">Rule</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.File"><code class="docutils literal notranslate"><span class="pre">File</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.VFile"><code class="docutils literal notranslate"><span class="pre">VFile</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.make"><code class="docutils literal notranslate"><span class="pre">make()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -99,7 +103,8 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="jtcmake.StaticGroupBase">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">StaticGroupBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loglevel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'debug'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'info'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'warning'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'error'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_default_logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Logger</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">WritableProtocol</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.StaticGroupBase" title="Permalink to this definition"></a></dt>
-<dd><p>Base class for static groups.</p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BasicMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BasicInitMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">SelectorMixin</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">MemoMixin</span></code></p>
+<p>Base class for static groups.</p>
 <p>A static group should be defined by subclassing StaticGroupBase.
 It must have type annotations to represent its child groups and rules.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
@@ -623,6 +628,76 @@ For example,</p>
 </div>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jtcmake.Rule">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">Rule</span></span><a class="headerlink" href="#jtcmake.Rule" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jtcmake.File">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">File</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.File" title="Permalink to this definition"></a></dt>
+<dd><p>An instance of this class represents a file, which can be an input or
+output of rules.</p>
+<p>When used as an input, on judging whether the rule must be updated,
+its modification time is compared to the modification time of the
+output files.
+If any of the output files is older than the input, the rule must be
+updated.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jtcmake.VFile">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">VFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.VFile" title="Permalink to this definition"></a></dt>
+<dd><p>An instance of this class represents a value file, which can be
+an input or output of rules.</p>
+<p>When used as an input, on judging whether the rule must be updated,
+its modification time is compared to the modification time of the
+output files.
+If any of the output files is older than the input, the rule must be
+updated.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jtcmake.make">
+<span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">rule_or_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">IGroup</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">IRule</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_going</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">njobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.make" title="Permalink to this definition"></a></dt>
+<dd><p>make rules</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rules_or_groups</strong> (<em>Sequence</em><em>[</em><em>RuleNodeBase</em><em>|</em><em>Group</em><em>]</em>) – Rules and Groups containing target Rules</p></li>
+<li><p><strong>dry_run</strong> – instead of actually excuting methods, print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> – <p>Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p>
+<p>Note that safely using njobs &gt;= 2 and fully exploiting the power
+of multi-core processors require a certain level of
+understanding of Python’s threading and multiprocessing.</p>
+<p>Each rule is made on a child process if it is transferable.
+A rule is “transferable” if both of the following conditions
+are met:</p>
+<ul>
+<li><p>method/args/kwargs of the rule are all picklable</p></li>
+<li><p>Pickle representation of method/args/kwargs created in the
+main process is unpicklable in child processes</p></li>
+</ul>
+<p>If a rule is not transferable, it is made on a sub-thread of
+the main process. Thus the method must be thread-safe. Also note
+that methods running on the main process are subject to the
+global interpreter lock (GIL) constraints.</p>
+<p>Child processes are started by the ‘spawn’ method, not ‘fork’,
+even on Linux systems.
+njobs &gt;= 2 may not work on interactive interpreters.
+It should work on Jupyter Notebook/Lab but any function or class
+that are defined on the notebook is not transferable and thus
+executed in the main process.</p>
+</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
