@@ -21,6 +21,7 @@ jobs:
                 python -m pip install jtcmake sphinx sphinx-rtd-theme
             - name: Build docs
               run: |
+                cat src/jtcmake/group_tree/rule.py
                 python docs_src/make.py
             - name: Push docs
               run: |
