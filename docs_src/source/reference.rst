@@ -6,7 +6,6 @@ API Reference
   :members:
   :inherited-members:
   :special-members: __init__
-  :show-inheritance:
 
 
 .. autoclass:: jtcmake.GroupsGroup
@@ -32,7 +31,15 @@ API Reference
 
 
 .. autoclass:: jtcmake.File
+  :show-inheritance:
 
 .. autoclass:: jtcmake.VFile
+  :show-inheritance:
+
+.. autoclass:: jtcmake.IFile
+  :show-inheritance:
 
 .. autofunction:: jtcmake.make
+
+.. autofunction:: jtcmake.print_graphviz
+

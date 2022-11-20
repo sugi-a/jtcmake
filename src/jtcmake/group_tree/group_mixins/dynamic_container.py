@@ -144,10 +144,10 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         """
         Create a temporary function to add a rule to this group.
 
-        This method is equal to :func:`self.add` except the default file
-        class is :class:`jtcmake.VFile` instead of :class:`File`.
+        This method is equal to :func:`self.add <.add>` except the default
+        file class is :class:`VFile` instead of :class:`File`.
 
-        See the documentation of :func:`self.add` for more information.
+        See the documentation of :func:`self.add <.add>` for more information.
         """
         return self._add(name, outs, method, IFile_fact=VFile)
 

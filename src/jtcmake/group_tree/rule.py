@@ -441,7 +441,7 @@ class Rule(IRule, Generic[K]):
 
 
                 class MyGroup(StaticGroupBase):
-                    __globals__ = globals()  # Only for Sphinx's doctest. You don't need this.
+                    __globals__ = globals()  # Only for Sphinx's doctest. Not necessary in normal situations.
                     foo: Rule[Literal["a", "b"]]
                     bar: Rule[str]
                     buz: Rule[str]
@@ -578,7 +578,7 @@ class Rule(IRule, Generic[K]):
                 from jtcmake import StaticGroupBase, Rule, SELF
 
                 class MyGroup(StaticGroupBase):
-                    __globals__ = globals()  # Only for Sphinx's doctest. You don't need this.
+                    __globals__ = globals()  # Only for Sphinx's doctest. Not necessary in normal situations.
                     rule1: Rule[str]
                     rule2: Rule[str]
 
