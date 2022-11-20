@@ -130,9 +130,17 @@ class IGroup(INode, metaclass=ABCMeta):
         """
         if self.__prefix is not None:
             raise Exception(
-                f'Prefix is already set (to "{self.__prefix}") and '
-                "may not be overwritten. Make sure to call set_prefix "
-                "before initializing child groups and rules. "
+                f'Prefix is already set (to "{self.__prefix}"). '
+                "This method may be called only when the prefix is not yet "
+                "determined. i.e. You may NOT call this method whenever,\n"
+                "* You have created this group as a root group\n"
+                "* You have once called it\n"
+                "* You have once read `self.prefix`\n"
+                "  * reading `self.prefix` internally finalizes the prefix\n"
+                "* You have once read the prefix of a child group\n"
+                "  * it internally reference the parent's prefix\n"
+                "* You have initialized any rule in the sub-tree\n"
+                "  * initializing a rule internally reads its parent's prefix"
             )
 
         p = parse_args_prefix(dirname, prefix)
