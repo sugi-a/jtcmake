@@ -14,8 +14,11 @@ help:
 
 .PHONY: help Makefile
 
-deploy:
+html:
 	@$(SPHINXBUILD) -b html "$(SOURCEDIR)" "../docs" $(SPHINXOPTS) $(O)
+	
+doctest:
+	@$(SPHINXBUILD) -b doctest "$(SOURCEDIR)" "../tmp-sphinx-doctest" $(SPHINXOPTS) $(O)
 	
 
 # Catch-all target: route all unknown targets to Sphinx using the new

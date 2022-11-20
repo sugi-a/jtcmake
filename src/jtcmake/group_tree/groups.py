@@ -93,6 +93,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
     """
 
+    __globals__: Optional[Dict[str, object]] = None
     _info: GroupTreeInfo
     _name: Tuple[str, ...]
     _groups: Dict[str, IGroup]
@@ -112,7 +113,17 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         self._groups = {}
         self._rules = {}
 
-        for child_name, type_hint in get_type_hints(type(self)).items():
+        try:
+            if self.__globals__ is None:
+                hints = get_type_hints(type(self))
+            else:
+                hints = get_type_hints(type(self), None, self.__globals__)
+        except Exception as e:
+            raise Exception(
+                f"Failed to get type hints of static group class {type(self)}."
+            ) from e
+
+        for child_name, type_hint in hints.items():
             fqcname = (*self._name, child_name)
 
             tp = _get_type(type_hint)
@@ -226,8 +237,8 @@ class GroupsGroup(
         self, default_child_group_type: Type[T_Child]
     ) -> GroupsGroup[T_Child]:
         """
-        Sets the default child class. It will be used when
-        ``GroupsGroup.add_group`` is called with ``child_group_type``
+        Sets the default child class, which will be used when
+        :func:`GroupsGroup.add_group` is called with ``child_group_type``
         unspecified.
         """
         tp = _parse_child_group_type(default_child_group_type)
@@ -416,8 +427,8 @@ class UntypedGroup(
     .. note::
         Type annotation for this class is weak and you won't get much support
         from static type checkers and IDEs.
-        It is recommended to use ``StaticGroupBase``, ``GroupsGroup``, and
-        ``RulesGroup`` when writing a long code.
+        It is recommended to use :class:`StaticGroupBase`, :class:`GroupsGroup`, and
+        :class:`RulesGroup` when writing a long code.
 
     ::
 

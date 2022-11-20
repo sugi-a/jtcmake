@@ -206,6 +206,19 @@ class Rule(IRule, Generic[K]):
         create: bool = True,
         t: Union[float, None] = None,
     ) -> None:
+        """
+        Touch (set mtime to now) the output files and force the memo to record
+        the current input state.
+
+        Args:
+            file (bool):
+                if False, the output files won't be touched. Defaults to True.
+            memo (bool): if False, the memo won't be modified. Defaults to True.
+            create (bool):
+                if True, missing files will be created.
+                Otherwise, only the existing files will be touched.
+                This option has no effect with ``file=False``.
+        """
         logwriter = self._info.logwriter
 
         if t is None:
@@ -226,6 +239,9 @@ class Rule(IRule, Generic[K]):
             self._info.rule_store.rules[self.raw_rule_id].update_memo()
 
     def clean(self) -> None:
+        """
+        Delete all the existing files of this rule.
+        """
         logwriter = self._info.logwriter
 
         for f in self.files.values():
@@ -318,6 +334,148 @@ class Rule(IRule, Generic[K]):
     def init(
         self, output_files: object, method: object = None, /
     ) -> Callable[..., Rule[K]]:
+        """
+        Create a temporary function to complete initialization of this rule.
+
+        Note:
+           This method must be called only for *uninitialized rules* which
+           do not have the output files, method, and method's arguments
+           assigned to themselvs yet.
+
+           For example, you have to call this method for rules of
+           :class:`StaticGroupBase`-like groups while you must not for rules
+           owned by :class:`RulesGroup` groups.
+
+        Args:
+            output_files:
+                if not specified, this rule's name will be used.
+                The following three forms are accepted.
+
+                * **Dict** (``{"key1": file1, "key2": file2, ...}``):
+                  ``key1``, ``key2``, ... are the *file keys* and ``file1``,
+                  ``file2``, ... are the *file paths*.
+                * **List** (``[file1, file2, ...]``):
+                  equivalent to a dict-form of
+                  ``{str(file1): file1, str(file2): file2}``
+                * **Atom** (``file``):
+                  equivalent to a dict-form of ``{str(file): file}``
+
+                *File keys* must be str. *File paths* may be either str or
+                PathLike including :class:`File` and
+                :class:`VFile`.
+                If a given file path is neither :class:`File` or
+                :class:`VFile`, it will be converted to :class:`File` by
+                ``File(file_path)``.
+
+            method: function to create the output files
+
+        Returns:
+            **rule_initializer**, a temporary function whose signature is the
+            same as the given ``method``.
+            Calling it as ``rule_adder(*args, **kwargs)`` completes
+            initialization of this rule.
+
+            While executing this rule, ``method`` is called as
+            ``method(*args, **kwargs)``.
+
+
+        Hint:
+
+            **Name Reference in File Paths**
+
+            A file path in a dict-form ``output_files`` may contain text
+            symbols ``"<R>"`` and ``"<F>"``, which will be replaced with
+            the rule's name and the corresponding file key, respectively.
+
+            For example, ``output_files={ "foo": Path("<R>-<F>.txt") }``
+            for a rule named "myrule" is equivalent to
+            ``output_files={ "foo": Path("myrule-foo.txt") }``.
+
+            In list/atom form of ``output_files``, you may use ``<R>`` too
+            but ``<F>`` is not allowed because the file keys are derived
+            from the file paths.
+
+
+            **Path Prefixing**
+
+            If given as a relative path, file paths get transformed by adding
+            the parent group's *path prefix* to the head.
+
+            For example, if the parent group's path prefix is
+            ``"output_dir/"``, ``output_files`` of ``{ "a": File("a.txt") }``
+            will be transformed into ``{ "a": File("out/a.txt") }``.
+
+            You can suppress this conversion by passing the path as an absolute
+            path.
+
+
+            **Rule-initializer and Argument Substitution**
+
+            ``Rule.init(output_files, method)`` returns a temporary function,
+            **rule_initializer** and you must further call it with the
+            arguments to be eventually passed to ``method`` like::
+
+                g.rule.init(output_files, method)(SELF, foo="bar")
+
+
+        Examples:
+            Basic usage:
+
+            .. testcode::
+
+                from __future__ import annotations
+                from pathlib import Path
+                from jtcmake import StaticGroupBase, Rule, SELF
+
+                def split_write(text: str, file1: Path, file2: Path):
+                    # Write first half of ``text`` to file1 and the rest to file2
+                    n = len(text)
+                    file1.write_text(text[: n // 2])
+                    file2.write_text(text[n // 2: n])
+
+
+                def cat(dst: Path, *srcs: Path):
+                    with dst.open("w") as f:
+                        f.writelines(src.read_text() for src in srcs)
+
+
+                class MyGroup(StaticGroupBase):
+                    __globals__ = globals()  # Only for Sphinx's doctest. You don't need this.
+                    foo: Rule[str]
+                    bar: Rule[str]
+                    buz: Rule[str]
+
+                    def init(self) -> MyGroup:
+                        self.foo.init({"a": "a.txt", "b": "b.txt"}, split_write)(
+                            "abcd", SELF[0], SELF[1]
+                        )
+
+                        '''
+                        The list below will be translated into `{"x.txt": "x.txt", "y.txt": "y.txt"}`
+                        (and then `{"x.txt": File("out/x.txt"), "y.txt": File("out/y.txt"}`)
+                        '''
+                        self.bar.init(["x.txt", "y.txt"], split_write)(
+                            "efgh", file1=SELF[0], file2=SELF[1]  # you can use keyword args
+                        )
+
+                        self.buz.init("w.txt", cat)(
+                            SELF, self.foo[0], self.foo[1], self.bar[0], self.bar[1]
+                        )
+
+                        return self
+
+                g = MyGroup("out").init()
+
+                g.make()
+
+                assert Path("out/a.txt").read_text() == "ab"
+                assert Path("out/b.txt").read_text() == "cd"
+                assert Path("out/x.txt").read_text() == "ef"
+                assert Path("out/y.txt").read_text() == "gh"
+                assert Path("out/w.txt").read_text() == "abcdefgh"
+
+                import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
+        """
         return self._init(output_files, method, IFile_fact=File)
 
     @overload
@@ -341,6 +499,15 @@ class Rule(IRule, Generic[K]):
     def initvf(
         self, output_files: object, method: object = None, /
     ) -> Callable[..., Rule[K]]:
+        """
+        Create a temporary function to initialize this rule.
+
+        This method is equal to :func:`init` except the default class
+        constructor is :class:`VFile` instead of :class:`File`.
+
+        Seealso:
+            :func:`init`
+        """
         return self._init(output_files, method, IFile_fact=VFile)
 
     def _init(
@@ -358,11 +525,11 @@ class Rule(IRule, Generic[K]):
             self.name_tuple[-1], self._file_keys_hint, output_files, IFile_fact
         )
 
-        def _init(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
+        def _rule_initializer(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
             self.__init_full__(yfiles, method, args, kwargs)
             return self
 
-        return _init
+        return _rule_initializer
 
     def init_deco(
         self,
@@ -375,6 +542,70 @@ class Rule(IRule, Generic[K]):
             ]
         ] = None,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
+        """
+        Create a temporary decorator function to initialize this rule.
+        This is a decorator version of :func:`init`.
+        This is useful when you want to define a method for the rule
+        on-the-fly instead of passing an existing function
+        (see the examples below).
+
+        Args:
+            output_files: output files of this rule.
+                If not specified, this rule's name will be used.
+                Just like :func:`init`, file paths will be internally converted
+                to :class:`File` if they aren't either :class:`File` or
+                :class:`VFile`.
+
+                See :func:`init` for more information.
+
+        Returns:
+            **rule_method_decorator**.
+
+            Invoking the ``rule_method_decorator`` with the method you want to
+            bind to this rule completes initialization of the rule.
+
+            All the arguments to the method must have a default value
+            (see the example).
+
+        Example:
+            .. testcode::
+
+                from jtcmake import StaticGroupBase, Rule, SELF
+
+                class MyGroup(StaticGroupBase):
+                    __globals__ = globals()  # Only for Sphinx's doctest. You don't need this.
+                    rule1: Rule[str]
+                    rule2: Rule[str]
+
+                    def init(self, text: str, repeat: int) -> MyGroup:
+                        @self.rule1.init_deco("<R>.txt")
+                        def method_for_rule1(path=SELF, text=text):
+                            path.write_text(text)
+
+                        @self.rule2.init_deco("<R>.txt")
+                        def method_for_rule2(src=self.rule1[0], dst=SELF, repeat=repeat):
+                            text = src.read_text()
+                            dst.write_text(text * repeat)
+
+                        return self
+
+
+                MyGroup("out").init("abc", 2).make()
+
+                assert Path("out/rule1.txt").read_text() == "abc"
+                assert Path("out/rule2.txt").read_text() == "abcabc"
+
+                MyGroup("out").init("abc", 3).make()
+
+                assert Path("out/rule1.txt").read_text() == "abc"
+                assert Path("out/rule2.txt").read_text() == "abcabcabc"
+
+                import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
+
+        Seealso:
+            :func:`init`
+
+        """
         return self._init_deco(output_files, IFile_fact=File)
 
     def initvf_deco(
@@ -388,6 +619,15 @@ class Rule(IRule, Generic[K]):
             ]
         ] = None,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
+        """
+        Create a temporary decorator function to initialize this rule.
+
+        This method is equal to :func:`init_deco` except the default class
+        constructor is :class:`VFile` instead of :class:`File`.
+
+        Seealso:
+            :func:`init_deco`, :func:`init`
+        """
         return self._init_deco(output_files, IFile_fact=VFile)
 
     def _init_deco(
@@ -439,8 +679,8 @@ class Rule(IRule, Generic[K]):
                 Maximum number of rules that can be made concurrently.
                 Defaults to 1 (single process, single thread).
 
-        See also:
-            See the description of jtcmake.make for more detail of njobs
+        Seealso:
+            :func:`jtcmake.make`
         """
         return make(
             self,
