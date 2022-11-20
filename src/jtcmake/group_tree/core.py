@@ -104,7 +104,7 @@ class IGroup(INode, metaclass=ABCMeta):
         its start. Absolute paths do not undergo this prefixing.
 
         Note:
-            This method may be called only when the prefix is not yet 
+            This method may be called only when the prefix is not yet
             determined. i.e. You may NOT call this method whenever,
 
             * You have created this group as a root group

@@ -108,7 +108,7 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
 
         Examples:
 
-            .. raw:: text
+            .. code-block:: text
 
                <ROOT>
                |-- a0(r)
@@ -145,7 +145,7 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
 
         Examples:
 
-            .. raw:: text
+            .. code-block:: text
 
                <ROOT>
                |-- a(r)
@@ -198,7 +198,7 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
         Suppose we have the following group tree (the tree may have rules as
         well but we omit them since this method collects groups only).
 
-        .. raw:: text
+        .. code-block:: text
 
            <ROOT>
            |
