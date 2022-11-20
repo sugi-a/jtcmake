@@ -425,6 +425,7 @@ class Rule(IRule, Generic[K]):
 
                 from __future__ import annotations
                 from pathlib import Path
+                from typing import Literal
                 from jtcmake import StaticGroupBase, Rule, SELF
 
                 def split_write(text: str, file1: Path, file2: Path):
@@ -441,11 +442,15 @@ class Rule(IRule, Generic[K]):
 
                 class MyGroup(StaticGroupBase):
                     __globals__ = globals()  # Only for Sphinx's doctest. You don't need this.
-                    foo: Rule[str]
+                    foo: Rule[Literal["a", "b"]]
                     bar: Rule[str]
                     buz: Rule[str]
 
                     def init(self) -> MyGroup:
+                        '''
+                        Supplying keys other than "a" and "b" would be marked as
+                        a type error by type checkers such as Mypy and Pyright.
+                        '''
                         self.foo.init({"a": "a.txt", "b": "b.txt"}, split_write)(
                             "abcd", SELF[0], SELF[1]
                         )
