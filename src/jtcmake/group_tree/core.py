@@ -52,6 +52,9 @@ class INode(metaclass=ABCMeta):
         else:
             return "/" + "/".join(self.name_tuple)
 
+    def __repr__(self) -> str:
+        return f"{type(self)}(name={self.name})"
+
 
 T_Self = TypeVar("T_Self", bound="IGroup")
 
@@ -84,6 +87,47 @@ class IGroup(INode, metaclass=ABCMeta):
     def set_prefix(
         self: T_Self, dirname: object = None, *, prefix: object = None
     ) -> T_Self:
+        """
+        Set the path prefix of this group.
+
+        Args:
+            dirname: if specified, prefix will be ``dirname + "/"``
+            prefix: path prefix.
+
+        You must specify either but not both of ``dirname`` or ``prefix``.
+
+        ``self.set_prefix("a")`` is equivalent to
+        ``self.set_prefix(prefix="a/")``.
+
+        If this group is not the root group and the given prefix is a
+        relative path, the path prefix of the parent group will be added to
+        its start. Absolute paths do not undergo this prefixing.
+
+        Note:
+            * You can invoke this method at most once.
+                * Default prefix is ``"{group's base name}/"``
+            * You cannot invoke this method after initializing any rule of
+              this group.
+
+        Example:
+
+            .. testcode::
+
+                # (For Unix only)
+
+                from jtcmake import UntypedGroup
+
+                g = UntypedGroup("root")
+
+                g.add_group("foo").set_prefix("foo-dir")
+                g.add_group("bar").set_prefix(prefix="bar-")
+                g.add_group("baz").set_prefix("/tmp/baz")
+
+                assert g.prefix == "root/"
+                assert g.foo.prefix == "root/foo-dir/"
+                assert g.bar.prefix == "root/bar-"
+                assert g.baz.prefix == "/tmp/baz/"
+        """
         if self.__prefix is not None:
             raise Exception(
                 f'Prefix is already set (to "{self.__prefix}") and '
@@ -100,9 +144,12 @@ class IGroup(INode, metaclass=ABCMeta):
 
         return self
 
-    @final
     @property
+    @final
     def prefix(self) -> str:
+        """
+        Path prefix of this group.
+        """
         if self.__prefix is None:
             # Root node must get prefix in __init__
             assert self.parent != self
@@ -116,11 +163,23 @@ class IGroup(INode, metaclass=ABCMeta):
     @property
     @abstractmethod
     def groups(self) -> Mapping[str, IGroup]:
+        """
+        Readonly dictionary of child groups.
+
+        * Key: base name of the child group
+        * Value: child group node object
+        """
         ...
 
     @property
     @abstractmethod
     def rules(self) -> Mapping[str, IRule]:
+        """
+        Readonly dictionary of child rules.
+
+        * Key: base name of the child rule
+        * Value: child rule node object
+        """
         ...
 
 
@@ -133,11 +192,20 @@ class IRule(INode, metaclass=ABCMeta):
     @property
     @abstractmethod
     def files(self) -> Mapping[str, IFile]:
+        """
+        Readonly dictionary of output files.
+
+        * Key: file key of the file
+        * Value: :class:`jtcmake.IFile` object
+        """
         ...
 
     @property
     @abstractmethod
     def xfiles(self) -> Collection[str]:
+        """
+        List of path of the input files.
+        """
         ...
 
     @abstractmethod
@@ -332,29 +400,25 @@ def make(
             Maximum number of rules that can be made concurrently.
             Defaults to 1 (single process, single thread).
 
-            Note that safely using njobs >= 2 and fully exploiting the power
-            of multi-core processors require a certain level of
-            understanding of Python's threading and multiprocessing.
+    Warning:
 
-            Each rule is made on a child process if it is transferable.
-            A rule is "transferable" if both of the following conditions
-            are met:
+        Safely and effectively using njobs >= 2 require a certain level of
+        understanding of Python's threading and multiprocessing and their
+        complications.
 
-            - method/args/kwargs of the rule are all picklable
-            - Pickle representation of method/args/kwargs created in the
-              main process is unpicklable in child processes
+        Only *inter-process transferable* rules are executed on child processes.
+        Other rules are executed on threads of the main process, thus
+        subject to the constraints of global interpreter lock (GIL).
 
-            If a rule is not transferable, it is made on a sub-thread of
-            the main process. Thus the method must be thread-safe. Also note
-            that methods running on the main process are subject to the
-            global interpreter lock (GIL) constraints.
+        *inter-process transferable* means being able to be sent to a child
+        process without errors.
 
-            Child processes are started by the 'spawn' method, not 'fork',
-            even on Linux systems.
-            njobs >= 2 may not work on interactive interpreters.
-            It should work on Jupyter Notebook/Lab but any function or class
-            that are defined on the notebook is not transferable and thus
-            executed in the main process.
+        Child processes are started by the 'spawn' method, not 'fork',
+        even on Linux systems.
+
+        njobs >= 2 may not work on interactive interpreters.
+        It should work on Jupyter Notebook/Lab but any function or class
+        that are defined on the notebook is not inter-process transferable.
     """
     if len(rule_or_groups) == 0:
         return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)

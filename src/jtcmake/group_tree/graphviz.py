@@ -22,10 +22,13 @@ def print_graphviz(
     *,
     rankdir: RankDir = "LR",
 ):
-    """Visualize the dependency graph using Graphviz
+    """
+    Visualize the dependency graph using Graphviz.
+    Graphviz binaries are required to be available in PATH.
+
     Args:
-        group (Group): Group node whose Rules will be visualized
-        output_file (str|os.PathLike|None):
+        group: Group node whose Rules will be visualized
+        output_file:
             If specified, graph will be written into the file.
             Otherwise, graph will be printed to the terminal (available on
             Jupyter only). Graph format depends on the file extension:

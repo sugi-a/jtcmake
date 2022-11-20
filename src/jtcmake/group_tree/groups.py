@@ -75,7 +75,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 
         class MyGroup(StaticGroupBase):
-            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
             child_rule: Rule[str]
             child_group: MyChildGroup
 
@@ -93,7 +93,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
 
         class MyChildGroup(StaticGroupBase):
-            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
             foo: Rule[str]
 
             def init(self, src: Path, repeat: int) -> MyChildGroup:
@@ -209,7 +209,7 @@ class GroupsGroup(
         from jtcmake import SELF, StaticGroupBase, GroupsGroup, Rule
 
         class Child1(StaticGroupBase):
-            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
             rule1: Rule[str]
 
             def init(self, text: str):
@@ -217,7 +217,7 @@ class GroupsGroup(
                 return self
 
         class Child2(StaticGroupBase):
-            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
             rule2: Rule[str]
 
             def init(self, text: str):
@@ -282,8 +282,8 @@ class GroupsGroup(
         prefix: Optional[StrOrPath] = None,
     ) -> GroupsGroup[T_Child]:
         """
-        Convenient method that works as ``GroupsGroup.set_default_child``
-        and ``GroupsGroup.set_prefix`` combined.
+        Convenient method that works as :func:`set_default_child`
+        and `set_prefix` combined.
         """
         if default_child_group_type is not None:
             self.set_default_child(default_child_group_type)
@@ -486,7 +486,7 @@ class UntypedGroup(
         g.group1.add("rule2", add1)(g.rule1[0], SELF)
 
         class Child(StaticGroupBase):
-            __globals__ = globals()  # For Sphinx's doctest. You don't need this.
+            __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
             rule: Rule
 
         g.add_group("group2", Child)

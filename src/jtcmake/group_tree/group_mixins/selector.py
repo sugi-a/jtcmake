@@ -97,82 +97,180 @@ class SelectorMixin(IGroup, metaclass=ABCMeta):
         else:
             raise Exception("unreachable")
 
-    def select_rules(self, pattern: Union[str, Sequence[str]]) -> List[IRule]:
+    def select_rules(
+        self, pattern: Union[str, List[str], Tuple[str]]
+    ) -> List[IRule]:
+        """
+        Create list of rules in this group sub-tree that match ``pattern``.
+
+        This is the rule-version of :func:`select_groups`.
+        See its documentation for detail.
+
+        Examples:
+
+            .. raw:: text
+
+               <ROOT>
+               |-- a0(r)
+               |-- a1
+               |   `-- a2(r)
+               `-- a3
+                   `-- a4(r)
+
+            .. testcode::
+
+               from jtcmake import UntypedGroup, SELF
+
+               # Building the above group tree
+               g = UntypedGroup()  # Root group
+               g.add("a0", lambda x: ())(SELF)
+               g.add_group("a1")
+               g.a1.add("a2", lambda x: ())(SELF)
+               g.add_group("a3")
+               g.a3.add("a4", lambda x: ())(SELF)
+
+               assert g.select_rules("a*") == [g.a0]
+               assert g.select_rules("*/a*") == [g.a1.a2, g.a3.a4]
+        """
         return self._select(_parse_args_pattern(pattern), "rule")
 
-    def select_files(self, pattern: Union[str, Sequence[str]]) -> List[IFile]:
+    def select_files(
+        self, pattern: Union[str, List[str], Tuple[str]]
+    ) -> List[IFile]:
+        """
+        Create list of files in this group sub-tree that match ``pattern``.
+
+        This is the file-version of :func:`select_groups`.
+        See its documentation for detail.
+
+        Examples:
+
+            .. raw:: text
+
+               <ROOT>
+               |-- a(r)
+               |   |-- a (f:a.txt)
+               |   `-- b (f:b.html)
+               |
+               `-- b(g)
+                   `-- a(r)
+                       `-- a (f:a.txt)
+
+            .. testcode::
+
+               from jtcmake import UntypedGroup, SELF
+
+               # Building the above group tree
+               g = UntypedGroup()  # Root group
+               g.add("a", { "a": "a.txt", "b": "b.html" }, lambda x,y: ())(SELF.a, SELF.b)
+               g.add_group("b")
+               g.b.add("a", { "a": "a.txt" }, lambda x: ())(SELF.a)
+
+               assert g.select_files("**/a") == [g.a.a, g.b.a.a]
+               assert g.select_files("a/*") == [g.a.a, g.a.b]
+        """
         return self._select(_parse_args_pattern(pattern), "file")
 
-    def select_groups(self, pattern: Union[str, Sequence[str]]) -> List[IGroup]:
-        """Obtain child groups or rules of this group.
+    def select_groups(
+        self, pattern: Union[str, List[str], Tuple[str]]
+    ) -> List[IGroup]:
+        """
+        Create list of groups in this group sub-tree that match ``pattern``.
+        The list may include this group itself.
 
-        Signatures:
+        Groups are gathered based on the given pattern in a manner similar to
+        how we specify a set of files using a glob pattern on Unix.
 
-            1. `select(group_tree_pattern: str)`
-            2. `select(group_tree_pattern: Sequence[str], group:bool=False)`
+        Args:
+            pattern:
+                str or list/tuple of str representing a pattern of
+                relative names of offspring nodes.
 
-        Args for Signature 1:
-            group_tree_pattern (str):
-                Pattern of the relative name of child nodes of this group.
-                Pattern consists of names concatenated with the delimiter '/'.
-                Double star '**' can appear as a name indicating zero or
-                more repetition of arbitrary names.
+                If ``pattern`` is a list/tuple of strs,
+                it must be a sequence of *base name patterns* like
+                ``["a", "b", "c"]`` or ``["a", "*b*", "c", "**"]``.
 
-                Single star can appear as a part of a name indicating zero
-                or more repetition of arbitrary character.
+                If ``pattern`` is a str, it will be internally translated into
+                an equivalent list-of-str pattern by splitting it with ``/``.
+                So, for example, ``g.select_groups("a/b/c") is equivalent to
+                ``g.select_groups(["a", "b", "c"])``.
 
-                If `group_tree_pattern[-1] == '/'`, it matches groups only.
-                Otherwise, it matches rules only.
+        Suppose we have the following group tree (the tree may have rules as
+        well but we omit them since this method collects groups only).
 
-                For example, calling g.select(pattern) with a pattern
+        .. raw:: text
 
-                * `"a/b"  matches a rule `g.a.b`
-                * "a/b/" matches a group `g.a.b`
-                * "a*"   matches rules `g.a`, `g.a1`, `g.a2`, etc
-                * "a*/"  matches groups `g.a`, `g.a1`, `g.a2`, etc
-                * `"**"`   matches all the offspring rules of `g`
-                * `"**/"`  matches all the offspring groups of `g`
-                * `"a/**"` matches all the offspring rules of the group `g.a`
-                * `"**/b"` matches all the offspring rules of `g` of name "b"
+           <ROOT>
+           |
+           |-- a1
+           |   |-- b1
+           |   `-- b2
+           |       `-- c1
+           |
+           |-- a2
+           |   `-- b1
+           |
+           `-- a1/b1
 
-            group: ignored
+        We use a list of strs to identify each group node.
+        For example, the (absolute) name of the forth group from the top
+        (the deepest one) is ``["a1", "b2", "c1"]``.
+        Its *relative name* with respect to the group ``["a1"]`` is
+        ``["b2", "c1"]``, and ``"c1"`` is its *base name*.
 
-        Args for Signature-2:
-            group_tree_pattern (list[str] | tuple[str]):
-                Pattern representation using a sequence of names.
+        Pattern matching is basically as simple as *pattern* ``["a1", "b1"]``
+        matches the *relative name* ``["a1", "b1"]``.
+        Additionally, you can use wildcard ``*`` in patterns as follows.
 
-                Following two are equivalent:
+        * Double stars ``**`` can appear as a special base name indicating
+          zero or more repetition of arbitrary base names.
+          It may NOT appear inside a base name like ``a/**b/c``
+        * Single stars ``*`` can appear inside a base name indicating zero
+          or more repetition of arbitrary character.
 
-                * `g.select(["a", "*", "c", "**"])`
-                * `g.select("a/*/c/**")`
+        Examples:
 
-                Following two are equivalent:
+            .. testcode::
 
-                * `g.select(["a", "*", "c", "**"], True)`
-                * `g.select("a/*/c/**/")`
+                from jtcmake import UntypedGroup
 
-            group (bool):
-                if False (default), select rules only.
-                if True, select groups only.
+                # Building the above group tree
+                g = UntypedGroup()  # Root group
+                g.add_group("a1")
+                g.a1.add_group("b1")
+                g.a1.add_group("b2")
+                g.a1.b2.add_group("c1")
+                g.add_group("a2")
+                g.a2.add_group("b1")
+                g.add_group("a1/b1")
 
-        Returns:
-            list[RuleNodeLike]|list[Group]: rule nodes or group nodes.
+                assert g.select_groups("a1/b1") == [g.a1.b1]
+                assert g.select_groups(["a1", "b1"]) == [g.a1.b1]
 
-            * called with Signature-1 and pattern[-1] != '/' or
-            * called with Signature-2 and group is False
+                # In the following example,  ``/`` in the base name is treated
+                # as a normal character and has no effect as a base name boundary
+                assert g.select_groups(["a1/b1"]) == [g["a1/b1"]]
+
+                assert g.select_groups("a*") == [g.a1, g.a2, g["a1/b1"]]
+                assert g.select_groups("*/*1") == [g.a1.b1, g.a2.b1]
+                assert g.select_groups("**/*1") == [
+                    g.a1, g.a1.b1, g.a1.b2.c1, g.a2.b1, g["a1/b1"]
+                ]
+                assert g.select_groups("**") == [
+                    g,  # root is included
+                    g.a1,
+                    g.a1.b1,
+                    g.a1.b2,
+                    g.a1.b2.c1,
+                    g.a2,
+                    g.a2.b1,
+                    g["a1/b1"],
+                ]
+                assert g.a1.select_groups("*") == g.select_groups("a1/*")
 
         Note:
-            Cases where Signature-2 is absolutely necessary is when you need
-            to select a node whose name contains "/".
-            For example, ::
-
-                g = create_group('group')
-
-                # this rule's name is "dir/a.txt"
-                rule = g.add('dir/a.txt', func)
-
-                g.select(['dir/a.txt']) == [rule]  # OK
-                g.select('dir/a.txt') != []  # trying to match g['dir']['a.txt']
+            Current implementation collects nodes using pre-order DFS but
+            it may be changed in the future.
         """
         return self._select(_parse_args_pattern(pattern), "group")
 
