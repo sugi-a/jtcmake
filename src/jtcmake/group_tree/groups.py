@@ -18,7 +18,7 @@ from typing import (
 
 from ..utils.strpath import StrOrPath
 from ..utils.dict_view import DictView
-from .core import IGroup, GroupTreeInfo, IRule
+from .core import IGroup, GroupTreeInfo
 from .rule import Rule
 from .group_mixins.basic import (
     BasicMixin,
