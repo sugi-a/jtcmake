@@ -18,7 +18,7 @@ from typing import (
 
 from ..utils.strpath import StrOrPath
 from ..utils.dict_view import DictView
-from .core import IGroup, GroupTreeInfo, IRule
+from .core import IGroup, GroupTreeInfo
 from .rule import Rule
 from .group_mixins.basic import (
     BasicMixin,
@@ -179,7 +179,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
         return DictView(self._groups)
 
     @property
-    def rules(self) -> Mapping[str, IRule]:
+    def rules(self) -> Mapping[str, Rule[str]]:
         return DictView(self._rules)
 
     @property
@@ -348,7 +348,7 @@ class GroupsGroup(
         return DictView(self._groups)
 
     @property
-    def rules(self) -> Mapping[str, IRule]:
+    def rules(self) -> Mapping[str, Rule[str]]:
         return DictView({})
 
     def __getitem__(self, k: str) -> T_Child:
@@ -431,7 +431,7 @@ class RulesGroup(
         return DictView({})
 
     @property
-    def rules(self) -> Mapping[str, IRule]:
+    def rules(self) -> Mapping[str, Rule[str]]:
         return DictView(self._rules)
 
     def __getitem__(self, k: str) -> Rule[str]:
@@ -591,7 +591,7 @@ class UntypedGroup(
         return DictView(self._groups)
 
     @property
-    def rules(self) -> Mapping[str, IRule]:
+    def rules(self) -> Mapping[str, Rule[str]]:
         return DictView(self._rules)
 
     def _get_info(self) -> GroupTreeInfo:
