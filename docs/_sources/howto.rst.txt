@@ -1,41 +1,67 @@
+.. testcleanup:: *
+
+   import shutil, sys
+   try:
+     sys.stderr.write("cleaning up output/\n")
+     shutil.rmtree("output")
+   except:
+     pass
+  
+
 #################
 JTCMake Tutorial
 #################
 
-JTCMake is an incremental build tool.
-It shares the same basic concept as Makefile: in a process of creating multiple files with dependencies,
+JTCMake is a general purpose incremental build framework.
 
-* it understands the dependencies and executes tasks in an appropriate order, and
-* when we modify some files and re-build, it understands which files must be updated based on the files' modification time attribute (mtime), and updates those files only
+It shares the essence with Makefile:
 
-Furthermore, JTCMake,
+* Users define a set of rules to make files
+* JTCMake analyzses the dependency of the rules and executes them in an
+  appropriate order, skipping ones whose outputs already exist and are
+  up-to-date
 
-* leverages the expressiveness of Python
-* ships with Windows
-* supports content-hash-based update check in addition to mtime-based update check
-* enables efficient management of a large number of files
-  spanning a deep directory structure
-* provides useful features such as a dependency graph visualizer
-  and a rule selector
+Furthermore, JTCMake has strong features such as
 
-Although JTCMake was originally developed for data processing for machine learning on Jupyter Notebook,
-it can also be used in standard Python script files and on the interactive interpreter for general build processes.
+Content-based Skippability Check
+  In addition to the modification-time-based skippability check, JTCMake
+  can be configured to check if a rule is skippable based on the input files'
+  content modification.
 
-Since JTCMake is small and simple, we'll cover everything about it in this tutorial.
+Expressiveness and Portability
+  you can leverage Python's expressiveness to write rules with complex logic
+  and the code ships with different platforms including Windows.
 
-*******
-Imports
-*******
+Structured rule management
+  JTCMake manages rules in a well structured manner, which enables intuitive
+  handling of a large number of files spanning a deep directory tree.
 
-We assume that we have already imported the following items and thus the import directives may be omitted
-in the sample codes in the later sections. ::
+Fine-grained static typing
+  The API design has been tuned to fit into the Python ecosystem around static
+  typing.
+  Major operations on rules and files in your coding would be aided by your
+  IDE and validated by static type checkers
+  (Pyright/Pylance is recommended but Mypy should work too).
 
-  from pathlib import Path
+  Combined with the *structured rule management*, this feature enables you to
+  write a large and complex program safely and efficiently.
 
-  from jtcmake import create_group, SELF
-  import jtcmake
+Peripheral Equipment
+  Convenient tools such as a dependency graph visualizer and node selectors
+  are provided.
 
-``create_group`` and ``SELF`` are the most frequently used components of JTCMake.
+
+************
+Installation
+************
+
+.. code-block:: text
+
+   $ pip install jtcmake
+
+
+Additionally, Graphviz executables need to be in PATH when you use the
+:func:`jtcmake.print_graphviz` function.
 
 
 ********
@@ -44,15 +70,15 @@ Overview
 
 Typical workflow using JTCMake consists of three steps:
 
-1. Create Group
-2. Add rules
-3. Make
+1. Create a *group tree* and define *rules* as nodes in the tree
+2. Call ``make()`` on a sub-tree (or the root) to execute rules there
+
 
 Example: Writing to a file
 ===========================
 
-Please think of a very simple task: writing "Hello!" to a file output/hello.txt.
-For this task, we would write a Makefile below and execute ``$ make`` .
+Our first example task is to write "Hello!" into ``output/hello.txt``.
+For this task, we would write a Makefile below:
 
 .. code-block:: Makefile
 
@@ -60,40 +86,25 @@ For this task, we would write a Makefile below and execute ``$ make`` .
       mkdir -p $$(dirname $@)  # make directory for hello.txt
       echo "Hello!" > $@       # write to hello.txt
 
-Its JTCMake counterpart looks like::
+and then call ``$ make``. Its JTCMake counterpart looks like:
+
+.. testcode:: hello
   
-  def write_text(path: Path, text: str):
-      path.write_text(text)
+  from pathlib import Path
+  from jtcmake import UntypedGroup, SELF
 
-  # 1. Create Group
-  g = create_group('output')
+  # 1. Define a group tree
+  # Create the root node
+  g = UntypedGroup("output")
 
-  # 2. Add rule(s)
-  g.add('hello', 'hello.txt', write_text, SELF, 'Hello!')
+  # Define a rule node
+  g.add("hello.txt", Path.write_text)(SELF, "Hello!")
 
-  # 3. Make
+  # 2. Make the whole tree
   g.make()
 
-In the above code, we
+  assert Path("output/hello.txt").read_text() == "Hello!"
 
-1. create a **Group** that we use as a container for the rules we will add later
-
-   * The argument ``"output"`` will be used to prefix the paths of the Group's child elements
-
-2. add a **rule** to the Group by ``Group.add()``
-
-   * Its signature is ``Group.add(name, output_file, method, *args, **kwargs)`` , meaning
-     the name of the rule is ``name`` , and ``output_file`` must be created by calling ``method(*args, **kwargs)``
-
-   * In this case, we add a rule named "hello" which demands that a file ``output/hello.txt`` should be created
-     by ``write_text(Path("output/hello.txt"), "Hello!")``
-
-   * Note that JTCMake replaces ``SELF`` in args/kwargs by the target file path, in this case ``Path("output/hello.txt")``
-
-3. execute ``make`` and JTCMake creates the file following the rule(s) defined in the Group
-
-   * Note that the directory ``output/`` is automatically created by JTCMake so you don't need to
-     write a code for it
 
 You will see the following log after running ``g.make()``
 
@@ -111,160 +122,127 @@ You will see the following log after running ``g.make()``
 
 ------
 
-Please substitute ``WindowsPath`` for ``PosixPath`` if you are on Windows.
-For those who are not familiar with Python's pathlib, ``pathlib.Path`` works as alias for
-``pathlib.WindowsPath`` on Windows and ``pathlib.PosixPath`` on Linux and MacOS.
-On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you can click them and jump to the files.
+On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you
+can quickly review the files.
 
-This example task is so simple that an incremental build tool does not seem very helpful.
-It can be done by::
+This example task is so simple that you actually don't need a "framework"
+and just write::
 
-  Path('output/hello.txt').write_text('Hello!')
+  Path("output/hello.txt").write_text("Hello!")
 
-
-Example: Copying files
-======================
-
-Let's take a look at a slightly more complex task: coyping files.
-It has three rules:
-
-#. Create ``output/coyp1.txt`` by copying ``./original1.txt``
-#. Create ``output/copy2.txt`` by copying ``./original2.txt``
-#. Create ``output/concat.txt`` by concatenating ``output/copy1.txt`` and ``output/copy2.txt``
-
-In this case, files have dependencies.
-
-.. image:: _static/copy_files.svg
-
-Makefile for this task would be
-
-.. code-block:: Makefile
-
-    output/coyp1.txt: original1.txt
-        cp $< $@
-
-    output/coyp2.txt: original2.txt
-        cp $< $@
-
-    output/concat.txt: output/copy1.txt output/copy2.txt
-        cat $^ > $@
-
-And the JTCMake equivalent is, ::
-
-  import shutil
-
-  def concat(destination, *sources):
-      # write contents in the files `sources` into the file `destination`
-      with open(destination, 'w') as f:
-          for src in sources:
-              f.write(src.read_text())
-    
-  # 1. Create the root Group with directory `output`
-  g = create_group('output')
-
-  # 2. Add rules to the Group
-  g.add('cp1', 'copy1.txt', shutil.copy, jtcmake.File('original1.txt'), SELF)
-  g.add('cp2', 'copy2.txt', shutil.copy, jtcmake.File('original2.txt'), SELF)
-  g.add('concat', 'concat.txt', concat, SELF, g.cp1, g.cp2)
-
-  # 3. Make
-  g.make()
+JTCMake helps when your task involves many files to be output.
 
 
-What is noteworthy here is that, after we add the rules "cp1" and "cp2",
-we can refer to them by ``g.cp1`` and ``g.cp2`` , respectively.
+Example: Build Script for a C language project
+==============================================
 
-You will see what ``g.make()`` does from its log:
+Let's take a look at a more complex task: building a C language project.
 
--------
+.. note::
 
-.. raw:: html
+  This is just to demonstrate what it would look like if we write a build
+  script for a C project using JTCMake. Practically speaking, you should use
+  one of those tools that are dedicated to that purpose and have a solid
+  reputation.
 
-  <html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp2</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp2</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    destination</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/concat.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/concat.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    sources</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = [</span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">, </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">],
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html>
 
--------
+Let's say our project has source files in the following layout:
 
-As can be seen from this log, JTCMake called the function ``concat`` with the arguments where
-``SELF`` ,  ``g.cp1`` , and ``g.cp2`` are replaced by
-``Path("output/concat.txt")`` , ``Path("output/copy1.txt")`` and ``Path("output/copy1.txt")`` , respectively.
-I hope this behavior is intuitive enough to you.
+.. code-block:: text
 
+  .
+  ├── make.py
+  ├── out
+  └── src
+      ├── liba
+      │   ├── a1.c
+      │   ├── a1.h
+      │   ├── a2.c
+      │   ├── a2.h
+      │   ├── a3.c
+      │   └── a3.h
+      ├── libb
+      │   ├── b1.c
+      │   ├── b1.h
+      │   ├── b2.c
+      │   ├── b2.h
+      │   ├── b3.c
+      │   └── b3.h
+      └── tools
+          ├── tool1.c
+          ├── tool2.c
+          ├── tool3.c
+          ├── tool4.c
+          └── tool5.c
+
+We have two libraries "liba" and "libb" whose sources are in ``./src/liba``
+and ``src/libb``, respectively.
+We also have five executables to be generated and their *main* functions are
+written in ``./tools/tool1.c``, ``./tools/tool2.c``, ..., respectively.
+
+The requirements for our build script (``./make.py``) are:
+
+* It needs to generate the executables (``tool1``, ``tool2``, ...) in
+  ``./out/tools``.
+* It also needs to generate the two static libraries ``liba.a`` and ``libb.a``
+  in ``./out/libs``.
+* Other intermediate outputs such as .o files must be put inside ``./out`` as
+  well.
+* Each executable depends on the two libraries. So we need liba and libb linked
+  to the executables.
+
+Here is our ``./make.py``:
+
+.. literalinclude:: ./example_c_build/make.py
+  :linenos:
+
+We can make all by ``$ python make.py``, which turns ``./out`` to be
+
+.. code-block:: text
+
+  out/
+  ├── libs
+  │   ├── liba.a
+  │   ├── libb.a
+  │   └── objects
+  │       ├── a1.o
+  │       ├── a2.o
+  │       ├── a3.o
+  │       ├── b1.o
+  │       ├── b2.o
+  │       └── b3.o
+  └── tools
+      ├── tool1
+      ├── tool2
+      ├── tool3
+      ├── tool4
+      └── tool5
+
+
+Alternatively, we can make only some specific items by, for example,
+``$ python make.py liba``, which generates *liba* and its dependencies only.
+
+.. code-block:: text
+
+  out/
+  └── libs
+      ├── liba.a
+      └── objects
+          ├── a1.o
+          ├── a2.o
+          └── a3.o
 
 Re-run
 ------
 
-Just like Makefile, JTCMake checks the existence and modification time of the input/output files before processing each rule.
-If the output files exist and are newer than the input files, JTCMake skips the execution of the rule.
-So running make again will do nothing. ::
+Just like Makefile, JTCMake by default checks the existence and modification
+time of the input/output files of each rule, and if the output files are there
+and newer than the input files, JTCMake skips the rule.
 
-  g.make()
-
-Execution log will be:
-
----------
-
-.. raw:: html
-
-  <pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp1</span></pre>
-  <pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp2</span></pre>
-  <pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip concat</span></pre>
-
----------
-
-
-Update and re-run
------------------
-
-When you update a file and run ``g.make()`` again,
-JTCMake re-creates the files that depends on the updated file. ::
-
-  Path('original1.txt').touch()  # mtime of original1.txt is updated
-
-  g.make()
-
-As you see in the following log, rule "cp1" and "concat" were executed but "cp2" was skipped.
-
------------------
-
-.. raw:: html
-
-  <html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp2
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    destination</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/concat.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/concat.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    sources</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = [</span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">, </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">],
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html>
-
-----------------
+Additionally, JTCMake supports content-based check of execution necessesity.
+In the above code, we use that feature (by :class:`jtcmake.VFile`,
+:func:`jtcmake.Rule.initvf`, and so on) so re-running the script
+with the source files unchanged results in no-op.
 
 
 Summary
@@ -273,6 +251,9 @@ Summary
 JTCMake performs incremental build in the define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.
 
+
+REST OF THIS DOC IS UNDER CONSTRUCTION
+======================================
 
 ***************
 Adding Rules

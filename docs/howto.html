@@ -42,15 +42,15 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">JTCMake Tutorial</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#imports">Imports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#example-writing-to-a-file">Example: Writing to a file</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#example-copying-files">Example: Copying files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#example-build-script-for-a-c-language-project">Example: Build Script for a C language project</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#re-run">Re-run</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#update-and-re-run">Update and re-run</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rest-of-this-doc-is-under-construction">REST OF THIS DOC IS UNDER CONSTRUCTION</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#adding-rules">Adding Rules</a><ul>
@@ -122,91 +122,79 @@
              
   <section id="jtcmake-tutorial">
 <h1>JTCMake Tutorial<a class="headerlink" href="#jtcmake-tutorial" title="Permalink to this heading"></a></h1>
-<p>JTCMake is an incremental build tool.
-It shares the same basic concept as Makefile: in a process of creating multiple files with dependencies,</p>
+<p>JTCMake is a general purpose incremental build framework.</p>
+<p>It shares the essence with Makefile:</p>
 <ul class="simple">
-<li><p>it understands the dependencies and executes tasks in an appropriate order, and</p></li>
-<li><p>when we modify some files and re-build, it understands which files must be updated based on the files’ modification time attribute (mtime), and updates those files only</p></li>
+<li><p>Users define a set of rules to make files</p></li>
+<li><p>JTCMake analyzses the dependency of the rules and executes them in an
+appropriate order, skipping ones whose outputs already exist and are
+up-to-date</p></li>
 </ul>
-<p>Furthermore, JTCMake,</p>
-<ul class="simple">
-<li><p>leverages the expressiveness of Python</p></li>
-<li><p>ships with Windows</p></li>
-<li><p>supports content-hash-based update check in addition to mtime-based update check</p></li>
-<li><p>enables efficient management of a large number of files
-spanning a deep directory structure</p></li>
-<li><p>provides useful features such as a dependency graph visualizer
-and a rule selector</p></li>
-</ul>
-<p>Although JTCMake was originally developed for data processing for machine learning on Jupyter Notebook,
-it can also be used in standard Python script files and on the interactive interpreter for general build processes.</p>
-<p>Since JTCMake is small and simple, we’ll cover everything about it in this tutorial.</p>
-<section id="imports">
-<h2>Imports<a class="headerlink" href="#imports" title="Permalink to this heading"></a></h2>
-<p>We assume that we have already imported the following items and thus the import directives may be omitted
-in the sample codes in the later sections.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-
-<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">create_group</span><span class="p">,</span> <span class="n">SELF</span>
-<span class="kn">import</span> <span class="nn">jtcmake</span>
+<p>Furthermore, JTCMake has strong features such as</p>
+<dl>
+<dt>Content-based Skippability Check</dt><dd><p>In addition to the modification-time-based skippability check, JTCMake
+can be configured to check if a rule is skippable based on the input files’
+content modification.</p>
+</dd>
+<dt>Expressiveness and Portability</dt><dd><p>you can leverage Python’s expressiveness to write rules with complex logic
+and the code ships with different platforms including Windows.</p>
+</dd>
+<dt>Structured rule management</dt><dd><p>JTCMake manages rules in a well structured manner, which enables intuitive
+handling of a large number of files spanning a deep directory tree.</p>
+</dd>
+<dt>Fine-grained static typing</dt><dd><p>The API design has been tuned to fit into the Python ecosystem around static
+typing.
+Major operations on rules and files in your coding would be aided by your
+IDE and validated by static type checkers
+(Pyright/Pylance is recommended but Mypy should work too).</p>
+<p>Combined with the <em>structured rule management</em>, this feature enables you to
+write a large and complex program safely and efficiently.</p>
+</dd>
+<dt>Peripheral Equipment</dt><dd><p>Convenient tools such as a dependency graph visualizer and node selectors
+are provided.</p>
+</dd>
+</dl>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ pip install jtcmake
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">create_group</span></code> and <code class="docutils literal notranslate"><span class="pre">SELF</span></code> are the most frequently used components of JTCMake.</p>
+<p>Additionally, Graphviz executables need to be in PATH when you use the
+<a class="reference internal" href="reference.html#jtcmake.print_graphviz" title="jtcmake.print_graphviz"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.print_graphviz()</span></code></a> function.</p>
 </section>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
 <p>Typical workflow using JTCMake consists of three steps:</p>
 <ol class="arabic simple">
-<li><p>Create Group</p></li>
-<li><p>Add rules</p></li>
-<li><p>Make</p></li>
+<li><p>Create a <em>group tree</em> and define <em>rules</em> as nodes in the tree</p></li>
+<li><p>Call <code class="docutils literal notranslate"><span class="pre">make()</span></code> on a sub-tree (or the root) to execute rules there</p></li>
 </ol>
 <section id="example-writing-to-a-file">
 <h3>Example: Writing to a file<a class="headerlink" href="#example-writing-to-a-file" title="Permalink to this heading"></a></h3>
-<p>Please think of a very simple task: writing “Hello!” to a file output/hello.txt.
-For this task, we would write a Makefile below and execute <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">make</span></code> .</p>
+<p>Our first example task is to write “Hello!” into <code class="docutils literal notranslate"><span class="pre">output/hello.txt</span></code>.
+For this task, we would write a Makefile below:</p>
 <div class="highlight-Makefile notranslate"><div class="highlight"><pre><span></span><span class="nf">outputs/hello.txt</span><span class="o">:</span>
     mkdir -p <span class="nv">$$</span><span class="o">(</span>dirname <span class="nv">$@</span><span class="o">)</span>  <span class="c1"># make directory for hello.txt</span>
     <span class="nb">echo</span> <span class="s2">&quot;Hello!&quot;</span> &gt; <span class="nv">$@</span>       <span class="c1"># write to hello.txt</span>
 </pre></div>
 </div>
-<p>Its JTCMake counterpart looks like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">write_text</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<p>and then call <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">make</span></code>. Its JTCMake counterpart looks like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">UntypedGroup</span><span class="p">,</span> <span class="n">SELF</span>
 
-<span class="c1"># 1. Create Group</span>
-<span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
+<span class="c1"># 1. Define a group tree</span>
+<span class="c1"># Create the root node</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">UntypedGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
 
-<span class="c1"># 2. Add rule(s)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;hello&#39;</span><span class="p">,</span> <span class="s1">&#39;hello.txt&#39;</span><span class="p">,</span> <span class="n">write_text</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="s1">&#39;Hello!&#39;</span><span class="p">)</span>
+<span class="c1"># Define a rule node</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;hello.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;Hello!&quot;</span><span class="p">)</span>
 
-<span class="c1"># 3. Make</span>
+<span class="c1"># 2. Make the whole tree</span>
 <span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
+
+<span class="k">assert</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/hello.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Hello!&quot;</span>
 </pre></div>
 </div>
-<p>In the above code, we</p>
-<ol class="arabic simple">
-<li><p>create a <strong>Group</strong> that we use as a container for the rules we will add later</p>
-<ul class="simple">
-<li><p>The argument <code class="docutils literal notranslate"><span class="pre">&quot;output&quot;</span></code> will be used to prefix the paths of the Group’s child elements</p></li>
-</ul>
-</li>
-<li><p>add a <strong>rule</strong> to the Group by <code class="docutils literal notranslate"><span class="pre">Group.add()</span></code></p>
-<ul class="simple">
-<li><p>Its signature is <code class="docutils literal notranslate"><span class="pre">Group.add(name,</span> <span class="pre">output_file,</span> <span class="pre">method,</span> <span class="pre">*args,</span> <span class="pre">**kwargs)</span></code> , meaning
-the name of the rule is <code class="docutils literal notranslate"><span class="pre">name</span></code> , and <code class="docutils literal notranslate"><span class="pre">output_file</span></code> must be created by calling <code class="docutils literal notranslate"><span class="pre">method(*args,</span> <span class="pre">**kwargs)</span></code></p></li>
-<li><p>In this case, we add a rule named “hello” which demands that a file <code class="docutils literal notranslate"><span class="pre">output/hello.txt</span></code> should be created
-by <code class="docutils literal notranslate"><span class="pre">write_text(Path(&quot;output/hello.txt&quot;),</span> <span class="pre">&quot;Hello!&quot;)</span></code></p></li>
-<li><p>Note that JTCMake replaces <code class="docutils literal notranslate"><span class="pre">SELF</span></code> in args/kwargs by the target file path, in this case <code class="docutils literal notranslate"><span class="pre">Path(&quot;output/hello.txt&quot;)</span></code></p></li>
-</ul>
-</li>
-<li><p>execute <code class="docutils literal notranslate"><span class="pre">make</span></code> and JTCMake creates the file following the rule(s) defined in the Group</p>
-<ul class="simple">
-<li><p>Note that the directory <code class="docutils literal notranslate"><span class="pre">output/</span></code> is automatically created by JTCMake so you don’t need to
-write a code for it</p></li>
-</ul>
-</li>
-</ol>
 <p>You will see the following log after running <code class="docutils literal notranslate"><span class="pre">g.make()</span></code></p>
 <hr class="docutils" />
 <html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
@@ -216,133 +204,198 @@ write a code for it</p></li>
   )
 </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
 </span></pre></body></html><hr class="docutils" />
-<p>Please substitute <code class="docutils literal notranslate"><span class="pre">WindowsPath</span></code> for <code class="docutils literal notranslate"><span class="pre">PosixPath</span></code> if you are on Windows.
-For those who are not familiar with Python’s pathlib, <code class="docutils literal notranslate"><span class="pre">pathlib.Path</span></code> works as alias for
-<code class="docutils literal notranslate"><span class="pre">pathlib.WindowsPath</span></code> on Windows and <code class="docutils literal notranslate"><span class="pre">pathlib.PosixPath</span></code> on Linux and MacOS.
-On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you can click them and jump to the files.</p>
-<p>This example task is so simple that an incremental build tool does not seem very helpful.
-It can be done by:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;output/hello.txt&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s1">&#39;Hello!&#39;</span><span class="p">)</span>
+<p>On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you
+can quickly review the files.</p>
+<p>This example task is so simple that you actually don’t need a “framework”
+and just write:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/hello.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;Hello!&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>JTCMake helps when your task involves many files to be output.</p>
 </section>
-<section id="example-copying-files">
-<h3>Example: Copying files<a class="headerlink" href="#example-copying-files" title="Permalink to this heading"></a></h3>
-<p>Let’s take a look at a slightly more complex task: coyping files.
-It has three rules:</p>
-<ol class="arabic simple">
-<li><p>Create <code class="docutils literal notranslate"><span class="pre">output/coyp1.txt</span></code> by copying <code class="docutils literal notranslate"><span class="pre">./original1.txt</span></code></p></li>
-<li><p>Create <code class="docutils literal notranslate"><span class="pre">output/copy2.txt</span></code> by copying <code class="docutils literal notranslate"><span class="pre">./original2.txt</span></code></p></li>
-<li><p>Create <code class="docutils literal notranslate"><span class="pre">output/concat.txt</span></code> by concatenating <code class="docutils literal notranslate"><span class="pre">output/copy1.txt</span></code> and <code class="docutils literal notranslate"><span class="pre">output/copy2.txt</span></code></p></li>
-</ol>
-<p>In this case, files have dependencies.</p>
-<img alt="_images/copy_files.svg" src="_images/copy_files.svg" /><p>Makefile for this task would be</p>
-<div class="highlight-Makefile notranslate"><div class="highlight"><pre><span></span><span class="nf">output/coyp1.txt</span><span class="o">:</span> <span class="n">original</span>1.<span class="n">txt</span>
-    cp $&lt; <span class="nv">$@</span>
-
-<span class="nf">output/coyp2.txt</span><span class="o">:</span> <span class="n">original</span>2.<span class="n">txt</span>
-    cp $&lt; <span class="nv">$@</span>
-
-<span class="nf">output/concat.txt</span><span class="o">:</span> <span class="n">output</span>/<span class="n">copy</span>1.<span class="n">txt</span> <span class="n">output</span>/<span class="n">copy</span>2.<span class="n">txt</span>
-    cat $^ &gt; <span class="nv">$@</span>
+<section id="example-build-script-for-a-c-language-project">
+<h3>Example: Build Script for a C language project<a class="headerlink" href="#example-build-script-for-a-c-language-project" title="Permalink to this heading"></a></h3>
+<p>Let’s take a look at a more complex task: building a C language project.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is just to demonstrate what it would look like if we write a build
+script for a C project using JTCMake. Practically speaking, you should use
+one of those tools that are dedicated to that purpose and have a solid
+reputation.</p>
+</div>
+<p>Let’s say our project has source files in the following layout:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>.
+├── make.py
+├── out
+└── src
+    ├── liba
+    │   ├── a1.c
+    │   ├── a1.h
+    │   ├── a2.c
+    │   ├── a2.h
+    │   ├── a3.c
+    │   └── a3.h
+    ├── libb
+    │   ├── b1.c
+    │   ├── b1.h
+    │   ├── b2.c
+    │   ├── b2.h
+    │   ├── b3.c
+    │   └── b3.h
+    └── tools
+        ├── tool1.c
+        ├── tool2.c
+        ├── tool3.c
+        ├── tool4.c
+        └── tool5.c
 </pre></div>
 </div>
-<p>And the JTCMake equivalent is,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
-
-<span class="k">def</span> <span class="nf">concat</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="o">*</span><span class="n">sources</span><span class="p">):</span>
-    <span class="c1"># write contents in the files `sources` into the file `destination`</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-
-<span class="c1"># 1. Create the root Group with directory `output`</span>
-<span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
-
-<span class="c1"># 2. Add rules to the Group</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;cp1&#39;</span><span class="p">,</span> <span class="s1">&#39;copy1.txt&#39;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s1">&#39;original1.txt&#39;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;cp2&#39;</span><span class="p">,</span> <span class="s1">&#39;copy2.txt&#39;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s1">&#39;original2.txt&#39;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;concat&#39;</span><span class="p">,</span> <span class="s1">&#39;concat.txt&#39;</span><span class="p">,</span> <span class="n">concat</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">cp1</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">cp2</span><span class="p">)</span>
-
-<span class="c1"># 3. Make</span>
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
+<p>We have two libraries “liba” and “libb” whose sources are in <code class="docutils literal notranslate"><span class="pre">./src/liba</span></code>
+and <code class="docutils literal notranslate"><span class="pre">src/libb</span></code>, respectively.
+We also have five executables to be generated and their <em>main</em> functions are
+written in <code class="docutils literal notranslate"><span class="pre">./tools/tool1.c</span></code>, <code class="docutils literal notranslate"><span class="pre">./tools/tool2.c</span></code>, …, respectively.</p>
+<p>The requirements for our build script (<code class="docutils literal notranslate"><span class="pre">./make.py</span></code>) are:</p>
+<ul class="simple">
+<li><p>It needs to generate the executables (<code class="docutils literal notranslate"><span class="pre">tool1</span></code>, <code class="docutils literal notranslate"><span class="pre">tool2</span></code>, …) in
+<code class="docutils literal notranslate"><span class="pre">./out/tools</span></code>.</p></li>
+<li><p>It also needs to generate the two static libraries <code class="docutils literal notranslate"><span class="pre">liba.a</span></code> and <code class="docutils literal notranslate"><span class="pre">libb.a</span></code>
+in <code class="docutils literal notranslate"><span class="pre">./out/libs</span></code>.</p></li>
+<li><p>Other intermediate outputs such as .o files must be put inside <code class="docutils literal notranslate"><span class="pre">./out</span></code> as
+well.</p></li>
+<li><p>Each executable depends on the two libraries. So we need liba and libb linked
+to the executables.</p></li>
+</ul>
+<p>Here is our <code class="docutils literal notranslate"><span class="pre">./make.py</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="linenos"> 2</span><span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="linenos"> 4</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos"> 5</span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">StaticGroupBase</span><span class="p">,</span> <span class="n">Rule</span><span class="p">,</span> <span class="n">RulesGroup</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">VFile</span><span class="p">,</span> <span class="n">make</span>
+<span class="linenos"> 8</span>
+<span class="linenos"> 9</span><span class="n">SRCDIR_LIBA</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;src/liba&quot;</span>
+<span class="linenos">10</span><span class="n">SRCDIR_LIBB</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;src/libb&quot;</span>
+<span class="linenos">11</span><span class="n">SRCDIR_TOOL</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;src/tools&quot;</span>
+<span class="linenos">12</span>
+<span class="linenos">13</span><span class="n">SRC_NAMES_LIBA</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;a1.c&quot;</span><span class="p">,</span> <span class="s2">&quot;a2.c&quot;</span><span class="p">,</span> <span class="s2">&quot;a3.c&quot;</span> <span class="p">]</span>
+<span class="linenos">14</span><span class="n">SRC_NAMES_LIBB</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;b1.c&quot;</span><span class="p">,</span> <span class="s2">&quot;b2.c&quot;</span><span class="p">,</span> <span class="s2">&quot;b3.c&quot;</span> <span class="p">]</span>
+<span class="linenos">15</span><span class="n">SRC_NAMES_TOOL</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;tool1.c&quot;</span><span class="p">,</span> <span class="s2">&quot;tool2.c&quot;</span><span class="p">,</span> <span class="s2">&quot;tool3.c&quot;</span><span class="p">,</span> <span class="s2">&quot;tool4.c&quot;</span><span class="p">,</span> <span class="s2">&quot;tool5.c&quot;</span><span class="p">]</span>
+<span class="linenos">16</span>
+<span class="linenos">17</span><span class="c1"># Create value file instances of the source files</span>
+<span class="linenos">18</span><span class="n">srcs_liba</span> <span class="o">=</span> <span class="p">[</span><span class="n">VFile</span><span class="p">(</span><span class="n">SRCDIR_LIBA</span> <span class="o">/</span> <span class="n">basename</span><span class="p">)</span> <span class="k">for</span> <span class="n">basename</span> <span class="ow">in</span> <span class="n">SRC_NAMES_LIBA</span><span class="p">]</span>
+<span class="linenos">19</span><span class="n">srcs_libb</span> <span class="o">=</span> <span class="p">[</span><span class="n">VFile</span><span class="p">(</span><span class="n">SRCDIR_LIBB</span> <span class="o">/</span> <span class="n">basename</span><span class="p">)</span> <span class="k">for</span> <span class="n">basename</span> <span class="ow">in</span> <span class="n">SRC_NAMES_LIBB</span><span class="p">]</span>
+<span class="linenos">20</span><span class="n">srcs_tool</span> <span class="o">=</span> <span class="p">[</span><span class="n">VFile</span><span class="p">(</span><span class="n">SRCDIR_TOOL</span> <span class="o">/</span> <span class="n">basename</span><span class="p">)</span> <span class="k">for</span> <span class="n">basename</span> <span class="ow">in</span> <span class="n">SRC_NAMES_TOOL</span><span class="p">]</span>
+<span class="linenos">21</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="k">def</span> <span class="nf">shell</span><span class="p">(</span><span class="o">*</span><span class="n">cmd_fragments</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
+<span class="linenos">24</span>    <span class="sd">&quot;&quot;&quot;Run shell script&quot;&quot;&quot;</span>
+<span class="linenos">25</span>    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">cmd_fragments</span><span class="p">))</span>
+<span class="linenos">26</span>    <span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+<span class="linenos">27</span>    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+<span class="linenos">28</span>        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s2"> failed with code </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="linenos">29</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span><span class="k">class</span> <span class="nc">StaticLibrary</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+<span class="linenos">32</span>    <span class="c1"># Take library source files and output a static library file</span>
+<span class="linenos">33</span>
+<span class="linenos">34</span>    <span class="n">objects</span><span class="p">:</span> <span class="n">RulesGroup</span>  <span class="c1"># object files like xxx.o</span>
+<span class="linenos">35</span>    <span class="n">library</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># libyyy.a</span>
+<span class="linenos">36</span>
+<span class="linenos">37</span>    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">libname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">srcs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">StaticLibrary</span><span class="p">:</span>
+<span class="linenos">38</span>        <span class="c1"># Compile C codes into object files</span>
+<span class="linenos">39</span>        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">srcs</span><span class="p">:</span>
+<span class="linenos">40</span>            <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">addvf</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="s2">&quot;&lt;R&gt;.o&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span><span class="s2">&quot;gcc -c -o&quot;</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
+<span class="linenos">41</span>
+<span class="linenos">42</span>        <span class="n">objs</span> <span class="o">=</span> <span class="p">[</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+<span class="linenos">43</span>
+<span class="linenos">44</span>        <span class="c1"># Archive the object files into a static library</span>
+<span class="linenos">45</span>        <span class="bp">self</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">initvf</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lib</span><span class="si">{</span><span class="n">libname</span><span class="si">}</span><span class="s2">.a&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span><span class="s2">&quot;ar rv&quot;</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="o">*</span><span class="n">objs</span><span class="p">)</span>
+<span class="linenos">46</span>
+<span class="linenos">47</span>        <span class="k">return</span> <span class="bp">self</span>
+<span class="linenos">48</span>        
+<span class="linenos">49</span>
+<span class="linenos">50</span><span class="k">class</span> <span class="nc">Main</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+<span class="linenos">51</span>    <span class="n">liba</span><span class="p">:</span> <span class="n">StaticLibrary</span>
+<span class="linenos">52</span>    <span class="n">libb</span><span class="p">:</span> <span class="n">StaticLibrary</span>
+<span class="linenos">53</span>    <span class="n">tools</span><span class="p">:</span> <span class="n">RulesGroup</span>  <span class="c1"># Executables</span>
+<span class="linenos">54</span>
+<span class="linenos">55</span>    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Main</span><span class="p">:</span>
+<span class="linenos">56</span>        <span class="bp">self</span><span class="o">.</span><span class="n">liba</span><span class="o">.</span><span class="n">set_prefix</span><span class="p">(</span><span class="s2">&quot;libs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">srcs_liba</span><span class="p">)</span>
+<span class="linenos">57</span>        <span class="bp">self</span><span class="o">.</span><span class="n">libb</span><span class="o">.</span><span class="n">set_prefix</span><span class="p">(</span><span class="s2">&quot;libs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">srcs_libb</span><span class="p">)</span>
+<span class="linenos">58</span>
+<span class="linenos">59</span>        <span class="c1"># Compile and link the tools and generate executables</span>
+<span class="linenos">60</span>        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">srcs_tool</span><span class="p">:</span>
+<span class="linenos">61</span>            <span class="bp">self</span><span class="o">.</span><span class="n">tools</span><span class="o">.</span><span class="n">addvf</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span>
+<span class="linenos">62</span>                <span class="s2">&quot;gcc -o&quot;</span><span class="p">,</span>
+<span class="linenos">63</span>                <span class="n">SELF</span><span class="p">,</span>
+<span class="linenos">64</span>                <span class="sa">f</span><span class="s2">&quot;-I</span><span class="si">{</span><span class="n">SRCDIR_LIBA</span><span class="si">}</span><span class="s2"> -I</span><span class="si">{</span><span class="n">SRCDIR_LIBB</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<span class="linenos">65</span>                <span class="n">src</span><span class="p">,</span>
+<span class="linenos">66</span>                <span class="bp">self</span><span class="o">.</span><span class="n">liba</span><span class="o">.</span><span class="n">library</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<span class="linenos">67</span>                <span class="bp">self</span><span class="o">.</span><span class="n">libb</span><span class="o">.</span><span class="n">library</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<span class="linenos">68</span>            <span class="p">)</span>
+<span class="linenos">69</span>
+<span class="linenos">70</span>        <span class="k">return</span> <span class="bp">self</span>
+<span class="linenos">71</span>
+<span class="linenos">72</span>
+<span class="linenos">73</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="linenos">74</span>    <span class="n">g</span> <span class="o">=</span> <span class="n">Main</span><span class="p">(</span><span class="s2">&quot;./out&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="linenos">75</span>
+<span class="linenos">76</span>    <span class="c1"># Glob pattern to specify the nodes to make</span>
+<span class="linenos">77</span>    <span class="n">pattern</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;**&quot;</span>
+<span class="linenos">78</span>
+<span class="linenos">79</span>    <span class="n">make</span><span class="p">(</span><span class="o">*</span><span class="n">g</span><span class="o">.</span><span class="n">select_rules</span><span class="p">(</span><span class="n">pattern</span><span class="p">),</span> <span class="o">*</span><span class="n">g</span><span class="o">.</span><span class="n">select_groups</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>What is noteworthy here is that, after we add the rules “cp1” and “cp2”,
-we can refer to them by <code class="docutils literal notranslate"><span class="pre">g.cp1</span></code> and <code class="docutils literal notranslate"><span class="pre">g.cp2</span></code> , respectively.</p>
-<p>You will see what <code class="docutils literal notranslate"><span class="pre">g.make()</span></code> does from its log:</p>
-<hr class="docutils" />
-<html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-  )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp2</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-  )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp2</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    destination</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/concat.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/concat.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    sources</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = [</span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">, </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">],
-  )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html><hr class="docutils" />
-<p>As can be seen from this log, JTCMake called the function <code class="docutils literal notranslate"><span class="pre">concat</span></code> with the arguments where
-<code class="docutils literal notranslate"><span class="pre">SELF</span></code> ,  <code class="docutils literal notranslate"><span class="pre">g.cp1</span></code> , and <code class="docutils literal notranslate"><span class="pre">g.cp2</span></code> are replaced by
-<code class="docutils literal notranslate"><span class="pre">Path(&quot;output/concat.txt&quot;)</span></code> , <code class="docutils literal notranslate"><span class="pre">Path(&quot;output/copy1.txt&quot;)</span></code> and <code class="docutils literal notranslate"><span class="pre">Path(&quot;output/copy1.txt&quot;)</span></code> , respectively.
-I hope this behavior is intuitive enough to you.</p>
+<p>We can make all by <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">make.py</span></code>, which turns <code class="docutils literal notranslate"><span class="pre">./out</span></code> to be</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>out/
+├── libs
+│   ├── liba.a
+│   ├── libb.a
+│   └── objects
+│       ├── a1.o
+│       ├── a2.o
+│       ├── a3.o
+│       ├── b1.o
+│       ├── b2.o
+│       └── b3.o
+└── tools
+    ├── tool1
+    ├── tool2
+    ├── tool3
+    ├── tool4
+    └── tool5
+</pre></div>
+</div>
+<p>Alternatively, we can make only some specific items by, for example,
+<code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">make.py</span> <span class="pre">liba</span></code>, which generates <em>liba</em> and its dependencies only.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>out/
+└── libs
+    ├── liba.a
+    └── objects
+        ├── a1.o
+        ├── a2.o
+        └── a3.o
+</pre></div>
+</div>
 <section id="re-run">
 <h4>Re-run<a class="headerlink" href="#re-run" title="Permalink to this heading"></a></h4>
-<p>Just like Makefile, JTCMake checks the existence and modification time of the input/output files before processing each rule.
-If the output files exist and are newer than the input files, JTCMake skips the execution of the rule.
-So running make again will do nothing.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>Execution log will be:</p>
-<hr class="docutils" />
-<pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp1</span></pre>
-<pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp2</span></pre>
-<pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip concat</span></pre></section>
-<hr class="docutils" />
-<section id="update-and-re-run">
-<h4>Update and re-run<a class="headerlink" href="#update-and-re-run" title="Permalink to this heading"></a></h4>
-<p>When you update a file and run <code class="docutils literal notranslate"><span class="pre">g.make()</span></code> again,
-JTCMake re-creates the files that depends on the updated file.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;original1.txt&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>  <span class="c1"># mtime of original1.txt is updated</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>As you see in the following log, rule “cp1” and “concat” were executed but “cp2” was skipped.</p>
-<hr class="docutils" />
-<html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  shutil.copy</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    src</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="original1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;original1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    dst</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    follow_symlinks</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = True,
-  )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">cp1</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Skip cp2
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    destination</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/concat.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/concat.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    sources</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = [</span><a href="output/copy1.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy1.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">, </span><a href="output/copy2.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/copy2.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">],
-  )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">concat</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html></section>
+<p>Just like Makefile, JTCMake by default checks the existence and modification
+time of the input/output files of each rule, and if the output files are there
+and newer than the input files, JTCMake skips the rule.</p>
+<p>Additionally, JTCMake supports content-based check of execution necessesity.
+In the above code, we use that feature (by <a class="reference internal" href="reference.html#jtcmake.VFile" title="jtcmake.VFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code></a>,
+<a class="reference internal" href="reference.html#jtcmake.Rule.initvf" title="jtcmake.Rule.initvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.Rule.initvf()</span></code></a>, and so on) so re-running the script
+with the source files unchanged results in no-op.</p>
 </section>
-<hr class="docutils" />
+</section>
 <section id="summary">
 <h3>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h3>
 <p>JTCMake performs incremental build in the define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.</p>
+</section>
+<section id="rest-of-this-doc-is-under-construction">
+<h3>REST OF THIS DOC IS UNDER CONSTRUCTION<a class="headerlink" href="#rest-of-this-doc-is-under-construction" title="Permalink to this heading"></a></h3>
 </section>
 </section>
 <section id="adding-rules">
