@@ -157,12 +157,13 @@ def gen_dot_code(
     for r in rid.keys():
         f0 = os.path.abspath(next(iter(r.files.values())))
         for xf in r.xfiles:
+            xf = os.path.abspath(xf)
             if xf not in fid:
                 fid[xf] = len(fid)
                 res.append(
                     f"  f{fid[xf]} ["
                     f'label=<<FONT FACE="monospace">'
-                    f"{escape(str(xf))}</FONT>>; "
+                    f"{escape(_mk_link(xf))}</FONT>>; "
                     f"shape=plain; "
                     f'URL="{_mk_link(xf, basedir)}"; '
                     f"];"
@@ -204,7 +205,7 @@ def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
         f.write(convert(dot_code, t))
 
 
-def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
+def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
     basedir = basedir or os.getcwd()
 
     try:
