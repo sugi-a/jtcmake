@@ -357,6 +357,7 @@ class GroupTreeInfo:
         "memo_factory",
         "memo_store",
         "rules_to_be_init",
+        "root",
     )
 
     rule_store: RuleStore
@@ -364,15 +365,20 @@ class GroupTreeInfo:
     memo_factory: Callable[[object], IMemo]
     memo_store: Dict[int, IAtom]
     rules_to_be_init: Set[Tuple[str, ...]]
+    root: IGroup
 
     def __init__(
-        self, logwriter: IWriter, memo_factory: Callable[[object], IMemo]
+        self,
+        logwriter: IWriter,
+        memo_factory: Callable[[object], IMemo],
+        root: IGroup,
     ):
         self.logwriter = logwriter
         self.memo_factory = memo_factory
         self.memo_store = {}
         self.rule_store = RuleStore()
         self.rules_to_be_init = set()
+        self.root = root
 
 
 P = ParamSpec("P")
