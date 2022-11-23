@@ -13,7 +13,7 @@ from .group_tree.mermaidjs import print_mermaid
 from .group_tree.misc import print_method
 from .core.make import MakeSummary
 
-VERSION = "0.4.2"
+VERSION = "0.5.0-alpha"
 
 __all__ = [
     "SELF",
