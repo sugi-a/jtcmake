@@ -80,7 +80,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
         lazy_memo_type = create_lazy_memo_type(StrHashMemo.create)
         memo_factory = create_lazy_memo_factory(lazy_memo_type)
 
-        info = GroupTreeInfo(writer, memo_factory)
+        info = GroupTreeInfo(writer, memo_factory, self)
 
         self.__init_as_child__(info, self, ())
 

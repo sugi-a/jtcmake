@@ -1,15 +1,18 @@
+from __future__ import annotations
 import os
 import sys
 import shutil
+import itertools
 import subprocess
 from html import escape
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import Literal, Optional, Sequence, Union
 
 from typing_extensions import TypeAlias
 
-from .core import IGroup, IRule
+from .core import IGroup, IRule, get_group_info_of_nodes
 from ..logwriter import term_is_jupyter
+from .mermaidjs import collect_targets, GroupTreeNode
 
 StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
@@ -17,8 +20,9 @@ RankDir = Literal["TD", "LR"]
 
 
 def print_graphviz(
-    group: IGroup,
+    target_nodes: Union[GroupTreeNode, list[GroupTreeNode]],
     output_file: Optional[StrOrPath] = None,
+    max_dependency_depth: int = 1000000,
     *,
     rankdir: RankDir = "LR",
 ):
@@ -37,29 +41,36 @@ def print_graphviz(
             - .htm or .html: HTML (SVG image embedded)
             - .dot: Graphviz's DOT code (text)
     """
+    target_nodes = _parse_args_nodes(target_nodes)
+
     if output_file is None:
+        dot_code = gen_dot_code(
+            target_nodes, None, max_dependency_depth, rankdir=rankdir
+        )
+
         if term_is_jupyter():
             from IPython.display import display, SVG  # type: ignore
 
-            dot_code = gen_dot_code(group, rankdir=rankdir)
             svg = convert(dot_code, "svg").decode()
             display(SVG(svg))
             return
         else:
-            raise Exception("Printing to console is available on Jupyter only")
+            print(dot_code)
     else:
-        assert isinstance(output_file, (str, os.PathLike))
-        output_file = str(output_file)
+        output_file = Path(output_file)
 
         dot_code = gen_dot_code(
-            group, Path(output_file).parent, rankdir=rankdir
+            target_nodes,
+            output_file.parent,
+            max_dependency_depth,
+            rankdir=rankdir,
         )
 
-        if output_file[-4:] == ".svg":
+        if output_file.suffix == ".svg":
             data = convert(dot_code, "svg")
-        elif output_file[-4:] == ".dot":
+        elif output_file.suffix == ".dot":
             data = dot_code.encode()
-        elif output_file[-4:] == ".htm" or output_file[-5:] == ".html":
+        elif output_file.suffix in (".htm", ".html"):
             data = convert(dot_code, "svg").decode()
             data = (
                 '<!DOCTYPE html><html><head><meta charset="utf-8">'
@@ -76,105 +87,121 @@ def print_graphviz(
 
 
 def gen_dot_code(
-    group: IGroup, basedir: Optional[StrOrPath] = None, rankdir: RankDir = "LR"
+    target_nodes: Sequence[GroupTreeNode],
+    basedir: Optional[StrOrPath] = None,
+    max_dependency_depth: int = 1000000,
+    rankdir: RankDir = "LR",
 ):
-    if not isinstance(
-        group, IGroup
-    ):  # pyright: ignore [reportUnnecessaryIsInstance]
-        raise TypeError("argument group must be Group")
+    info = get_group_info_of_nodes(target_nodes)
 
-    if rankdir not in {"TB", "LR"}:
-        raise ValueError(f"rankdir must be TB or LR. Given: {rankdir}")
+    res: list[tuple[int, str]] = []
 
-    gid: Dict[IGroup, int] = {}
-    rid: Dict[IRule, int] = {}
-    fid: Dict[str, int] = {}
+    res.append((0, "digraph {"))
+    res.append((1, "compound=true;"))
+    res.append((1, f"rankdir={rankdir};"))
 
-    res: List[str] = []
-    res.append("digraph {")
-    res.append("  compound=true;")
-    res.append(f"  rankdir={rankdir};")
+    gid, rid, fid, explicit_nodes = collect_targets(
+        info.root, target_nodes, max_dependency_depth
+    )
 
-    def rec_group(g: IGroup, idt: str, par_prefix: str):
-        gid[g] = len(gid)
+    implicit_nodes = (
+        set(itertools.chain(gid.values(), rid.values())) - explicit_nodes
+    )
+
+    def rec_group(g: IGroup, idt: int):
+        if g not in gid:
+            return
 
         name = "<ROOT>" if len(g.name_tuple) == 0 else g.name_tuple[-1]
 
-        if par_prefix == "":
+        if g is info.root or g.parent.prefix == "":
             prefix = g.prefix
-        elif g.prefix[: len(par_prefix)] == par_prefix:
-            prefix = "... " + g.prefix[len(par_prefix) :]
+        elif g.prefix[: len(g.parent.prefix)] == g.parent.prefix:
+            prefix = "... " + g.prefix[len(g.parent.prefix) :]
         else:
             prefix = g.prefix
 
-        res.append(idt + f"subgraph cluster{gid[g]} {{")
+        res.append((idt, f"subgraph {gid[g]} {{"))
         res.append(
-            idt + f"  label = <<B>{escape(name)}</B> "
-            f'(<FONT FACE="monospace">{escape(prefix)}</FONT>)>;'
+            (
+                idt + 1,
+                f"label = <<B>{escape(name)} </B> ( {escape(prefix)} )>;",
+            )
         )
-        res.append(idt + '  style = "rounded";')
+        res.append((idt + 1, 'fontname = "sans-serif";'))
+        style = "dashed" if gid[g] in implicit_nodes else "solid"
+        res.append((idt + 1, f'style = "{style}";'))
+        res.append((idt + 1, 'bgcolor = "#FEFAE0";'))
+        res.append((idt + 1, 'color = "#d4a373";'))
 
         for child_group in g.groups.values():
-            rec_group(child_group, idt + "  ", g.prefix)
+            rec_group(child_group, idt + 1)
 
         for name, child_rule in g.rules.items():
-            proc_rulew(child_rule, name, idt + "  ", g.prefix)
+            proc_rulew(child_rule, idt + 1)
 
-        res.append(idt + "};")
+        res.append((idt, "};"))
 
-    def proc_rulew(r: IRule, name: str, idt: str, par_prefix: str):
-        rid[r] = len(rid)
+    def proc_rulew(r: IRule, idt: int):
+        if r not in rid:
+            return
 
-        res.append(idt + f"subgraph cluster_r_{rid[r]} {{")
-        res.append(idt + f"  label=<<B>{escape(name)}</B>>;")
-        res.append(idt + '  bgcolor = "#E0FFFF";')
+        res.append((idt, f"subgraph {rid[r]} {{"))
+        res.append((idt + 1, f"label=<<B>{escape(r.name_tuple[-1])}</B>>;"))
+        style = "dashed" if rid[r] in implicit_nodes else "solid"
+        res.append((idt + 1, f'style = "{style}";'))
+        res.append((idt + 1, 'bgcolor = "#faedcd";'))
+        res.append((idt + 1, 'color = "#d4a373";'))
 
-        par_prefix = os.path.abspath(par_prefix + "_")[:-1]
+        par_prefix = os.path.abspath(r.parent.prefix + "_")[:-1]
 
         for yf in r.files.values():
-            fid[os.path.abspath(yf)] = len(fid)
+            gen_file(os.path.abspath(yf), par_prefix, idt + 1)
 
-            p = os.path.abspath(yf)
-            if par_prefix != "" and p[: len(par_prefix)] == par_prefix:
-                p = "... " + p[len(par_prefix) :]
-            else:
-                p = str(yf)
+        res.append((idt, "}"))
 
-            res.append(
-                idt + f"  f{fid[os.path.abspath(yf)]} ["
-                f'label=<<FONT FACE="monospace">{escape(p)}</FONT>>; '
-                f"style=filled; "
-                f"color=white; "
-                f"shape=plain; "
-                f'margin="0.1,0.1"; '
-                f'URL="{_mk_link(yf, basedir)}"; '
-                f"];"
+    def gen_file(f: str, par_prefix: str, idt: int):
+        if f not in fid:
+            return
+
+        if par_prefix != "" and f[: len(par_prefix)] == par_prefix:
+            p = "... " + f[len(par_prefix) :]
+        else:
+            p = _mk_link(f, basedir)
+
+        res.append(
+            (
+                idt,
+                f"{fid[f]} ["
+                f'label="{escape(p)}"; '
+                f'fontname="sans-serif"; '
+                f'style="filled"; '
+                f"shape=box; "
+                f'fillcolor="#e9edc9"; '
+                'color = "#d4a373";'
+                f'URL="{_mk_link(f, basedir)}"; '
+                f"];",
             )
-        res.append(idt + "}")
+        )
 
-    rec_group(group, "  ", "")
+    rec_group(info.root, 1)
 
+    # define original file nodes
+    for f in fid:
+        if info.rule_store.ypath2idx[f] == -1:
+            gen_file(f, "", 2)
+
+    # define arrows
     for r in rid.keys():
         f0 = os.path.abspath(next(iter(r.files.values())))
         for xf in r.xfiles:
-            if xf not in fid:
-                fid[xf] = len(fid)
-                res.append(
-                    f"  f{fid[xf]} ["
-                    f'label=<<FONT FACE="monospace">'
-                    f"{escape(str(xf))}</FONT>>; "
-                    f"shape=plain; "
-                    f'URL="{_mk_link(xf, basedir)}"; '
-                    f"];"
-                )
+            xf = os.path.abspath(xf)
+            if xf in fid:
+                res.append((1, f"{fid[xf]} -> {fid[f0]} [lhead={rid[r]}];"))
 
-            res.append(
-                f"  f{fid[xf]} -> f{fid[f0]} " f"[lhead=cluster_r_{rid[r]}];"
-            )
+    res.append((0, "}"))
 
-    res.append("}")
-
-    return "\n".join(res) + "\n"
+    return "\n".join("  " * idt + line for idt, line in res) + "\n"
 
 
 def convert(dot_code: str, t: str = "svg"):
@@ -204,7 +231,7 @@ def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
         f.write(convert(dot_code, t))
 
 
-def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
+def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
     basedir = basedir or os.getcwd()
 
     try:
@@ -213,3 +240,21 @@ def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
         pass
 
     return str(p)
+
+
+def _assert_node_list(nodes: object) -> list[GroupTreeNode]:
+    if isinstance(nodes, (list, tuple)):
+        for node in nodes:  # pyright: ignore [reportUnknownVariableType]
+            if not isinstance(node, (IGroup, IRule)):
+                raise TypeError(f"node must be rule or group. Given {node}")
+
+        return list(nodes)
+    else:
+        raise TypeError("nodes must be rule or group or list of them")
+
+
+def _parse_args_nodes(nodes: object) -> list[GroupTreeNode]:
+    if isinstance(nodes, (IGroup, IRule)):
+        return [nodes]
+    else:
+        return _assert_node_list(nodes)

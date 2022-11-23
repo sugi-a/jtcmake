@@ -28,4 +28,4 @@ jobs:
         python -m pip install -e .
     - name: Doctest
       run: |
-        cd docs_src && make doctest
+        cd docs_src && python make.py doctest
