@@ -24,7 +24,6 @@ def example_c_build():
     print_graphviz(g.tools.tool1, d / "_tmp-graph-tool1.svg")
     print_graphviz(g.liba, d / "_tmp-graph-liba.svg")
 
-    (d / "out").rmdir()
     shell(f"rm -rf {d}/out")
     shell(f"cd {d} && tree --noreport -I '_*' > _tmp-tree-all.txt")
 
