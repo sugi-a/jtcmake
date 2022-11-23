@@ -1,23 +1,55 @@
 import sys
-from subprocess import run
 from pathlib import Path
-from jtcmake import VFile, SELF, RulesGroup, make
+from subprocess import run
+from argparse import ArgumentParser
+from typing import Callable
 
-ROOT = Path(__file__).parent
-SRC_DIR = ROOT / "source"
-OUT_DIR = ROOT / "../docs"
+tasks = {}
 
-SOURCES = [VFile(p) for p in SRC_DIR.glob("**/*") if p.is_file() and p.name[0] != "."]
+def add(f: Callable[..., object]):
+    tasks[f.__name__] = f
 
-g = RulesGroup(OUT_DIR)
-
-@g.addvf_deco(".nojekyll")
-def _(nojekyll: Path = SELF, _: object = SOURCES):
-    run(
-        ["sphinx-build", "-b", "html", SRC_DIR, nojekyll.parent],
-        stderr=sys.stderr
-    )
-    nojekyll.touch()
+def shell(cmd: str):
+    sys.stderr.write("cmd: " + cmd + "\n")
+    assert run(cmd, shell=True).returncode == 0
 
 
-make(g)
+@add
+def example_c_build():
+    from jtcmake import print_graphviz
+    from source.example_c_build.make import g
+
+    d = Path("./source/example_c_build")
+    print_graphviz(g, d / "_tmp-graph-all.svg")
+    print_graphviz(g.tools.tool1, d / "_tmp-graph-tool1.svg")
+    print_graphviz(g.liba, d / "_tmp-graph-liba.svg")
+
+    shell(f"rm -r {d}/out")
+    shell(f"cd {d} && tree --noreport -I '_*' > _tmp-tree-all.txt")
+
+    g.liba.make()
+    shell(f"cd {d} && tree --noreport ./out > _tmp-tree-liba.txt")
+
+    g.make()
+    shell(f"cd {d} && tree --noreport ./out > _tmp-tree-out.txt")
+
+
+@add
+def html():
+    tasks["example_c_build"]()
+    shell("sphinx-build -b html ./source ../docs")
+
+
+@add
+def doctest():
+    shell("sphinx-build -b doctest ./source ../tmp-sphinx-doctest")
+    
+
+def main():
+    p = ArgumentParser()
+    p.add_argument("target", choices=tasks.keys())
+    args = p.parse_args()
+    tasks[args.target]()
+
+if __name__ == "__main__":
+    main()
