@@ -122,13 +122,10 @@ def gen_dot_code(
             prefix = g.prefix
 
         res.append((idt, f"subgraph {gid[g]} {{"))
-        res.append(
-            (
-                idt + 1,
-                f"label = <<B>{escape(name)}</B> "
-                f'(<FONT FACE="monospace">{escape(prefix)}</FONT>)>;',
-            )
-        )
+        res.append((
+            idt + 1, f'label = <<B>{escape(name)} </B> ( {escape(prefix)} )>;',
+        ))
+        res.append((idt + 1, f'fontname = "sans-serif";'))
         style = "dashed" if gid[g] in implicit_nodes else "solid"
         res.append((idt + 1, f'style = "{style}";'))
         res.append((idt + 1, 'bgcolor = "#FEFAE0";'))
@@ -173,7 +170,8 @@ def gen_dot_code(
             (
                 idt,
                 f"{fid[f]} ["
-                f'label=<<FONT FACE="monospace">{escape(p)}</FONT>>; '
+                f'label="{escape(p)}"; '
+                f'fontname="sans-serif"; '
                 f'style="filled"; '
                 f"shape=box; "
                 f'fillcolor="#e9edc9"; '
