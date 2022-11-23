@@ -12,7 +12,12 @@ from typing_extensions import TypeAlias
 
 from .core import IGroup, IRule, get_group_info_of_nodes
 from ..logwriter import term_is_jupyter
-from .mermaidjs import collect_targets, GroupTreeNode
+from .mermaidjs import (
+    collect_targets,
+    GroupTreeNode,
+    _relpath,  # pyright: ignore [reportPrivateUsage]
+    _parse_args_nodes,  # pyright: ignore [reportPrivateUsage]
+)
 
 StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
@@ -229,32 +234,3 @@ def convert(dot_code: str, t: str = "svg"):
 def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
     with open(fname, "wb") as f:
         f.write(convert(dot_code, t))
-
-
-def _relpath(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
-    basedir = basedir or os.getcwd()
-
-    try:
-        return os.path.relpath(p, basedir)
-    except Exception:
-        pass
-
-    return str(p)
-
-
-def _assert_node_list(nodes: object) -> list[GroupTreeNode]:
-    if isinstance(nodes, (list, tuple)):
-        for node in nodes:  # pyright: ignore [reportUnknownVariableType]
-            if not isinstance(node, (IGroup, IRule)):
-                raise TypeError(f"node must be rule or group. Given {node}")
-
-        return list(nodes)
-    else:
-        raise TypeError("nodes must be rule or group or list of them")
-
-
-def _parse_args_nodes(nodes: object) -> list[GroupTreeNode]:
-    if isinstance(nodes, (IGroup, IRule)):
-        return [nodes]
-    else:
-        return _assert_node_list(nodes)
