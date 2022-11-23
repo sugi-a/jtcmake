@@ -23,7 +23,7 @@ jobs:
                 python -m pip install -e .
             - name: Build docs
               run: |
-                python docs_src/make.py html
+                cd docs_src && python make.py html
             - name: Push docs
               run: |
                 mv docs docs_
