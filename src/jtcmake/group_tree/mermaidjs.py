@@ -292,11 +292,15 @@ def _parse_args_direction(direction: object) -> Direction:
     return direction
 
 
-def _relpath(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
+def _relpath(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
     basedir = basedir or os.getcwd()
 
     try:
-        return os.path.relpath(p, basedir)
+        if isinstance(p, str):
+            # trick to preserve the trailing "/"
+            return os.path.relpath(p + "_", basedir)[:-1]
+        else:
+            return os.path.relpath(p, basedir)
     except Exception:
         pass
 
