@@ -196,11 +196,11 @@ def gen_mermaid_code(
         name = "<ROOT>" if len(g.name_tuple) == 0 else g.name_tuple[-1]
 
         if g is info.root or g.parent.prefix == "":
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
         elif g.prefix[: len(g.parent.prefix)] == g.parent.prefix:
             prefix = "... " + g.prefix[len(g.parent.prefix) :]
         else:
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
 
         label = f"{name} ({prefix})"
         res.append((idt, f'subgraph {gid[g]}["{escape2(label)}"]'))
@@ -292,7 +292,7 @@ def _parse_args_direction(direction: object) -> Direction:
     return direction
 
 
-def _relpath(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
+def _relpath(p: StrOrPath, basedir: Optional[StrOrPath]) -> str:
     basedir = basedir or os.getcwd()
 
     try:

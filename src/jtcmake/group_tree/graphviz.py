@@ -120,11 +120,11 @@ def gen_dot_code(
         name = "<ROOT>" if len(g.name_tuple) == 0 else g.name_tuple[-1]
 
         if g is info.root or g.parent.prefix == "":
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
         elif g.prefix[: len(g.parent.prefix)] == g.parent.prefix:
             prefix = "... " + g.prefix[len(g.parent.prefix) :]
         else:
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
 
         res.append((idt, f"subgraph {gid[g]} {{"))
         res.append(
