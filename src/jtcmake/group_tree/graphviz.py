@@ -108,7 +108,7 @@ def gen_dot_code(
         set(itertools.chain(gid.values(), rid.values())) - explicit_nodes
     )
 
-    def rec_group(g: IGroup, idt: int):
+    def gen_group(g: IGroup, idt: int):
         if g not in gid:
             return
 
@@ -135,14 +135,14 @@ def gen_dot_code(
         res.append((idt + 1, 'color = "#d4a373";'))
 
         for child_group in g.groups.values():
-            rec_group(child_group, idt + 1)
+            gen_group(child_group, idt + 1)
 
         for name, child_rule in g.rules.items():
-            proc_rulew(child_rule, idt + 1)
+            gen_rule(child_rule, idt + 1)
 
         res.append((idt, "};"))
 
-    def proc_rulew(r: IRule, idt: int):
+    def gen_rule(r: IRule, idt: int):
         if r not in rid:
             return
 
@@ -167,7 +167,7 @@ def gen_dot_code(
         if par_prefix != "" and f[: len(par_prefix)] == par_prefix:
             p = "... " + f[len(par_prefix) :]
         else:
-            p = _mk_link(f, basedir)
+            p = _relpath(f, basedir)
 
         res.append(
             (
@@ -179,12 +179,12 @@ def gen_dot_code(
                 f"shape=box; "
                 f'fillcolor="#e9edc9"; '
                 'color = "#d4a373";'
-                f'URL="{_mk_link(f, basedir)}"; '
+                f'URL="{_relpath(f, basedir)}"; '
                 f"];",
             )
         )
 
-    rec_group(info.root, 1)
+    gen_group(info.root, 1)
 
     # define original file nodes
     for f in fid:
@@ -231,7 +231,7 @@ def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
         f.write(convert(dot_code, t))
 
 
-def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
+def _relpath(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
     basedir = basedir or os.getcwd()
 
     try:
