@@ -50,47 +50,31 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#rest-of-this-doc-is-under-construction">REST OF THIS DOC IS UNDER CONSTRUCTION</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#adding-rules">Adding Rules</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#what-a-rule-is">What a rule is</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#creating-rules">Creating rules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#getting-rule-objects">Getting rule objects</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#type-of-output-file">Type of output file</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#path-prefixing-and-absolute-path">Path prefixing and absolute path</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#rule-as-an-input-to-another-rule">Rule as an input to another rule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#self">SELF</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#auto-self-important">Auto-SELF (Important)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#output-file-omission">Output file omission</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#original-files">Original files</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#make-a-subset-of-rules">Make a subset of rules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#specifying-multiple-output-files">Specifying multiple output files</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#nest-of-output-files">Nest of Output Files</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#examples">Examples</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#internal-atom-normalization">Internal Atom Normalization</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#accessing-files-of-a-rule">Accessing Files of a Rule</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#self-for-nest-of-output-files">SELF for nest of output files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#group-tree-model">Group Tree Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#rule">Rule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#group-tree">Group Tree</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#decorator-style-add">Decorator-style add</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#rejected-args-kwargs-and-workaround">Rejected args/kwargs and workaround</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#wraping-with-jtcmake-atom">Wraping with jtcmake.Atom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#group-node-classes">Group Node Classes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#staticgroupbase">StaticGroupBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#groupsgroup">GroupsGroup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rulesgroup">RulesGroup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#untypedgroup">UntypedGroup</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#group-tree-model-and-path-prefixing">Group Tree Model and Path Prefixing</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#basic-usage">Basic usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#prefix-vs-dirname">prefix vs dirname</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#absolute-path">Absolute Path</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#accessing-group-node-as-a-dict">Accessing Group node as a dict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memoization">Memoization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#miscellaneous">Miscellaneous</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#make">Make</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#parallel-execution">Parallel Execution</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#memoization-and-value-file">Memoization and Value File</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#parallel-run">Parallel Run</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#utility-functions">Utility Functions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#design-patterns">Design Patterns</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="reference.html">API Reference</a></li>
@@ -125,8 +109,8 @@
 <p>JTCMake is a general purpose incremental build framework.</p>
 <p>It shares the essence with Makefile:</p>
 <ul class="simple">
-<li><p>Users define a set of rules to make files</p></li>
-<li><p>JTCMake analyzses the dependency of the rules and executes them in an
+<li><p>Users define a set of rules to produce files</p></li>
+<li><p>JTCMake analyzes the dependency of the rules and executes them in an
 appropriate order, skipping ones whose outputs already exist and are
 up-to-date</p></li>
 </ul>
@@ -140,11 +124,11 @@ content modification.</p>
 and the code ships with different platforms including Windows.</p>
 </dd>
 <dt>Structured rule management</dt><dd><p>JTCMake manages rules in a well structured manner, which enables intuitive
-handling of a large number of files spanning a deep directory tree.</p>
+handling of a large number of files spanning deep directory trees.</p>
 </dd>
 <dt>Fine-grained static typing</dt><dd><p>The API design has been tuned to fit into the Python ecosystem around static
 typing.
-Major operations on rules and files in your coding would be aided by your
+Major operations on rules and files on your code would be aided by your
 IDE and validated by static type checkers
 (Pyright/Pylance is recommended but Mypy should work too).</p>
 <p>Combined with the <em>structured rule management</em>, this feature enables you to
@@ -164,10 +148,10 @@ are provided.</p>
 </section>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
-<p>Typical workflow using JTCMake consists of three steps:</p>
+<p>Typical workflow using JTCMake consists of two steps:</p>
 <ol class="arabic simple">
 <li><p>Create a <em>group tree</em> and define <em>rules</em> as nodes in the tree</p></li>
-<li><p>Call <code class="docutils literal notranslate"><span class="pre">make()</span></code> on a sub-tree (or the root) to execute rules there</p></li>
+<li><p>Call <code class="docutils literal notranslate"><span class="pre">make()</span></code> on a sub-tree (or the root) to execute the rules</p></li>
 </ol>
 <section id="example-writing-to-a-file">
 <h3>Example: Writing to a file<a class="headerlink" href="#example-writing-to-a-file" title="Permalink to this heading"></a></h3>
@@ -195,19 +179,22 @@ For this task, we would write a Makefile below:</p>
 <span class="k">assert</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/hello.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Hello!&quot;</span>
 </pre></div>
 </div>
-<p>You will see the following log after running <code class="docutils literal notranslate"><span class="pre">g.make()</span></code></p>
+<p>Note you don’t need to make the directory by yourself.
+You will see the following log after running <code class="docutils literal notranslate"><span class="pre">g.make()</span></code></p>
 <hr class="docutils" />
-<html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  write_text</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    path</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/hello.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/hello.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    text</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = &#x27;Hello!&#x27;,
+<html><head><meta charset="utf-8"><title>log</title></head><body><pre style="background-color: rgb(255, 255, 255)"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello.txt</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
+</span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  pathlib.Path.write_text</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
+</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    self</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="../output/hello.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/hello.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
+</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    data</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = &#x27;Hello!&#x27;,
+</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    encoding</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = None,
+</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    errors</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = None,
+</span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    newline</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = None,
   )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-</span></pre></body></html><hr class="docutils" />
+</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre style="background-color: rgb(255, 255, 255)"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello.txt</span></pre></body></html><hr class="docutils" />
 <p>On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you
 can quickly review the files.</p>
 <p>This example task is so simple that you actually don’t need a “framework”
-and just write:</p>
+and instead you would just write:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/hello.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;Hello!&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -218,15 +205,12 @@ and just write:</p>
 <p>Let’s take a look at a more complex task: building a C language project.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This is just to demonstrate what it would look like if we write a build
-script for a C project using JTCMake. Practically speaking, you should use
-one of those tools that are dedicated to that purpose and have a solid
-reputation.</p>
+<p>This example is for demonstration purposes only. There are well established
+tools dedicated to that purpose, which may be practically preferable.</p>
 </div>
 <p>Let’s say our project has source files in the following layout:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>.
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>.
 ├── make.py
-├── out
 └── src
     ├── liba
     │   ├── a1.c
@@ -252,18 +236,18 @@ reputation.</p>
 </div>
 <p>We have two libraries “liba” and “libb” whose sources are in <code class="docutils literal notranslate"><span class="pre">./src/liba</span></code>
 and <code class="docutils literal notranslate"><span class="pre">src/libb</span></code>, respectively.
-We also have five executables to be generated and their <em>main</em> functions are
-written in <code class="docutils literal notranslate"><span class="pre">./tools/tool1.c</span></code>, <code class="docutils literal notranslate"><span class="pre">./tools/tool2.c</span></code>, …, respectively.</p>
+We also have five executables to be generated whose <em>main</em> functions are
+written in <code class="docutils literal notranslate"><span class="pre">./tools/tool1.c</span></code>, …, <code class="docutils literal notranslate"><span class="pre">./tools/tool5.c</span></code>, respectively.</p>
 <p>The requirements for our build script (<code class="docutils literal notranslate"><span class="pre">./make.py</span></code>) are:</p>
 <ul class="simple">
 <li><p>It needs to generate the executables (<code class="docutils literal notranslate"><span class="pre">tool1</span></code>, <code class="docutils literal notranslate"><span class="pre">tool2</span></code>, …) in
 <code class="docutils literal notranslate"><span class="pre">./out/tools</span></code>.</p></li>
 <li><p>It also needs to generate the two static libraries <code class="docutils literal notranslate"><span class="pre">liba.a</span></code> and <code class="docutils literal notranslate"><span class="pre">libb.a</span></code>
 in <code class="docutils literal notranslate"><span class="pre">./out/libs</span></code>.</p></li>
-<li><p>Other intermediate outputs such as .o files must be put inside <code class="docutils literal notranslate"><span class="pre">./out</span></code> as
+<li><p>Other intermediate outputs such as .o files must be put under <code class="docutils literal notranslate"><span class="pre">./out</span></code> as
 well.</p></li>
-<li><p>Each executable depends on the two libraries. So we need liba and libb linked
-to the executables.</p></li>
+<li><p>Each executable depends on the two libraries. So we need to link liba and
+libb into the executables.</p></li>
 </ul>
 <p>Here is our <code class="docutils literal notranslate"><span class="pre">./make.py</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
@@ -338,9 +322,9 @@ to the executables.</p></li>
 <span class="linenos">70</span>        <span class="k">return</span> <span class="bp">self</span>
 <span class="linenos">71</span>
 <span class="linenos">72</span>
-<span class="linenos">73</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<span class="linenos">74</span>    <span class="n">g</span> <span class="o">=</span> <span class="n">Main</span><span class="p">(</span><span class="s2">&quot;./out&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
-<span class="linenos">75</span>
+<span class="linenos">73</span><span class="n">g</span> <span class="o">=</span> <span class="n">Main</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;out&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="linenos">74</span>
+<span class="linenos">75</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
 <span class="linenos">76</span>    <span class="c1"># Glob pattern to specify the nodes to make</span>
 <span class="linenos">77</span>    <span class="n">pattern</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;**&quot;</span>
 <span class="linenos">78</span>
@@ -348,7 +332,7 @@ to the executables.</p></li>
 </pre></div>
 </div>
 <p>We can make all by <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">make.py</span></code>, which turns <code class="docutils literal notranslate"><span class="pre">./out</span></code> to be</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>out/
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>./out
 ├── libs
 │   ├── liba.a
 │   ├── libb.a
@@ -367,9 +351,9 @@ to the executables.</p></li>
     └── tool5
 </pre></div>
 </div>
-<p>Alternatively, we can make only some specific items by, for example,
+<p>Alternatively, we can make a subset of rules by, for example,
 <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">make.py</span> <span class="pre">liba</span></code>, which generates <em>liba</em> and its dependencies only.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>out/
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>./out
 └── libs
     ├── liba.a
     └── objects
@@ -382,7 +366,7 @@ to the executables.</p></li>
 <h4>Re-run<a class="headerlink" href="#re-run" title="Permalink to this heading"></a></h4>
 <p>Just like Makefile, JTCMake by default checks the existence and modification
 time of the input/output files of each rule, and if the output files are there
-and newer than the input files, JTCMake skips the rule.</p>
+and newer than the input files, JTCMake skips the rule to save computation cost.</p>
 <p>Additionally, JTCMake supports content-based check of execution necessesity.
 In the above code, we use that feature (by <a class="reference internal" href="reference.html#jtcmake.VFile" title="jtcmake.VFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code></a>,
 <a class="reference internal" href="reference.html#jtcmake.Rule.initvf" title="jtcmake.Rule.initvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.Rule.initvf()</span></code></a>, and so on) so re-running the script
@@ -391,717 +375,48 @@ with the source files unchanged results in no-op.</p>
 </section>
 <section id="summary">
 <h3>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h3>
-<p>JTCMake performs incremental build in the define-and-run manner.
+<p>JTCMake performs incremental build in a define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.</p>
 </section>
-<section id="rest-of-this-doc-is-under-construction">
-<h3>REST OF THIS DOC IS UNDER CONSTRUCTION<a class="headerlink" href="#rest-of-this-doc-is-under-construction" title="Permalink to this heading"></a></h3>
+</section>
+<section id="group-tree-model">
+<h2>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading"></a></h2>
+<section id="rule">
+<h3>Rule<a class="headerlink" href="#rule" title="Permalink to this heading"></a></h3>
+</section>
+<section id="group-tree">
+<h3>Group Tree<a class="headerlink" href="#group-tree" title="Permalink to this heading"></a></h3>
 </section>
 </section>
-<section id="adding-rules">
-<h2>Adding Rules<a class="headerlink" href="#adding-rules" title="Permalink to this heading"></a></h2>
-<section id="what-a-rule-is">
-<h3>What a rule is<a class="headerlink" href="#what-a-rule-is" title="Permalink to this heading"></a></h3>
-<p>Conceptually, a rule is a set of <em>input files</em>, <em>input Python objects</em>, <em>output files</em>, and a <em>method</em>
-that creates the output files based on the content of the input files.
-Note unlike Makefile JTCMake can treat Python objects as input values (with several considerations).</p>
-<img alt="_images/rule_in_out.svg" src="_images/rule_in_out.svg" /><p>Combining such rules, we can create an acyclic directed bipartite graph of file/object nodes and method nodes.
-We define the term “build procedure” as a series of file manipulations that can be modeled by this kind of graph,
-and that is where you can take advantage of JTCMake.
-Many tasks can be understood in that way. For example training and evaluation of a English-to-Japanese
-machine translation model could be illustrated as follows.</p>
-<img alt="_images/translation-task-graph.svg" src="_images/translation-task-graph.svg" /><p>Actual graph should be much more complex because we need to compare multiple models and compute variety of stats
-of the dataset for analysis. Therefore, efficient management using a good build tool is important.</p>
-<p>Note that the graph needs to be acyclic. File manupulation procedures containing loops, for example,
-updating a file by appending some text to it, are out of scope.</p>
+<section id="construction-of-group-trees">
+<h2>Construction of Group Trees<a class="headerlink" href="#construction-of-group-trees" title="Permalink to this heading"></a></h2>
+<section id="group-node-classes">
+<h3>Group Node Classes<a class="headerlink" href="#group-node-classes" title="Permalink to this heading"></a></h3>
+<section id="staticgroupbase">
+<h4>StaticGroupBase<a class="headerlink" href="#staticgroupbase" title="Permalink to this heading"></a></h4>
 </section>
-<section id="creating-rules">
-<h3>Creating rules<a class="headerlink" href="#creating-rules" title="Permalink to this heading"></a></h3>
-<p>Before defining rules, we need to create a Group. We will place rules there.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;some_dir&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Groups provides grouping of rules not only on the Python code but also on the file system.
-In this case, rules in this group will output files under the directory <em>./some_dir/</em>.
-How groups are mapped to directory trees will be covered in the next chapter.</p>
-<p>We can add rules into the Group using Group.add().</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule_name&quot;</span><span class="p">,</span> <span class="s2">&quot;output.txt&quot;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">kwarg1</span><span class="o">=</span><span class="n">foo</span><span class="p">,</span> <span class="n">kwarg2</span><span class="o">=</span><span class="n">bar</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Its signature is <code class="docutils literal notranslate"><span class="pre">add(name,</span> <span class="pre">[output_files],</span> <span class="pre">method,</span> <span class="pre">*args,</span> <span class="pre">**kwargs)</span></code> .</p>
-<dl class="field-list simple">
-<dt class="field-odd">name</dt>
-<dd class="field-odd"><p>Name of the rule (str).</p>
-</dd>
-<dt class="field-even">output_files</dt>
-<dd class="field-even"><p>Nested structure of output files (optional)</p>
-</dd>
-<dt class="field-odd">method</dt>
-<dd class="field-odd"><p>Callable that will be basically called as <code class="docutils literal notranslate"><span class="pre">method(*args,</span> <span class="pre">**kwargs)</span></code> on update</p>
-</dd>
-<dt class="field-even">args/kwargs</dt>
-<dd class="field-even"><p>Positional and keyword arguments that will be passed to <code class="docutils literal notranslate"><span class="pre">method</span></code>.</p>
-</dd>
-</dl>
-<p>We first assume that <code class="docutils literal notranslate"><span class="pre">output_files</span></code> is a plain single file, so we can call it <code class="docutils literal notranslate"><span class="pre">output_file</span></code> (without s).
-Rules holding multiple output files will be explained later.</p>
-<p><code class="docutils literal notranslate"><span class="pre">method</span></code> can be None. In that case, a decorator is returned.</p>
+<section id="groupsgroup">
+<h4>GroupsGroup<a class="headerlink" href="#groupsgroup" title="Permalink to this heading"></a></h4>
 </section>
-<section id="getting-rule-objects">
-<h3>Getting rule objects<a class="headerlink" href="#getting-rule-objects" title="Permalink to this heading"></a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">Group.add()</span></code> returns an object representing the added rule.
-We can also get the rule object by <code class="docutils literal notranslate"><span class="pre">group[name]</span></code> or, if the name is a valid attribute string, by <code class="docutils literal notranslate"><span class="pre">group.&lt;name&gt;</span></code>.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;some_dir&quot;</span><span class="p">)</span>
-
-<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule_name&quot;</span><span class="p">,</span> <span class="s2">&quot;output.txt&quot;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">,</span> <span class="n">kwarg1</span><span class="o">=</span><span class="n">foo</span><span class="p">,</span> <span class="n">kwarg2</span><span class="o">=</span><span class="n">bar</span><span class="p">)</span>
-
-<span class="k">assert</span> <span class="n">rule</span> <span class="ow">is</span> <span class="n">g</span><span class="o">.</span><span class="n">rule_name</span>
-<span class="k">assert</span> <span class="n">rule</span> <span class="ow">is</span> <span class="n">g</span><span class="p">[</span><span class="s1">&#39;rule_name&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
-<p>It has an attribute <code class="docutils literal notranslate"><span class="pre">path</span></code> which is a pathlib.Path pointing to the output file.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">rule_name</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># prints ``PosixPath(&quot;some_dir/output&quot;)``</span>
-</pre></div>
-</div>
-<dl class="simple">
-<dt><strong>Caution</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">rule.path</span></code> being a relative path is not guaranteed.
-Although it gives a relative path in most cases under current implementation,
-it may be changed in the future so you must not rely on that behavior.</p>
-</dd>
-</dl>
+<section id="rulesgroup">
+<h4>RulesGroup<a class="headerlink" href="#rulesgroup" title="Permalink to this heading"></a></h4>
 </section>
-<section id="type-of-output-file">
-<h3>Type of output file<a class="headerlink" href="#type-of-output-file" title="Permalink to this heading"></a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">output_file</span></code> can be an object that is an instance of str, os.PathLike, jtcmake.File, or jtcmake.VFile.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule1&quot;</span><span class="p">,</span> <span class="s2">&quot;output1.txt&quot;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>             <span class="c1"># OK</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule2&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output2.txt&quot;</span><span class="p">),</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>       <span class="c1"># OK</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule3&quot;</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;output3.txt&quot;</span><span class="p">),</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>   <span class="c1"># OK</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule4&quot;</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">VFile</span><span class="p">(</span><span class="s2">&quot;output4.txt&quot;</span><span class="p">),</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>  <span class="c1"># OK</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule5&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>  <span class="c1"># TypeError</span>
-</pre></div>
-</div>
-<p>When you pass a str or os.PathLike as <code class="docutils literal notranslate"><span class="pre">output_file</span></code>, JTCMake internally converts it to jtcmake.File.
-So the following are equivalent</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">g.add('rule_name',</span> <span class="pre">'output.txt',</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">some_func,</span> <span class="pre">arg,</span> <span class="pre">kwarg=foo)</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">g.add('rule_name',</span> <span class="pre">Path('output.txt'),</span>&#160;&#160;&#160;&#160; <span class="pre">some_func,</span> <span class="pre">arg,</span> <span class="pre">kwarg=foo)</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">g.add('rule_name',</span> <span class="pre">jtcmake.File('output.txt'),</span> <span class="pre">some_func,</span> <span class="pre">arg,</span> <span class="pre">kwarg=foo)</span></code></p></li>
-</ul>
-</div></blockquote>
-</section>
-<section id="path-prefixing-and-absolute-path">
-<h3>Path prefixing and absolute path<a class="headerlink" href="#path-prefixing-and-absolute-path" title="Permalink to this heading"></a></h3>
-<p>The output file path that you give will be prefixed by the parent Group’s directory name.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;some_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule&quot;</span><span class="p">,</span> <span class="s2">&quot;output.txt&quot;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># prints Path(&quot;some_dir/output.txt&quot;), not Path(&quot;./output.txt&quot;)</span>
-</pre></div>
-</div>
-<p>We can disable prefixing by giving an absolute path:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;some_dir&#39;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule&quot;</span><span class="p">,</span> <span class="s2">&quot;/abs/path/to/output.txt&quot;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># prints Path(&quot;/abs/path/to/output.txt&quot;)</span>
-</pre></div>
-</div>
-</section>
-<section id="rule-as-an-input-to-another-rule">
-<h3>Rule as an input to another rule<a class="headerlink" href="#rule-as-an-input-to-another-rule" title="Permalink to this heading"></a></h3>
-<p>You can pass a rule object as an argument to <code class="docutils literal notranslate"><span class="pre">Group.add</span></code> .
-It makes the output file of the first rule an input file to the new rule.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;some_dir&quot;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule1&#39;</span><span class="p">,</span> <span class="s1">&#39;output1.txt&#39;</span><span class="p">,</span> <span class="n">some_func1</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule2&#39;</span><span class="p">,</span> <span class="s1">&#39;output2.txt&#39;</span><span class="p">,</span> <span class="n">some_func2</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">rule1</span><span class="p">,</span> <span class="n">bar</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">some_func2</span></code> will be called as <code class="docutils literal notranslate"><span class="pre">some_func2(foo,</span> <span class="pre">Path(&quot;some_dir/output1.txt&quot;),</span> <span class="pre">bar)</span></code> .</p>
-<dl class="simple">
-<dt>Note:</dt><dd><p>This explanation (and the following ones) are a little inaccurate.
-You will see how when we learn the <strong>Auto-SELF</strong> rule in the later section.</p>
-</dd>
-</dl>
-<p>Rule objects in args/kwargs are replaced by the path of their output file.
-This path replacement occurs inside the args/kwargs that has a deeply nested structure.
-JTCMake searches for rule objects in args/kwargs by recursively checking the elements of tuples and lists, and the values of dicts.
-For example,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule1&#39;</span><span class="p">,</span> <span class="s1">&#39;out1&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="p">))</span>   <span class="c1"># tuple</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule2&#39;</span><span class="p">,</span> <span class="s1">&#39;out2&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="p">[</span><span class="n">bar</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="p">])</span>   <span class="c1"># list</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule3&#39;</span><span class="p">,</span> <span class="s1">&#39;out3&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="p">{</span><span class="n">bar</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="p">})</span>   <span class="c1"># dict</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule4&#39;</span><span class="p">,</span> <span class="s1">&#39;out4&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="p">[</span><span class="n">foo</span><span class="p">,</span> <span class="p">{</span><span class="n">bar</span><span class="p">:</span> <span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="p">,</span> <span class="n">baz</span><span class="p">)}])</span>  <span class="c1"># deeply nested structure</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will execute</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">some_func</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out&quot;</span><span class="p">)))</span>
-<span class="n">some_func</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="p">[</span><span class="n">bar</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out&quot;</span><span class="p">)])</span>
-<span class="n">some_func</span><span class="p">(</span><span class="n">foo</span><span class="p">,</span> <span class="p">{</span><span class="n">bar</span><span class="p">:</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out&quot;</span><span class="p">)})</span>
-<span class="n">some_func</span><span class="p">([</span><span class="n">foo</span><span class="p">,</span> <span class="p">{</span><span class="n">bar</span><span class="p">:</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out&quot;</span><span class="p">),</span> <span class="n">baz</span><span class="p">)}])</span>
-</pre></div>
-</div>
-<p>Though the behavior is simple and intuitive, there are some pitfalls around it.</p>
-<ol class="arabic">
-<li><p>JTCMake does not go deeper into container objects other than tuple, list, nor dict.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">kwarg</span><span class="o">=</span><span class="n">foo</span><span class="p">)</span>
-
-<span class="c1"># JTCMake does not look inside the set to find g.rule</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule1&#39;</span><span class="p">,</span> <span class="s1">&#39;out1&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="p">{</span><span class="n">foo</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">rule</span><span class="p">})</span>
-</pre></div>
-</div>
-<p>rule1 will execute <code class="docutils literal notranslate"><span class="pre">some_func({foo,</span> <span class="pre">g.rule})</span></code> instead of <code class="docutils literal notranslate"><span class="pre">some_func({foo,</span> <span class="pre">Path(&quot;dir/out&quot;)})</span></code> which should not be what we want.</p>
-</li>
-<li><p>JTCMake does not check dict <em>keys</em>. It only checks <em>values</em> of dict</p></li>
-</ol>
-</section>
-<section id="self">
-<h3>SELF<a class="headerlink" href="#self" title="Permalink to this heading"></a></h3>
-<p>Now we know how to pass a rule’s output file to another rule’s method.
-But how to pass a rule’s output file to its own method?  <code class="docutils literal notranslate"><span class="pre">jtcmake.SELF</span></code> is for that.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">foo</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">bar</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will execute <code class="docutils literal notranslate"><span class="pre">some_func(foo,</span> <span class="pre">Path(&quot;dir/out&quot;),</span> <span class="pre">a=bar)</span></code>.
-Here, <code class="docutils literal notranslate"><span class="pre">SELF</span></code> was replaced by <code class="docutils literal notranslate"><span class="pre">Path(&quot;dir/out&quot;)</span></code> .
-JTCMake finds and replaces SELFs in args/kwargs of nested structure, just like it does for rule objects.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="p">[</span><span class="n">foo</span><span class="p">,</span> <span class="p">{</span><span class="n">bar</span><span class="p">:</span> <span class="p">(</span><span class="n">SELF</span><span class="p">,</span> <span class="n">baz</span><span class="p">)}],</span> <span class="n">a</span><span class="o">=</span><span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>will execute <code class="docutils literal notranslate"><span class="pre">some_func([foo,</span> <span class="pre">{bar:</span> <span class="pre">(Path(&quot;dir/out&quot;),</span> <span class="pre">baz)}],</span> <span class="pre">a=Path(&quot;dir/out&quot;))</span></code>.</p>
-</section>
-<section id="auto-self-important">
-<h3>Auto-SELF (Important)<a class="headerlink" href="#auto-self-important" title="Permalink to this heading"></a></h3>
-<p>If JTCMake has found no SELF in args/kwargs that you have provided, it adds a SELF
-into the first position of the arguments.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">)</span>  <span class="c1"># you gave no SELF</span>
-
-<span class="c1"># The above is equivalent to</span>
-<span class="c1"># g.add(&#39;rule&#39;, &#39;out&#39;, some_func, SELF, &#39;foo&#39;, a=&#39;bar&#39;)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">some_func</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out&quot;</span><span class="p">),</span> <span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>You cannot force JTCMake not to pass a SELF to the method.</p>
-</section>
-<section id="output-file-omission">
-<h3>Output file omission<a class="headerlink" href="#output-file-omission" title="Permalink to this heading"></a></h3>
-<p>You can omit the argument <code class="docutils literal notranslate"><span class="pre">output_file</span></code> when it same as the name of the rule.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;some_dir&#39;</span><span class="p">)</span>
-
-<span class="n">rule</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;a.txt&#39;</span><span class="p">,</span> <span class="n">some_func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>  <span class="c1"># same as g.add(&#39;a.txt&#39;, &#39;a.txt&#39;, some_func, SELF)</span>
-
-<span class="k">assert</span> <span class="n">rule</span> <span class="ow">is</span> <span class="n">g</span><span class="p">[</span><span class="s1">&#39;a.txt&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
-</section>
-<section id="original-files">
-<h3>Original files<a class="headerlink" href="#original-files" title="Permalink to this heading"></a></h3>
-<p>When building something, we often have “original files” that do not depend on any other files
-and, therefore, are the start points of the build process.
-We can bring those files into our definition of rules by wrapping them using <code class="docutils literal notranslate"><span class="pre">jtcmake.File</span></code> or <code class="docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code> .
-Actually we have already seen a case in the first chapter. Here I repost it.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
-
-<span class="k">def</span> <span class="nf">concat</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="o">*</span><span class="n">sources</span><span class="p">):</span>
-    <span class="c1"># write contents in the files `sources` into the file `destination`</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-
-<span class="c1"># 1. Create the root Group with directory `output`</span>
-<span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
-
-<span class="c1"># 2. Add rules to the Group</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;cp1&#39;</span><span class="p">,</span> <span class="s1">&#39;copy1.txt&#39;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s1">&#39;original1.txt&#39;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;cp2&#39;</span><span class="p">,</span> <span class="s1">&#39;copy2.txt&#39;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s1">&#39;original2.txt&#39;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;concat&#39;</span><span class="p">,</span> <span class="s1">&#39;concat.txt&#39;</span><span class="p">,</span> <span class="n">concat</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">cp1</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">cp2</span><span class="p">)</span>
-
-<span class="c1"># 3. Make</span>
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will execute</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;original1.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/copy1.txt&quot;</span><span class="p">))</span>
-<span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;original2.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/copy2.txt&quot;</span><span class="p">))</span>
-<span class="n">concat</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/concat.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/copy1.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output/copy2.txt&quot;</span><span class="p">))</span>
-</pre></div>
-</div>
-<p>JTCMake replaces <code class="docutils literal notranslate"><span class="pre">jtcmake.File</span></code> and <code class="docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code> in args/kwargs by corresponding pathlib.Path instances.
-Difference of the two classes will be described in the <strong>Memoization and Value Files</strong> section.</p>
-</section>
-<section id="make-a-subset-of-rules">
-<h3>Make a subset of rules<a class="headerlink" href="#make-a-subset-of-rules" title="Permalink to this heading"></a></h3>
-<p>By executing <code class="docutils literal notranslate"><span class="pre">rule.make()</span></code> you can make that rule and its dependencies only.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;dir&#39;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule1&#39;</span><span class="p">,</span> <span class="s1">&#39;out1.txt&#39;</span><span class="p">,</span> <span class="n">some_func1</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule2&#39;</span><span class="p">,</span> <span class="s1">&#39;out2.txt&#39;</span><span class="p">,</span> <span class="n">some_func2</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule3&#39;</span><span class="p">,</span> <span class="s1">&#39;out3.txt&#39;</span><span class="p">,</span> <span class="n">some_func3</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">rule2</span><span class="p">)</span>  <span class="c1"># depends on rule2</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">rule3</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">some_func2</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out2.txt&quot;</span><span class="p">))</span>
-<span class="n">some_func3</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out3.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;dir/out2.txt&quot;</span><span class="p">))</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">jtcmake.make</span></code> offers a way to make a subset of rules.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jtcmake</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">rule1</span><span class="p">,</span> <span class="n">rule2</span><span class="p">,</span> <span class="n">rule5</span><span class="p">,</span> <span class="n">rule10</span><span class="p">)</span>
-</pre></div>
-</div>
-</section>
-<section id="specifying-multiple-output-files">
-<h3>Specifying multiple output files<a class="headerlink" href="#specifying-multiple-output-files" title="Permalink to this heading"></a></h3>
-<p>So far, we have been dealing with rules that have only one output file.
-However in practice, we often need rules that have multiple output files.
-For example, we may need to split a file into two pieces.</p>
-<img alt="_images/train_test_split.svg" src="_images/train_test_split.svg" /><p>In such cases, we can specify nested structure (hereafter <strong>nest</strong>) of output files instead of a single file like,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;original_data&quot;</span><span class="p">,</span> <span class="s2">&quot;original.txt&quot;</span><span class="p">,</span> <span class="n">download_data</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;rule&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span> <span class="s2">&quot;train.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="s2">&quot;text.csv&quot;</span> <span class="p">},</span> <span class="n">split_train_test</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">original_data</span><span class="p">)</span>
-           <span class="c1">#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
-           <span class="c1">#  This is a nest of output files containing &quot;train.csv&quot; and &quot;test.csv&quot;</span>
-</pre></div>
-</div>
-<section id="nest-of-output-files">
-<h4>Nest of Output Files<a class="headerlink" href="#nest-of-output-files" title="Permalink to this heading"></a></h4>
-<p>Nest of output files is any data structure consisting of containers (tuple, list, or dict)
-and leaf nodes (str, os.PathLike, jtcmake.File, or jtcmake.VFile).</p>
-<p>Formally, “nest of output files” is recursively defined as follows:</p>
-<ul class="simple">
-<li><p><em>str</em>, <em>os.PathLike</em>, <em>jtcmake.File</em>, <em>jtcmake.VFile</em> are nest of output files (we call them “atom”)</p></li>
-<li><p>tuple/list whose elements are nest of output files is also nest of output files</p></li>
-<li><p>dict whose values are nest of output files is also nest of output files</p></li>
-</ul>
-<p>This concept was imported from Tensorflow.</p>
-</section>
-<section id="examples">
-<h4>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h4>
-<p>Following objects are output file structure</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;foo/bar.txt&quot;</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Path(&quot;/tmp/file.txt&quot;)</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">jtcmake.File(&quot;./foo&quot;)</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">&quot;foo&quot;,</span> <span class="pre">&quot;bar&quot;</span> <span class="pre">]</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">jtcmake.File(&quot;foo&quot;),</span> <span class="pre">{</span> <span class="pre">&quot;a&quot;:</span> <span class="pre">Path(&quot;bar.exe&quot;),</span> <span class="pre">0:</span> <span class="pre">(&quot;bar1.o&quot;,</span> <span class="pre">&quot;bar2.o&quot;)</span> <span class="pre">}</span> <span class="pre">]</span></code></p></li>
-</ul>
-<p>Following objects are not output file structure</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">{</span> <span class="pre">&quot;foo.txt&quot;,</span> <span class="pre">&quot;bar.txt&quot;</span> <span class="pre">}</span></code> <em>set</em> is not allowed</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">&quot;foo&quot;.txt&quot;,</span> <span class="pre">0</span> <span class="pre">]</span></code> int is not allowed</p></li>
-</ul>
-</section>
-<section id="internal-atom-normalization">
-<h4>Internal Atom Normalization<a class="headerlink" href="#internal-atom-normalization" title="Permalink to this heading"></a></h4>
-<p>Just like the single output file case, each atom in the nested output files undergo a two-step normalization.</p>
-<p>Step 1: str and os.PathLike is converted to jtcmake.File</p>
-<blockquote>
-<div><p>For example,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;bar.txt&quot;</span><span class="p">),</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">VFile</span><span class="p">(</span><span class="s2">&quot;/tmp/baz&quot;</span><span class="p">)</span> <span class="p">]</span>
-</pre></div>
-</div>
-<p>is converted to</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">),</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;bar.txt&quot;</span> <span class="p">),</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">VFile</span><span class="p">(</span><span class="s2">&quot;/tmp/baz&quot;</span><span class="p">)</span> <span class="p">]</span>
-</pre></div>
-</div>
-</div></blockquote>
-<p>Step 2: Path Prefixing</p>
-<blockquote>
-<div><p>Every atom (File or VFile) in the structure gets the parent Group’s prefix string added to the front of its path
-if the path is not absolute</p>
-<p>For example, after you run the code below,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;foo1&quot;</span><span class="p">,</span> <span class="s2">&quot;/tmp/foo&quot;</span><span class="p">],</span> <span class="n">some_method</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Rule <code class="docutils literal notranslate"><span class="pre">g.foo</span></code> eventually holds a nest</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span> <span class="n">File</span><span class="p">(</span><span class="s2">&quot;root_dir/foo1&quot;</span><span class="p">),</span> <span class="n">File</span><span class="p">(</span><span class="s2">&quot;/tmp/foo&quot;</span><span class="p">)</span> <span class="p">]</span>
-</pre></div>
-</div>
-</div></blockquote>
-</section>
-<section id="accessing-files-of-a-rule">
-<h4>Accessing Files of a Rule<a class="headerlink" href="#accessing-files-of-a-rule" title="Permalink to this heading"></a></h4>
-<p>Now we know that a rule owns a nest of files.
-We can access each file as if the rule itself is the nest.
-That is, if the nest is an atom, the rule object itself acts as the output file.
-For example,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;foo.txt&#39;</span><span class="p">,</span> <span class="n">some_method</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Now <code class="docutils literal notranslate"><span class="pre">g.foo</span></code> represents the rule <em>foo</em> AND its output file “root_dir/foo.txt”.
-You can get its path:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root_dir/foo.txt&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>and you can use it as an argument for another rule:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="s1">&#39;bar.txt&#39;</span><span class="p">,</span> <span class="n">some_method</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-
-<span class="c1"># some_method(Path(&quot;root_dir/foo.txt&quot;), Path(&quot;root_dir/bar.txt&quot;)) will be run</span>
-</pre></div>
-</div>
-<p>If the nest is not an atom but, for example, a tuple of two atoms, the rule object behaves as a tuple of two files:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;foo1.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;foo2.txt&#39;</span><span class="p">),</span> <span class="n">some_method</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Now <code class="docutils literal notranslate"><span class="pre">g.foo</span></code> can be considered a tuple containing two files</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root_dir/foo1.txt&quot;</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root_dir/foo2.txt&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>or you can get paths at once:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="p">(</span>
-                        <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root_dir/foo1.txt&quot;</span><span class="p">),</span>
-                        <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root_dir/foo2.txt&quot;</span><span class="p">)</span>
-                     <span class="p">)</span>
-</pre></div>
-</div>
-<p>Following two are equivalent</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">g.add('bar',</span> <span class="pre">'bar.txt',</span> <span class="pre">some_method,</span> <span class="pre">SELF,</span> <span class="pre">g.foo)</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">g.add('bar',</span> <span class="pre">'bar.txt',</span> <span class="pre">some_method,</span> <span class="pre">SELF,</span> <span class="pre">(g.foo[0],</span> <span class="pre">g.foo[1]))</span></code></p></li>
-</ul>
-<p>A rule holding an output file structures of dict behaves the same way except
-you can access its elements via attributes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="s1">&#39;foo1.txt&#39;</span> <span class="p">},</span> <span class="n">some_method</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-
-<span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">a</span>
-</pre></div>
-</div>
-</section>
-<section id="self-for-nest-of-output-files">
-<h4>SELF for nest of output files<a class="headerlink" href="#self-for-nest-of-output-files" title="Permalink to this heading"></a></h4>
-<p>When used for a class with multiple output files, SELF pretends to be the nest of the output files.</p>
-<p>It’s easier to understand SELF by examples.</p>
-<p>Example 1.</p>
-<blockquote>
-<div><p>SELFs are replaced with their corresponding output file(s)</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
-
-<span class="c1"># SELF can appear multiple times in args/kwargs</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;foo.txt&#39;</span><span class="p">,</span> <span class="n">method1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">SELF</span><span class="p">)</span>
-
-<span class="c1"># SELF can point to whole output file structure</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;bar1.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;bar2.txt&#39;</span><span class="p">),</span> <span class="n">method2</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will call</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">method1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/foo.txt&quot;</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/foo.txt&quot;</span><span class="p">))</span>
-<span class="n">method2</span><span class="p">((</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/bar1.txt&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/bar2.txt&quot;</span><span class="p">))</span>
-</pre></div>
-</div>
-</div></blockquote>
-<p>Example 2.</p>
-<blockquote>
-<div><p>args/kwargs containing SELF can be nested structures</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;foo.txt&#39;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">SELF</span><span class="p">],</span> <span class="mi">2</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">SELF</span> <span class="p">})</span>
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will call</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">method</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/foo.txt&quot;</span><span class="p">)],</span> <span class="mi">2</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="p">{</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;root/foo.txt&quot;</span><span class="p">)</span> <span class="p">})</span>
-</pre></div>
-</div>
-</div></blockquote>
-<p>Example 3.</p>
-<blockquote>
-<div><p>You can get pointers to inner elements of the nest of output files by indexing SELF like</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
-
-<span class="c1"># Getting a pointer to the 0-th element of the output file structure</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="p">[</span> <span class="s1">&#39;foo.txt&#39;</span> <span class="p">],</span> <span class="n">method1</span><span class="p">,</span> <span class="n">SELF</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-<span class="c1"># Getting a pointer to element for key &quot;a&quot; of the output file structure</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="s1">&#39;bar.txt&#39;</span> <span class="p">},</span> <span class="n">method2</span><span class="p">,</span> <span class="n">SELF</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">])</span>
-
-<span class="c1"># Attribute access is possible if the key is a valid python identifier</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;baz&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="s1">&#39;baz.txt&#39;</span> <span class="p">},</span> <span class="n">method3</span><span class="p">,</span> <span class="n">SELF</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
-
-<span class="c1"># Getting a pointers for an element in deep location</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="p">{</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="s1">&#39;x.txt&#39;</span> <span class="p">]</span> <span class="p">}</span> <span class="p">]</span> <span class="p">},</span> <span class="n">method4</span><span class="p">,</span> <span class="n">SELF</span><span class="o">.</span><span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>will call</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">method1</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">))</span>
-<span class="n">method2</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;bar.txt&quot;</span><span class="p">))</span>
-<span class="n">method3</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;baz.txt&quot;</span><span class="p">))</span>
-<span class="n">method4</span><span class="p">([</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;x.txt&quot;</span><span class="p">)</span> <span class="p">])</span>
-</pre></div>
-</div>
-</div></blockquote>
-<section id="precise-understanding-of-self-can-be-skipped">
-<h5>Precise Understanding of SELF (can be skipped)<a class="headerlink" href="#precise-understanding-of-self-can-be-skipped" title="Permalink to this heading"></a></h5>
-<p>You should have got how to use SELF from the above examples.
-Here I give a more detailed explanation of SELF, which you don’t have to understand.</p>
-<ul class="simple">
-<li><p>The type of SELF is <em>NestKey</em>, which is a type defined in JTCMake.</p>
-<ul>
-<li><p>A NestKey object holds a tuple (x1, x2, … x_N)</p>
-<ul>
-<li><p>With this tuple, you can identify an item in a nested structure <code class="docutils literal notranslate"><span class="pre">O</span></code> by <code class="docutils literal notranslate"><span class="pre">O[x1][x2]...[x_N]</span></code></p></li>
-<li><p>This is similar to how XPath identifies an element in XML.</p></li>
-</ul>
-</li>
-<li><p>Given a NestKey <code class="docutils literal notranslate"><span class="pre">K</span></code> holding a tuple (x1, x2, … x_N),
-you can get a new NestKey holding a tuple (x1, x2, … x_N, y) by <code class="docutils literal notranslate"><span class="pre">K[y]</span></code></p></li>
-</ul>
-</li>
-<li><p>The tuple that SELF holds is () (0 element tuple). For a nest <code class="docutils literal notranslate"><span class="pre">O</span></code>, it points to <code class="docutils literal notranslate"><span class="pre">O</span></code> it self.</p></li>
-<li><p>A NestKey in args/kwargs is considered to be pointing to an element in <code class="docutils literal notranslate"><span class="pre">output_files</span></code> of the rule
-- it will be replaced by that element before passed to the <code class="docutils literal notranslate"><span class="pre">method</span></code></p></li>
-</ul>
+<section id="untypedgroup">
+<h4>UntypedGroup<a class="headerlink" href="#untypedgroup" title="Permalink to this heading"></a></h4>
 </section>
 </section>
 </section>
-<section id="decorator-style-add">
-<h3>Decorator-style add<a class="headerlink" href="#decorator-style-add" title="Permalink to this heading"></a></h3>
-<p>When you call Group.add with <code class="docutils literal notranslate"><span class="pre">method</span></code> being <code class="docutils literal notranslate"><span class="pre">None</span></code>, it returns a decorator.
-You can use this feature like</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-
-<span class="nd">@g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;x.txt&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;hello!&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">method</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
-    <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>This is equivalent to</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">method</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
-    <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;x.txt&#39;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="s2">&quot;hello!&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
+<section id="memoization">
+<h2>Memoization<a class="headerlink" href="#memoization" title="Permalink to this heading"></a></h2>
 </section>
-<section id="rejected-args-kwargs-and-workaround">
-<h3>Rejected args/kwargs and workaround<a class="headerlink" href="#rejected-args-kwargs-and-workaround" title="Permalink to this heading"></a></h3>
-<p>Not all kinds of Python objects can be included in args/kwargs. For example, closures are rejected:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># error.</span>
-</pre></div>
-</div>
-<p>To be accepted as an argument, the object must satisfy the following two conditions:</p>
-<ol class="arabic simple">
-<li><p>It must be picklable</p></li>
-<li><p>It must be pickle-unpickle invariant. i.e. for the object <code class="docutils literal notranslate"><span class="pre">o</span></code> ,
-<code class="docutils literal notranslate"><span class="pre">unpickle(pickle(o))</span> <span class="pre">==</span> <span class="pre">o</span></code> must hold.</p></li>
-</ol>
-<p>This requirement comes from the <strong>memoization</strong> feature explained in the later section.</p>
-<p>Closure functions, for example, do not satisfy the first condition:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pickle</span>
-<span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># error</span>
-</pre></div>
-</div>
-<p>An instance of a custom class which does not implement <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> method does not satisfy the second condition:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pickle</span>
-
-<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
-    <span class="o">...</span>
-
-<span class="n">a</span> <span class="o">=</span> <span class="n">A</span><span class="p">()</span>
-
-<span class="k">assert</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">a</span><span class="p">))</span> <span class="o">!=</span> <span class="n">a</span>
-</pre></div>
-</div>
-<section id="wraping-with-jtcmake-atom">
-<h4>Wraping with jtcmake.Atom<a class="headerlink" href="#wraping-with-jtcmake-atom" title="Permalink to this heading"></a></h4>
-<p>To pass an unaccepted object to the method, wrap it with <code class="docutils literal notranslate"><span class="pre">jtcmake.Atom</span></code> .</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">jtcmake</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>  <span class="c1"># ok.</span>
-
-<span class="c1">#g.add(&#39;rule&#39;, func, lambda x: x * 2)  # error.</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>It will run <code class="docutils literal notranslate"><span class="pre">func(Path(&quot;root/rule&quot;),</span> <span class="pre">lambda</span> <span class="pre">x:</span> <span class="pre">x*2)</span></code> as expected.</p>
+<section id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this heading"></a></h2>
+<section id="make">
+<h3>Make<a class="headerlink" href="#make" title="Permalink to this heading"></a></h3>
+<section id="parallel-execution">
+<h4>Parallel Execution<a class="headerlink" href="#parallel-execution" title="Permalink to this heading"></a></h4>
 </section>
 </section>
-</section>
-<section id="group-tree-model-and-path-prefixing">
-<h2>Group Tree Model and Path Prefixing<a class="headerlink" href="#group-tree-model-and-path-prefixing" title="Permalink to this heading"></a></h2>
-<ul class="simple">
-<li><p>Group tree is a data structure we use to organize rules.</p></li>
-<li><p>Rules are stored as leaf nodes of the tree.</p></li>
-<li><p>Basically, each Group node corresponds to a directory and each rule node corresponds to file(s).</p></li>
-</ul>
-<img alt="_images/group_tree_overview.svg" src="_images/group_tree_overview.svg" /><section id="basic-usage">
-<h3>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading"></a></h3>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># First create the root Group node by create_group(dirname)</span>
-<span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-
-<span class="c1"># You can add child Group nodes by Group.add_group(group_name, dirname)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir1&#39;</span><span class="p">,</span> <span class="s1">&#39;dir1&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir2&#39;</span><span class="p">)</span>  <span class="c1"># You can omit dirname if group_name == dirname</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir3&#39;</span><span class="p">,</span> <span class="s1">&#39;directory3&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir4/is/deep&#39;</span><span class="p">)</span>  <span class="c1"># You can specify deep dirname</span>
-
-<span class="c1"># Group tree can be arbitrarily deep</span>
-<span class="n">g</span><span class="o">.</span><span class="n">dir1</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;deep&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">dir1</span><span class="o">.</span><span class="n">deep</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;deeper&#39;</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Now the Group tree implicitly has the following directory structure:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>root_dir/
-|--- dir1/
-|    `--- deep/
-|         `--- deeper/
-|--- dir2/
-|--- directory3/
-`--- dir4/is/deep/
-</pre></div>
-</div>
-<p>Adding a rule node as a child of a Group node will place the rule’s output file in the Group’s directory.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-
-<span class="c1"># rule&#39;s output file name can include directories</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;deep_rule&#39;</span><span class="p">,</span> <span class="s1">&#39;deep/rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>implies:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>root_dir/
-|--- rule.txt
-|--- dir/
-|    `--- rule.txt
-`--- deep/rule.txt
-</pre></div>
-</div>
-</section>
-<section id="prefix-vs-dirname">
-<h3>prefix vs dirname<a class="headerlink" href="#prefix-vs-dirname" title="Permalink to this heading"></a></h3>
-<ul class="simple">
-<li><p>Instead of specifying <code class="docutils literal notranslate"><span class="pre">dirname</span></code> in Group.add_group(), you can specify <code class="docutils literal notranslate"><span class="pre">prefix</span></code></p></li>
-<li><p>In fact, the following two are equivalent
-- <code class="docutils literal notranslate"><span class="pre">Group.add_group(name,</span> <span class="pre">dirname)</span></code>
-- <code class="docutils literal notranslate"><span class="pre">Group.add_group(name,</span> <span class="pre">prefix=dirname</span> <span class="pre">+</span> <span class="pre">'/')</span></code></p></li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;sub&#39;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;pfx-&#39;</span><span class="p">)</span>  <span class="c1"># add Group with prefix=&#39;pfx-&#39;</span>
-<span class="n">g</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>  <span class="c1"># cumulative prefix is &#39;root_dir/pfx-&#39;</span>
-
-<span class="n">g</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;sub2&#39;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;pfx2-&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">sub2</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>implies:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>root_dir/
-|--- pfx-rule.txt
-`--- pfx-pfx2-rule.txt
-</pre></div>
-</div>
-</section>
-<section id="absolute-path">
-<h3>Absolute Path<a class="headerlink" href="#absolute-path" title="Permalink to this heading"></a></h3>
-<p>When you give an absolute path to a Group or rule node, it won’t be prefixed by its parent</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
-    <span class="c1"># for Windows</span>
-    <span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;abs_group&#39;</span><span class="p">,</span> <span class="s1">&#39;C:</span><span class="se">\\</span><span class="s1">Users</span><span class="se">\\</span><span class="s1">sugi</span><span class="se">\\</span><span class="s1">abs&#39;</span><span class="p">)</span>  <span class="c1"># Group node with absolute path</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">abs_group</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;abs_rule&#39;</span><span class="p">,</span> <span class="s1">&#39;C:</span><span class="se">\\</span><span class="s1">Temp</span><span class="se">\\</span><span class="s1">absolute.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>  <span class="c1"># rule node with absolute path</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="c1"># for Unix</span>
-    <span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;abs_group&#39;</span><span class="p">,</span> <span class="s1">&#39;/home/sugi/abs&#39;</span><span class="p">)</span>  <span class="c1"># Group node with absolute path</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">abs_group</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="s1">&#39;rule.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
-    <span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;abs_rule&#39;</span><span class="p">,</span> <span class="s1">&#39;/tmp/absolute.txt&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>  <span class="c1"># rule node with absolute path</span>
-</pre></div>
-</div>
-<p>is mapped to directory structure like</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>root_dir/
-
-/home/sugi/abs/
-`--- rule.txt
-
-/tmp/absolute.txt
-</pre></div>
-</div>
-</section>
-<section id="accessing-group-node-as-a-dict">
-<h3>Accessing Group node as a dict<a class="headerlink" href="#accessing-group-node-as-a-dict" title="Permalink to this heading"></a></h3>
-<ul class="simple">
-<li><p>You can get children of a Group node by group[name]</p></li>
-<li><p>This is useful when the name of a child node is not a valid Python identifier (e.g. “dir-1”)</p></li>
-</ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span> <span class="o">=</span> <span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;root_dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s1">&#39;dir&#39;</span><span class="p">)</span>
-<span class="n">g</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;rule&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
-
-<span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">dir</span> <span class="o">==</span> <span class="n">g</span><span class="p">[</span><span class="s1">&#39;dir&#39;</span><span class="p">]</span>
-<span class="k">assert</span> <span class="n">g</span><span class="o">.</span><span class="n">dir</span><span class="o">.</span><span class="n">rule</span> <span class="o">==</span> <span class="n">g</span><span class="o">.</span><span class="n">dir</span><span class="p">[</span><span class="s1">&#39;rule&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
-</section>
-</section>
-<section id="memoization-and-value-file">
-<h2>Memoization and Value File<a class="headerlink" href="#memoization-and-value-file" title="Permalink to this heading"></a></h2>
-<p>(WIP)</p>
-<p>JTCMake provides <em>memoization</em> for args/kwargs.
-When a rule is successfully made, atoms in its args/kwargs are serialized by pickle and stored to a file.
-Exception are the following atoms:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">jtcmake.SELF</span></code> : just ignored (<code class="docutils literal notranslate"><span class="pre">SELF[0]</span></code> , <code class="docutils literal notranslate"><span class="pre">SELF.foo</span></code> , etc are also ignored)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">jtcmake.File</span></code> : just ignored</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code> : instead of pickling, sha256 hash of the file content is stored (<strong>Value File</strong>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">jtcmake.Atom</span></code> : atom.memo_value is pickled and stored</p></li>
-</ul>
-<p>When we try to make the rule again, the cached values are unpickled and compared to the atoms
-in the current args/kwargs. If any atom differs, JTCMake determines that update is needed.</p>
-</section>
-<section id="parallel-run">
-<h2>Parallel Run<a class="headerlink" href="#parallel-run" title="Permalink to this heading"></a></h2>
-<p>(WIP)</p>
-<p>By specifying an integer &gt;= 2 for the <code class="docutils literal notranslate"><span class="pre">njobs</span></code> argument of <code class="docutils literal notranslate"><span class="pre">RuleNode.make()</span></code> , <code class="docutils literal notranslate"><span class="pre">Group.make()</span></code> ,
-or <code class="docutils literal notranslate"><span class="pre">jtcmake.make()</span></code> , JTCMake executes up to <code class="docutils literal notranslate"><span class="pre">njobs</span></code> methods concurrently.</p>
-<p>See also the docstring of <code class="docutils literal notranslate"><span class="pre">jtcmake.make()</span></code> .</p>
-</section>
-<section id="utility-functions">
-<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this heading"></a></h2>
-<p>(WIP)</p>
-<p><code class="docutils literal notranslate"><span class="pre">Group.select</span></code> provides a way to obtain a list of groups/rules whose name have a certain pattern.</p>
-<p>See also its docstring.</p>
-</section>
-<section id="design-patterns">
-<h2>Design Patterns<a class="headerlink" href="#design-patterns" title="Permalink to this heading"></a></h2>
-<p>(WIP)</p>
-<p class="rubric">Footnotes</p>
-<dl class="footnote brackets">
-<dt class="label" id="ifile"><span class="brackets">1</span></dt>
-<dd><p>jtcmake.File and jtcmake.VFile are currently the only subclasses that implement
-the abstract class jtcmake.IFile.</p>
-</dd>
-</dl>
 </section>
 </section>
 

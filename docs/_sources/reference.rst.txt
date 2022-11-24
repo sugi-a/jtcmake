@@ -1,5 +1,6 @@
+*************
 API Reference
-=============
+*************
 
 
 .. autoclass:: jtcmake.StaticGroupBase
