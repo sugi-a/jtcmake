@@ -211,7 +211,12 @@ def _check_update_5(
         return UpdateResults.Necessary()
 
     with old_memo_file.open("rb") as f:
-        old_memo = memo.loads(f.read())
+        try:
+            memo_data = f.read()
+        except OSError:
+            return UpdateResults.Necessary()
+
+        old_memo = memo.loads(memo_data)
 
     if not memo.compare(old_memo):
         return UpdateResults.Necessary()
