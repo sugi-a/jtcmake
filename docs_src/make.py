@@ -15,6 +15,11 @@ def shell(cmd: str):
 
 
 @add
+def example_hello():
+    shell("cd source/example_hello && python make.py")
+
+
+@add
 def example_c_build():
     from jtcmake import print_graphviz
     from source.example_c_build.make import g
@@ -37,6 +42,7 @@ def example_c_build():
 @add
 def html():
     tasks["example_c_build"]()
+    tasks["example_hello"]()
     shell("sphinx-build -b html ./source ../docs")
 
 
