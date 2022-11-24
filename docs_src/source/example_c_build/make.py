@@ -70,9 +70,9 @@ class Main(StaticGroupBase):
         return self
 
 
-g = Main(Path(__file__).parent / "out").init()
-
 if __name__ == "__main__":
+    g = Main(Path(__file__).parent / "out").init()
+
     # Glob pattern to specify the nodes to make
     pattern = sys.argv[1] if len(sys.argv) >= 2 else "**"
 
