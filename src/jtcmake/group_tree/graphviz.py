@@ -12,7 +12,12 @@ from typing_extensions import TypeAlias
 
 from .core import IGroup, IRule, get_group_info_of_nodes
 from ..logwriter import term_is_jupyter
-from .mermaidjs import collect_targets, GroupTreeNode
+from .mermaidjs import (
+    collect_targets,
+    GroupTreeNode,
+    _relpath,  # pyright: ignore [reportPrivateUsage]
+    _parse_args_nodes,  # pyright: ignore [reportPrivateUsage]
+)
 
 StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
@@ -108,18 +113,18 @@ def gen_dot_code(
         set(itertools.chain(gid.values(), rid.values())) - explicit_nodes
     )
 
-    def rec_group(g: IGroup, idt: int):
+    def gen_group(g: IGroup, idt: int):
         if g not in gid:
             return
 
         name = "<ROOT>" if len(g.name_tuple) == 0 else g.name_tuple[-1]
 
         if g is info.root or g.parent.prefix == "":
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
         elif g.prefix[: len(g.parent.prefix)] == g.parent.prefix:
             prefix = "... " + g.prefix[len(g.parent.prefix) :]
         else:
-            prefix = g.prefix
+            prefix = _relpath(g.prefix, basedir)
 
         res.append((idt, f"subgraph {gid[g]} {{"))
         res.append(
@@ -135,14 +140,14 @@ def gen_dot_code(
         res.append((idt + 1, 'color = "#d4a373";'))
 
         for child_group in g.groups.values():
-            rec_group(child_group, idt + 1)
+            gen_group(child_group, idt + 1)
 
         for name, child_rule in g.rules.items():
-            proc_rulew(child_rule, idt + 1)
+            gen_rule(child_rule, idt + 1)
 
         res.append((idt, "};"))
 
-    def proc_rulew(r: IRule, idt: int):
+    def gen_rule(r: IRule, idt: int):
         if r not in rid:
             return
 
@@ -167,7 +172,7 @@ def gen_dot_code(
         if par_prefix != "" and f[: len(par_prefix)] == par_prefix:
             p = "... " + f[len(par_prefix) :]
         else:
-            p = _mk_link(f, basedir)
+            p = _relpath(f, basedir)
 
         res.append(
             (
@@ -179,12 +184,12 @@ def gen_dot_code(
                 f"shape=box; "
                 f'fillcolor="#e9edc9"; '
                 'color = "#d4a373";'
-                f'URL="{_mk_link(f, basedir)}"; '
+                f'URL="{_relpath(f, basedir)}"; '
                 f"];",
             )
         )
 
-    rec_group(info.root, 1)
+    gen_group(info.root, 1)
 
     # define original file nodes
     for f in fid:
@@ -229,32 +234,3 @@ def convert(dot_code: str, t: str = "svg"):
 def save_to_file(dot_code: str, fname: StrOrPath, t: str = "svg"):
     with open(fname, "wb") as f:
         f.write(convert(dot_code, t))
-
-
-def _mk_link(p: StrOrPath, basedir: Optional[StrOrPath] = None) -> str:
-    basedir = basedir or os.getcwd()
-
-    try:
-        return os.path.relpath(p, basedir)
-    except Exception:
-        pass
-
-    return str(p)
-
-
-def _assert_node_list(nodes: object) -> list[GroupTreeNode]:
-    if isinstance(nodes, (list, tuple)):
-        for node in nodes:  # pyright: ignore [reportUnknownVariableType]
-            if not isinstance(node, (IGroup, IRule)):
-                raise TypeError(f"node must be rule or group. Given {node}")
-
-        return list(nodes)
-    else:
-        raise TypeError("nodes must be rule or group or list of them")
-
-
-def _parse_args_nodes(nodes: object) -> list[GroupTreeNode]:
-    if isinstance(nodes, (IGroup, IRule)):
-        return [nodes]
-    else:
-        return _assert_node_list(nodes)

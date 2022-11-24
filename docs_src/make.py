@@ -15,6 +15,11 @@ def shell(cmd: str):
 
 
 @add
+def example_hello():
+    shell("cd source/example_hello && python make.py")
+
+
+@add
 def example_c_build():
     from jtcmake import print_graphviz
     from source.example_c_build.make import g
@@ -24,7 +29,7 @@ def example_c_build():
     print_graphviz(g.tools.tool1, d / "_tmp-graph-tool1.svg")
     print_graphviz(g.liba, d / "_tmp-graph-liba.svg")
 
-    shell(f"rm -r {d}/out")
+    shell(f"rm -rf {d}/out")
     shell(f"cd {d} && tree --noreport -I '_*' > _tmp-tree-all.txt")
 
     g.liba.make()
@@ -37,6 +42,7 @@ def example_c_build():
 @add
 def html():
     tasks["example_c_build"]()
+    tasks["example_hello"]()
     shell("sphinx-build -b html ./source ../docs")
 
 

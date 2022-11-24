@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 import inspect
 from typing import Callable, List, Optional, Sequence, Mapping, Dict, Tuple
 from pathlib import Path
+from threading import Lock
 
 from ..raw_rule import Rule
 from ..core.abc import IEvent
@@ -33,7 +34,17 @@ def get_rule_name(r: Rule[int, INoArgFunc], id2name: Callable[[int], str]):
     return id2name(r.id)
 
 
+_event_lock = Lock()
+
+
 def log_make_event(
+    w: IWriter, e: IEvent[Rule[int, INoArgFunc]], id2name: Callable[[int], str]
+):
+    with _event_lock:
+        _log_make_event(w, e, id2name)
+
+
+def _log_make_event(
     w: IWriter, e: IEvent[Rule[int, INoArgFunc]], id2name: Callable[[int], str]
 ):
     if isinstance(e, events.ErrorRuleEvent):

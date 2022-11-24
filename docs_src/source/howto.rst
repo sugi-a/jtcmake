@@ -111,14 +111,7 @@ You will see the following log after running ``g.make()``
 ------
 
 .. raw:: html
-
-  <html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Make </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span><span style="color: rgb(0, 128, 255);background-color: rgb(255, 255, 255);">  write_text</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">(
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    path</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = </span><a href="output/hello.txt"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">PosixPath(&#x27;output/hello.txt&#x27;)</span></a><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">,
-  </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    text</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = &#x27;Hello!&#x27;,
-    )
-  </span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">
-  </span></pre></body></html>
+  :file: example_hello/tmp-log.html
 
 ------
 
@@ -239,3 +232,9 @@ Memoization
 *************
 Miscellaneous
 *************
+
+Make
+====
+
+Parallel Execution
+------------------
