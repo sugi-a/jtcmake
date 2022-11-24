@@ -134,7 +134,7 @@ Let's take a look at a more complex task: building a C language project.
 .. note::
 
   This example is for demonstration purposes only. There are well established
-  tools dedicated to that purpose, which may be practically preferable.
+  build tools dedicated to that purpose, which may be practically preferable.
 
 
 Let's say our project has source files in the following layout:
@@ -162,7 +162,7 @@ Here is our ``./make.py``:
 .. literalinclude:: ./example_c_build/make.py
   :linenos:
 
-We can make all by ``$ python make.py``, which turns ``./out`` to be
+Running ``$ python make.py`` will make all, which turns ``./out`` to be
 
 .. literalinclude:: ./example_c_build/_tmp-tree-out.txt
 
@@ -171,9 +171,35 @@ Alternatively, we can make a subset of rules by, for example,
 
 .. literalinclude:: ./example_c_build/_tmp-tree-liba.txt
 
+Visualization
+-------------
 
-Re-run
-------
+It is possible to visualize the group tree structure and rule dependencies.
+For example, ::
+
+  import jtcmake
+  jtcmake.print_graphviz(g.tools.tool1, "graph.svg")
+
+creates the picture below in which all the dependencies of ``tool1`` and their
+structure are illustrated.
+
+.. image:: ./example_c_build/_tmp-graph-tool1.svg
+
+Dry-run
+-------
+
+Like most build tools, JTCMake can print which rules would be executed instead
+of actually executing them.
+It is as easy as running ``make()`` with ``dry_run=True``. ::
+
+  g.liba.make(dry_run=True)
+
+Outputs will be
+
+.. literalinclude:: example_c_build/_tmp-log.txt
+
+Skipping Completed Rules
+------------------------
 
 Just like Makefile, JTCMake by default checks the existence and modification
 time of the input/output files of each rule, and if the output files are there
@@ -195,6 +221,66 @@ Subsequent sections will describe the concepts and usage of JTCMake in detail.
 ****************
 Group Tree Model
 ****************
+
+This chapter describes the conceptual aspects of *group trees*.
+Actual coding using group trees is explained in the next chapter.
+
+JTCMake stores a set of rules in a tree called *group tree*, instead of a
+flat data structure. A group tree contains three kinds of nodes:
+
+.. list-table:: Group Tree Nodes
+  :header-rows: 1
+
+  * - Name
+    - Role
+    - Properties
+    - Children
+  * - Group
+    - cluster of rules.
+    - ``basename``
+      ``path-prefix``
+    - arbitrary number of groups and rules
+  * - Rule
+    - a rule (unit of task).
+    - ``basename``
+    - 1 or more files
+  * - File
+    - an output file of a rule
+    - ``basename``
+      ``path-base``
+    - 
+
+Groups and files have two properties 
+where as rules have ``basename`` only.
+
+.. image:: ./_static/group-tree-model.svg
+  :width: 1200
+
+Every node in the tree can be specified using its (fully qualified) *name* which
+is the *basenames* of all its ancesters and itself concatenated.
+For example, the name of the leftmost rule in the above figure is
+``<ROOT>.foo.a`` and its second child's name is ``<ROOT>.foo.a.f2``.
+
+Similarly, every file node's path is given by joining *path-prefixes* of its
+ancester groups and its *path-base*.
+For example, the path of the leftmost file in the above figure is
+``top/foo-f1.txt`` whereas the path of the forth file from the left
+(whose name is ``<ROOT>.bar.baz1.c.x``) is ``top/baz/y``.
+
+Managing rules this way serves two benefits:
+
+**Namespacing**
+
+  Putting relevant rules or sets of rules into the same logical block lowers
+  the cognitive load on the programmer and promote modularization of the code.
+
+**Path Mapping**
+
+  By designing the group nodes to represent the actual directories or, in
+  general, common prefixes of the file paths, the whole group tree naturally and
+  intuitively corresponds to the whole directory tree.
+  It again reduces the cognitive load to comprehend the tasks and their outputs. 
+
 
 Rule
 ====
