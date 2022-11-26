@@ -70,7 +70,7 @@ Overview
 
 Typical workflow using JTCMake consists of two steps:
 
-1. Create a *group tree* and define *rules* as nodes in the tree
+1. Create a *group tree* and define *rules* as the nodes in the group tree
 2. Call ``make()`` on a sub-tree (or the root) to execute the rules
 
 
@@ -218,27 +218,48 @@ JTCMake performs incremental build in a define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.
 
 
-****************
+*************
+Core Concepts
+*************
+
+This chapter describes some major concepts of JTCMake.
+The actual APIs are explained in the `Construction of Group Trees`_ chapter.
+
+Rules and Dependency
+====================
+
+Rules are the the smallest unit of work. A rule consists of a *method* that
+takes some inputs (*input files* and other kind of Python objects like integers)
+and produces files (*output files*).
+
+.. image:: _static/rule_in_out.svg
+
+Dependency between two rules is judged based on the input/output files:
+when an output file of rule *A* is an input to rule *B*, *B* is considered to
+depend on *A*.
+
+Dependencies between a set of rules can be described using a dependency graph.
+JTCMake imposes a restriction on dependency graphs that they must be asyclic.
+
+
 Group Tree Model
-****************
+================
 
-This chapter describes the conceptual aspects of *group trees*.
-Actual coding using group trees is explained in the next chapter.
-
-JTCMake stores a set of rules in a tree called *group tree*, instead of a
-flat data structure. A group tree contains three kinds of nodes:
+JTCMake maintains the definition of rules in a tree called *group tree*,
+instead of storing them in a flat data structure.
+Group trees may contain three kinds of nodes:
 
 .. list-table:: Group Tree Nodes
   :header-rows: 1
 
-  * - Name
+  * - Kind
     - Role
     - Properties
     - Children
   * - Group
     - cluster of rules.
-    - ``basename``
-      ``path-prefix``
+    - | ``basename``
+      | ``path-prefix``
     - arbitrary number of groups and rules
   * - Rule
     - a rule (unit of task).
@@ -246,14 +267,11 @@ flat data structure. A group tree contains three kinds of nodes:
     - 1 or more files
   * - File
     - an output file of a rule
-    - ``basename``
-      ``path-base``
+    - | ``basename``
+      | ``path-base``
     - 
 
-Groups and files have two properties 
-where as rules have ``basename`` only.
-
-.. image:: ./_static/group-tree-model.svg
+.. image:: ./figure_group_tree/tmp-group-tree.svg
   :width: 1200
 
 Every node in the tree can be specified using its (fully qualified) *name* which
@@ -261,11 +279,11 @@ is the *basenames* of all its ancesters and itself concatenated.
 For example, the name of the leftmost rule in the above figure is
 ``<ROOT>.foo.a`` and its second child's name is ``<ROOT>.foo.a.f2``.
 
-Similarly, every file node's path is given by joining *path-prefixes* of its
-ancester groups and its *path-base*.
-For example, the path of the leftmost file in the above figure is
-``top/foo-f1.txt`` whereas the path of the forth file from the left
-(whose name is ``<ROOT>.bar.baz1.c.x``) is ``top/baz/y``.
+Similarly, the (fully qualified) *path* of any file node is given by joining
+*path-prefixes* of its ancester groups and the *path-base* of itself.
+For example, the six files in the above figure have names and paths as follows.
+
+.. literalinclude:: ./figure_group_tree/tmp-files.txt
 
 Managing rules this way serves two benefits:
 
@@ -282,32 +300,115 @@ Managing rules this way serves two benefits:
   It again reduces the cognitive load to comprehend the tasks and their outputs. 
 
 
-Rule
-====
-
-
-Group Tree
-==========
-
-
 ***************************
 Construction of Group Trees
 ***************************
 
+As described in the `Overview`_ chapter, our first step in the JTCMake workflow
+is to create a group tree that holds the definition of rules inside.
+
 Group Node Classes
 ==================
+
+There are four classes that represent a group node.
+Here is a summary of the classes.
+
+.. list-table:: Group Tree Nodes
+  :widths: 2 2 1 1 3
+  :header-rows: 1
+
+  * - Class Name
+    - Children
+    - Dynamic
+    - Typing
+    - Analogous to
+  * - UntypedGroup
+    - Groups/Rules
+    - Yes
+    - Weak
+    - ``dict[str, Group | Rule]``
+  * - GroupsGroup
+    - Groups
+    - Yes
+    - Strong
+    - ``dict[str, Group]``
+  * - RulesGroup
+    - Rules
+    - Yes
+    - Strong
+    - ``dict[str, Rule]``
+  * - StaticGroupBase
+    - Groups/Rules
+    - No
+    - Strongest
+    - TypedDict/dataclass
+
+UntypedGroup
+------------
+
+See also :class:`jtcmake.UntypedGroup`.
+
+*UntypedGroup* can have arbitrary number of groups and rules as children.
+This class a dynamic container: you can add child groups/rules to an instance
+of UntypedGroup like you can insert items to a dict.
+
+It's weakly type-annotated. For example, getting a non-static attribute like 
+``some_untyped_group.a`` is annotated to return Any, so type checkers don't
+know whether it is supposed to be a child group/rule with the basename "a"
+or an ``AttributeError``.
+In most cases, you should be able to satisfy your requirements using the other
+three classes, and, in those cases, you should do so.
+
 
 StaticGroupBase
 ---------------
 
+See also :class:`jtcmake.StaticGroupBase`.
+
+*StaticGroupBase* is the base class for *static groups*.
+You should always subclass it to create a custom static group.
+When subclassing it, you must give the names and types of the child nodes
+(groups and rules) using type annotations::
+
+    from jtcmake import StaticGroupBase, GroupsGroup, Rule
+
+    class CustomStaticGroup(StaticGroupBase):
+        foo: Rule
+        bar: GroupsGroup
+        baz: AnotherCustomStaticGroup
+    
+    class AnotherCustomStaticGroup(StaticGroupBase):
+        qux: Rule
+
+These child nodes are automatically instanciated when the parent node is
+instanciated::
+    
+    root = CustomStaticGroup()
+    """
+    By the above call, an instance of CustomStaticGroup is created, which
+    triggers the automatic instanciation of the three children foo, bar and baz.
+    Instanciation of baz (AnotherCustomStaticGroup) in turn invokes the
+    instanciation of its child qux.
+    """
+
+    # You can read the child nodes even though you didn't create them explicitly
+    assert isinstance(root.foo, Rule)
+    assert isinstance(root.bar, GroupsGroup)
+    assert isinstance(root.baz, AnotherCustomStaticGroup)
+    assert isinstance(root.baz.qux, Rule)
+
+
 GroupsGroup
 -----------
+
+See also :class:`jtcmake.GroupsGroup`.
+
 
 RulesGroup
 ----------
 
-UntypedGroup
-------------
+See also :class:`jtcmake.RulesGroup`.
+
 
 
 ***********
@@ -324,3 +425,10 @@ Make
 
 Parallel Execution
 ------------------
+
+
+Visualization
+=============
+
+
+
