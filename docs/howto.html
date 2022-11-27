@@ -54,9 +54,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#group-tree-model">Group Tree Model</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#rule">Rule</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#group-tree">Group Tree</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-concepts">Core Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#rules-and-dependency">Rules and Dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#group-tree-model">Group Tree Model</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a><ul>
@@ -75,6 +75,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#parallel-execution">Parallel Execution</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Visualization</a></li>
 </ul>
 </li>
 </ul>
@@ -152,7 +153,7 @@ are provided.</p>
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
 <p>Typical workflow using JTCMake consists of two steps:</p>
 <ol class="arabic simple">
-<li><p>Create a <em>group tree</em> and define <em>rules</em> as nodes in the tree</p></li>
+<li><p>Create a <em>group tree</em> and define <em>rules</em> as the nodes in the group tree</p></li>
 <li><p>Call <code class="docutils literal notranslate"><span class="pre">make()</span></code> on a sub-tree (or the root) to execute the rules</p></li>
 </ol>
 <section id="example-writing-to-a-file">
@@ -425,14 +426,28 @@ with the source files unchanged results in no-op.</p>
 Subsequent sections will describe the concepts and usage of JTCMake in detail.</p>
 </section>
 </section>
+<section id="core-concepts">
+<h2>Core Concepts<a class="headerlink" href="#core-concepts" title="Permalink to this heading"></a></h2>
+<p>This chapter describes some major concepts of JTCMake.
+The actual APIs are explained in the <a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a> chapter.</p>
+<section id="rules-and-dependency">
+<h3>Rules and Dependency<a class="headerlink" href="#rules-and-dependency" title="Permalink to this heading"></a></h3>
+<p>Rules are the the smallest unit of work. A rule consists of a <em>method</em> that
+takes some inputs (<em>input files</em> and other kind of Python objects like integers)
+and produces files (<em>output files</em>).</p>
+<img alt="_images/rule_in_out.svg" src="_images/rule_in_out.svg" /><p>Dependency between two rules is judged based on the input/output files:
+when an output file of rule <em>A</em> is an input to rule <em>B</em>, <em>B</em> is considered to
+depend on <em>A</em>.</p>
+<p>Dependencies between a set of rules can be described using a dependency graph.
+JTCMake imposes a restriction on dependency graphs that they must be asyclic.</p>
+</section>
 <section id="group-tree-model">
-<h2>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading"></a></h2>
-<p>This chapter describes the conceptual aspects of <em>group trees</em>.
-Actual coding using group trees is explained in the next chapter.</p>
-<p>JTCMake stores a set of rules in a tree called <em>group tree</em>, instead of a
-flat data structure. A group tree contains three kinds of nodes:</p>
-<table class="docutils align-default" id="id1">
-<caption><span class="caption-text">Group Tree Nodes</span><a class="headerlink" href="#id1" title="Permalink to this table"></a></caption>
+<h3>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading"></a></h3>
+<p>JTCMake maintains the definition of rules in a tree called <em>group tree</em>,
+instead of storing them in a flat data structure.
+Group trees may contain three kinds of nodes:</p>
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-text">Group Tree Nodes</span><a class="headerlink" href="#id2" title="Permalink to this table"></a></caption>
 <colgroup>
 <col style="width: 25%" />
 <col style="width: 25%" />
@@ -440,7 +455,7 @@ flat data structure. A group tree contains three kinds of nodes:</p>
 <col style="width: 25%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Name</p></th>
+<tr class="row-odd"><th class="head"><p>Kind</p></th>
 <th class="head"><p>Role</p></th>
 <th class="head"><p>Properties</p></th>
 <th class="head"><p>Children</p></th>
@@ -449,8 +464,11 @@ flat data structure. A group tree contains three kinds of nodes:</p>
 <tbody>
 <tr class="row-even"><td><p>Group</p></td>
 <td><p>cluster of rules.</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">basename</span></code>
-<code class="docutils literal notranslate"><span class="pre">path-prefix</span></code></p></td>
+<td><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">basename</span></code></div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">path-prefix</span></code></div>
+</div>
+</td>
 <td><p>arbitrary number of groups and rules</p></td>
 </tr>
 <tr class="row-odd"><td><p>Rule</p></td>
@@ -460,24 +478,32 @@ flat data structure. A group tree contains three kinds of nodes:</p>
 </tr>
 <tr class="row-even"><td><p>File</p></td>
 <td><p>an output file of a rule</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">basename</span></code>
-<code class="docutils literal notranslate"><span class="pre">path-base</span></code></p></td>
+<td><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">basename</span></code></div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">path-base</span></code></div>
+</div>
+</td>
 <td></td>
 </tr>
 </tbody>
 </table>
-<p>Groups and files have two properties
-where as rules have <code class="docutils literal notranslate"><span class="pre">basename</span></code> only.</p>
-<a class="reference internal image-reference" href="_images/group-tree-model.svg"><img alt="_images/group-tree-model.svg" src="_images/group-tree-model.svg" width="1200" /></a>
+<a class="reference internal image-reference" href="_images/tmp-group-tree.svg"><img alt="_images/tmp-group-tree.svg" src="_images/tmp-group-tree.svg" width="1200" /></a>
 <p>Every node in the tree can be specified using its (fully qualified) <em>name</em> which
 is the <em>basenames</em> of all its ancesters and itself concatenated.
 For example, the name of the leftmost rule in the above figure is
 <code class="docutils literal notranslate"><span class="pre">&lt;ROOT&gt;.foo.a</span></code> and its second child’s name is <code class="docutils literal notranslate"><span class="pre">&lt;ROOT&gt;.foo.a.f2</span></code>.</p>
-<p>Similarly, every file node’s path is given by joining <em>path-prefixes</em> of its
-ancester groups and its <em>path-base</em>.
-For example, the path of the leftmost file in the above figure is
-<code class="docutils literal notranslate"><span class="pre">top/foo-f1.txt</span></code> whereas the path of the forth file from the left
-(whose name is <code class="docutils literal notranslate"><span class="pre">&lt;ROOT&gt;.bar.baz1.c.x</span></code>) is <code class="docutils literal notranslate"><span class="pre">top/baz/y</span></code>.</p>
+<p>Similarly, the (fully qualified) <em>path</em> of any file node is given by joining
+<em>path-prefixes</em> of its ancester groups and the <em>path-base</em> of itself.
+For example, the six files in the above figure have names and paths as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Name</span>                   <span class="n">Path</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">foot</span><span class="o">.</span><span class="n">a</span><span class="o">.</span><span class="n">f1</span>       <span class="n">top</span><span class="o">/</span><span class="n">foo</span><span class="o">-</span><span class="n">f1</span><span class="o">.</span><span class="n">txt</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">foot</span><span class="o">.</span><span class="n">a</span><span class="o">.</span><span class="n">f2</span>       <span class="n">top</span><span class="o">/</span><span class="n">foo</span><span class="o">-</span><span class="n">f2</span><span class="o">.</span><span class="n">txt</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">foot</span><span class="o">.</span><span class="n">b</span><span class="o">.</span><span class="n">f3</span>       <span class="n">top</span><span class="o">/</span><span class="n">foo</span><span class="o">-</span><span class="n">f3</span><span class="o">.</span><span class="n">txt</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">bar</span><span class="o">.</span><span class="n">baz1</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">x</span>    <span class="n">top</span><span class="o">/</span><span class="n">baz</span><span class="o">/</span><span class="n">y</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">bar</span><span class="o">.</span><span class="n">baz2</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">p</span>    <span class="n">top</span><span class="o">/</span><span class="n">baz</span><span class="o">/</span><span class="n">q</span>
+<span class="o">&lt;</span><span class="n">ROOT</span><span class="o">&gt;.</span><span class="n">bar</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">p</span>         <span class="n">top</span><span class="o">/</span><span class="n">q</span>
+</pre></div>
+</div>
 <p>Managing rules this way serves two benefits:</p>
 <p><strong>Namespacing</strong></p>
 <blockquote>
@@ -491,28 +517,358 @@ general, common prefixes of the file paths, the whole group tree naturally and
 intuitively corresponds to the whole directory tree.
 It again reduces the cognitive load to comprehend the tasks and their outputs.</p>
 </div></blockquote>
-<section id="rule">
-<h3>Rule<a class="headerlink" href="#rule" title="Permalink to this heading"></a></h3>
-</section>
-<section id="group-tree">
-<h3>Group Tree<a class="headerlink" href="#group-tree" title="Permalink to this heading"></a></h3>
 </section>
 </section>
 <section id="construction-of-group-trees">
 <h2>Construction of Group Trees<a class="headerlink" href="#construction-of-group-trees" title="Permalink to this heading"></a></h2>
+<p>As described in the <a class="reference internal" href="#overview">Overview</a> chapter, our first step in the JTCMake workflow
+is to create a group tree that holds the definition of rules inside.</p>
 <section id="group-node-classes">
 <h3>Group Node Classes<a class="headerlink" href="#group-node-classes" title="Permalink to this heading"></a></h3>
+<p>There are four classes that represent a group node.
+The reason why there are four but not one is solely the capability of
+fine-graned static program analysis.
+If you write your code with no support from IDEs or static type checkers,
+UntypedGroup alone is sufficient. But if you are to write a long complex code
+and still be productive, you should use the other three classes
+(StaticGroupBase, GroupsGroup, and RulesGroup) with an IDE and static type
+checkers.</p>
+<p>Here is a summary of the classes.</p>
+<table class="colwidths-given docutils align-default" id="id3">
+<caption><span class="caption-text">Summary of Group Classes (1)</span><a class="headerlink" href="#id3" title="Permalink to this table"></a></caption>
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 22%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Class Name</p></th>
+<th class="head"><p>Children</p></th>
+<th class="head"><p>Container</p></th>
+<th class="head"><p>Typing</p></th>
+<th class="head"><p>Analogous to</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>StaticGroupBase</p></td>
+<td><p>Groups/Rules</p></td>
+<td><p>static</p></td>
+<td><p>Strongest</p></td>
+<td><p>TypedDict/dataclasses</p></td>
+</tr>
+<tr class="row-odd"><td><p>GroupsGroup</p></td>
+<td><p>Groups</p></td>
+<td><p>dynamic</p></td>
+<td><p>Strong</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Group]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>RulesGroup</p></td>
+<td><p>Rules</p></td>
+<td><p>dynamic</p></td>
+<td><p>Strong</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Rule]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>UntypedGroup</p></td>
+<td><p>Groups/Rules</p></td>
+<td><p>dynamic</p></td>
+<td><p>Weak</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Group</span> <span class="pre">|</span> <span class="pre">Rule]</span></code></p></td>
+</tr>
+</tbody>
+</table>
 <section id="staticgroupbase">
 <h4>StaticGroupBase<a class="headerlink" href="#staticgroupbase" title="Permalink to this heading"></a></h4>
+<p><em>StaticGroupBase</em> is the base class for <em>static groups</em>.
+You should always subclass it to create a custom static group.
+When subclassing it, you must give the names and types of the child nodes
+(groups and rules) via type annotations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">StaticGroupBase</span><span class="p">,</span> <span class="n">Rule</span><span class="p">,</span> <span class="n">SELF</span>
+<span class="kn">import</span> <span class="nn">jtcmake</span> <span class="k">as</span> <span class="nn">jtc</span>
+
+<span class="k">class</span> <span class="nc">AnotherCustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">grandchild</span><span class="p">:</span> <span class="n">Rule</span>
+
+<span class="k">class</span> <span class="nc">CustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span>
+    <span class="n">ggroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">GroupsGroup</span>
+    <span class="n">rgroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">RulesGroup</span>
+    <span class="n">ugroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span>
+    <span class="n">sgroup</span><span class="p">:</span> <span class="n">AnotherCustomStaticGroup</span>
+</pre></div>
+</div>
+<p>These child nodes are automatically instanciated when the parent node is
+instanciated:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">root</span> <span class="o">=</span> <span class="n">CustomStaticGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">By the above call, an instance of CustomStaticGroup is created, which</span>
+<span class="sd">triggers the automatic instanciation of the three children ``ggroup``,</span>
+<span class="sd">``rgroup``, ``ugroup``, and ``sgroup``.</span>
+<span class="sd">Instanciation of sgroup (AnotherCustomStaticGroup) in turn invokes the</span>
+<span class="sd">instanciation of its child ``sgroup.grandchild``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># You can read the child nodes without explicitly creating them</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">,</span> <span class="n">Rule</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">ggroup</span><span class="p">,</span> <span class="n">jtc</span><span class="o">.</span><span class="n">GroupsGroup</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">rgroup</span><span class="p">,</span> <span class="n">jtc</span><span class="o">.</span><span class="n">RulesGroup</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">ugroup</span><span class="p">,</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="p">,</span> <span class="n">AnotherCustomStaticGroup</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="p">,</span> <span class="n">Rule</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this point, the children are instanciated but not complete.
+You have to <em>initialize</em> the child rule <code class="docutils literal notranslate"><span class="pre">root.rule</span></code> by attaching methods and
+inputs using :func:<code class="docutils literal notranslate"><span class="pre">jtcmake.Rule.init</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rule.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The dynamic-container-like child groups <code class="docutils literal notranslate"><span class="pre">root.ggroup</span></code>, <code class="docutils literal notranslate"><span class="pre">root.rgroup</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">root.ugroup</span></code> are now empty.
+You need to append children to them as necessary:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Append child groups to ``root.ggroup``.</span>
+<span class="n">root</span><span class="o">.</span><span class="n">ggroup</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="c1"># Append child rules to ``root.rgroup``.</span>
+<span class="n">root</span><span class="o">.</span><span class="n">rgroup</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="c1"># Append child groups and rules to ``root.ugroup``.</span>
+<span class="n">root</span><span class="o">.</span><span class="n">ugroup</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">ugroup</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See the later sections and the API reference of GroupsGroup, RulesGroup, and
+UntypedGroup for more information.</p>
+<p>Finally, you need to <em>initialize</em> <code class="docutils literal notranslate"><span class="pre">root.sgroup</span></code> just as you did with the root.
+i.e. you need to initialize <code class="docutils literal notranslate"><span class="pre">root.sgroup.grandchild</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now the whole group tree is initialized and you can, for example, check the
+file paths:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># 0-th file of ``root.rule`` (the only file of the rule)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+<span class="c1"># 0-th file of ``root.sgroup.grandchild`` (the only file of the rule )</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>output/rule.txt
+ouptut/sgroup/foo.txt
+</pre></div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The <em>init method pattern</em></p>
+<p>In the above example, the initialization code for the group tree is written
+in the top level block, i.e</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">StaticGroupBase</span><span class="p">,</span> <span class="n">Rule</span><span class="p">,</span> <span class="n">SELF</span>
+<span class="kn">import</span> <span class="nn">jtcmake</span> <span class="k">as</span> <span class="nn">jtc</span>
+
+<span class="k">class</span> <span class="nc">CustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span>
+    <span class="n">ggroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">GroupsGroup</span>
+    <span class="n">rgroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">RulesGroup</span>
+    <span class="n">ugroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span>
+    <span class="n">sgroup</span><span class="p">:</span> <span class="n">AnotherCustomStaticGroup</span>
+
+<span class="k">class</span> <span class="nc">AnotherCustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">grandchild</span><span class="p">:</span> <span class="n">Rule</span>
+
+<span class="n">root</span> <span class="o">=</span> <span class="n">CustomStaticGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="c1"># Child rule of self</span>
+<span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rule.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+
+<span class="c1"># Child groups of self</span>
+<span class="c1"># root.ggroup.add_group(...) ...</span>
+
+<span class="c1"># Grandchild rule of self</span>
+<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A “flat” initialization code like this is hard to maintain and reuse
+(especially when it grows).
+Instead, a more modularized “init method pattern” is recommended:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">StaticGroupBase</span><span class="p">,</span> <span class="n">Rule</span><span class="p">,</span> <span class="n">SELF</span>
+<span class="kn">import</span> <span class="nn">jtcmake</span> <span class="k">as</span> <span class="nn">jtc</span>
+
+<span class="k">class</span> <span class="nc">CustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span>
+    <span class="n">ggroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">GroupsGroup</span>
+    <span class="n">rgroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">RulesGroup</span>
+    <span class="n">ugroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span>
+    <span class="n">sgroup</span><span class="p">:</span> <span class="n">AnotherCustomStaticGroup</span>
+
+    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Child rule of self</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rule.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Child groups of self</span>
+        <span class="c1"># self.ggroup.add_group(...) ...</span>
+
+        <span class="c1"># Grandchildren of self</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rule</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">AnotherCustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">grandchild</span><span class="p">:</span> <span class="n">Rule</span>
+
+    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">src_file</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
+
+
+<span class="n">root</span> <span class="o">=</span> <span class="n">CustomStaticGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>Precise Type Annotation</p>
+<p>In the above example, generic type parameters for the type annotations of
+child nodes are omitted.
+However in practice, you can, and basically you should, provide ones to get
+better support from IDEs and type checkers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CustomStaticGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rule.txt&quot;</span><span class="p">]]</span>
+    <span class="n">ggroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">GroupsGroup</span><span class="p">[</span><span class="n">YetAnotherCustomStaticGroup</span><span class="p">]</span>
+    <span class="n">rgroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">RulesGroup</span>
+    <span class="n">ugroup</span><span class="p">:</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span>
+    <span class="n">sgroup</span><span class="p">:</span> <span class="n">AnotherCustomStaticGroup</span>
+</pre></div>
+</div>
+<p>Generic type parameters are ignored at runtime.</p>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="reference.html#jtcmake.StaticGroupBase" title="jtcmake.StaticGroupBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.StaticGroupBase</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.init" title="jtcmake.Rule.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.init</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.init_deco" title="jtcmake.Rule.init_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.init_deco</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.initvf" title="jtcmake.Rule.initvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.initvf</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.initvf_deco" title="jtcmake.Rule.initvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.initvf_deco</span></code></a></p></li>
+</ul>
+</div>
 </section>
 <section id="groupsgroup">
 <h4>GroupsGroup<a class="headerlink" href="#groupsgroup" title="Permalink to this heading"></a></h4>
+<p><em>GroupsGroup</em> may have children of groups only.
+You should use this class instead of <a class="reference internal" href="#staticgroupbase">StaticGroupBase</a> when the child groups’
+names are dynamically determined at run time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">GroupsGroup</span><span class="p">,</span> <span class="n">StaticGroupBase</span><span class="p">,</span> <span class="n">Rule</span><span class="p">,</span> <span class="n">SELF</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="k">class</span> <span class="nc">CustomGroup</span><span class="p">(</span><span class="n">StaticGroupBase</span><span class="p">):</span>
+    <span class="n">child</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;a.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;abc&quot;</span><span class="p">)</span>
+
+<span class="n">root</span><span class="p">:</span> <span class="n">GroupsGroup</span><span class="p">[</span><span class="n">CustomGroup</span><span class="p">]</span> <span class="o">=</span> <span class="n">GroupsGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">set_default_child</span><span class="p">(</span><span class="n">CustomGroup</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;group</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">set_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">-&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">groups</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span>
+<span class="k">assert</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">group50</span><span class="o">.</span><span class="n">child</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="s2">&quot;output/50-a.txt&quot;</span>
+</pre></div>
+</div>
+<p>The type hint <code class="docutils literal notranslate"><span class="pre">GroupsGroup[CustomGroup]</span></code> is only for static type checking
+and ignored at runtime.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="reference.html#jtcmake.GroupsGroup" title="jtcmake.GroupsGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.GroupsGroup</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.GroupsGroup.add_group" title="jtcmake.GroupsGroup.add_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.GroupsGroup.add_group()</span></code></a></p></li>
+</ul>
+</div>
 </section>
 <section id="rulesgroup">
 <h4>RulesGroup<a class="headerlink" href="#rulesgroup" title="Permalink to this heading"></a></h4>
+<p><em>RulesGroup</em> may have children of rules only.
+You should use this class instead of <a class="reference internal" href="#staticgroupbase">StaticGroupBase</a> when the child rules’
+names are dynamically determined at run time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">RulesGroup</span><span class="p">,</span> <span class="n">SELF</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="n">root</span> <span class="o">=</span> <span class="n">RulesGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rule</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;R&gt;.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;abc&quot;</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">rules</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span>
+<span class="k">assert</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">rule50</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="s2">&quot;output/rule50.txt&quot;</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup" title="jtcmake.RulesGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.RulesGroup</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.add" title="jtcmake.RulesGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.add()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.add_deco" title="jtcmake.RulesGroup.add_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.add_deco()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.addvf" title="jtcmake.RulesGroup.addvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.addvf()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.addvf_deco" title="jtcmake.RulesGroup.addvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.addvf_deco()</span></code></a></p></li>
+</ul>
+</div>
 </section>
 <section id="untypedgroup">
 <h4>UntypedGroup<a class="headerlink" href="#untypedgroup" title="Permalink to this heading"></a></h4>
+<p><em>UntypedGroup</em> can have arbitrary number of groups and rules as children.
+This class is a dynamic container: you can add child groups/rules to an instance
+of UntypedGroup like you can insert items to a dict.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As mentioned at the beginning of this chapter, UntypedGroup is not sutable
+for creating a deep tree containing a large number of rules because it is
+weakly type-annotated.  Some sample codes in this tutorial use UntypedGroup
+only to keep them visually concise.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">UntypedGroup</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">Rule</span>
+
+<span class="c1"># Create a root node</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">UntypedGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="c1"># Append a rule</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="o">.</span><span class="n">write_text</span><span class="p">)(</span><span class="n">SELF</span><span class="p">,</span> <span class="s2">&quot;abc&quot;</span><span class="p">)</span>
+
+<span class="c1"># Append a group. The added group is also an UntypedGroup.</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
+
+<span class="c1"># Append a rule to the child group</span>
+<span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;baz.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">],</span> <span class="n">Rule</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="p">,</span> <span class="n">UntypedGroup</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="p">[</span><span class="s2">&quot;baz.txt&quot;</span><span class="p">],</span> <span class="n">Rule</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup" title="jtcmake.UntypedGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add_group" title="jtcmake.UntypedGroup.add_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add_group()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add" title="jtcmake.UntypedGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add_deco" title="jtcmake.UntypedGroup.add_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add_deco()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.addvf" title="jtcmake.UntypedGroup.addvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.addvf()</span></code></a></p></li>
+<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.addvf_deco" title="jtcmake.UntypedGroup.addvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.addvf_deco()</span></code></a></p></li>
+</ul>
+</div>
 </section>
 </section>
 </section>
@@ -526,6 +882,9 @@ It again reduces the cognitive load to comprehend the tasks and their outputs.</
 <section id="parallel-execution">
 <h4>Parallel Execution<a class="headerlink" href="#parallel-execution" title="Permalink to this heading"></a></h4>
 </section>
+</section>
+<section id="id1">
+<h3>Visualization<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h3>
 </section>
 </section>
 </section>
