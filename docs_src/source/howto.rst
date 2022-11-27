@@ -362,18 +362,19 @@ When subclassing it, you must give the names and types of the child nodes
 
 .. testcode:: sample_StaticGroupBase
 
-    from jtcmake import StaticGroupBase, GroupsGroup, Rule, SELF
+    from jtcmake import StaticGroupBase, Rule, SELF
+    import jtcmake as jtc
 
-    class CustomStaticGroup(StaticGroupBase):
-        rule: Rule
-        ggroup: GroupsGroup
-        rgroup: RulesGroup
-        ugroup: UntypedGroup
-        sgroup: AnotherCustomStaticGroup
-    
     class AnotherCustomStaticGroup(StaticGroupBase):
         grandchild: Rule
 
+    class CustomStaticGroup(StaticGroupBase):
+        rule: Rule
+        ggroup: jtc.GroupsGroup
+        rgroup: jtc.RulesGroup
+        ugroup: jtc.UntypedGroup
+        sgroup: AnotherCustomStaticGroup
+    
 These child nodes are automatically instanciated when the parent node is
 instanciated:
 
@@ -391,11 +392,11 @@ instanciated:
 
     # You can read the child nodes without explicitly creating them
     assert isinstance(root.rule, Rule)
-    assert isinstance(root.ggroup, GroupsGroup)
-    assert isinstance(root.rgroup, RulesGroup)
-    assert isinstance(root.ugroup, UntypedGroup)
+    assert isinstance(root.ggroup, jtc.GroupsGroup)
+    assert isinstance(root.rgroup, jtc.RulesGroup)
+    assert isinstance(root.ugroup, jtc.UntypedGroup)
     assert isinstance(root.sgroup, AnotherCustomStaticGroup)
-    assert isinstance(root.sgroup.foo, Rule)
+    assert isinstance(root.sgroup.grandchild, Rule)
 
 At this point, the children are instanciated but not complete.
 You have to *initialize* the child rule ``root.rule`` by attaching methods and
@@ -457,13 +458,14 @@ file paths::
     .. code-block::
 
         from pathlib import Path
-        from jtcmake import StaticGroupBase, GroupsGroup, Rule, SELF
+        from jtcmake import StaticGroupBase, Rule, SELF
+        import jtcmake as jtc
 
         class CustomStaticGroup(StaticGroupBase):
             rule: Rule
-            ggroup: GroupsGroup
-            rgroup: RulesGroup
-            ugroup: UntypedGroup
+            ggroup: jtc.GroupsGroup
+            rgroup: jtc.RulesGroup
+            ugroup: jtc.UntypedGroup
             sgroup: AnotherCustomStaticGroup
         
         class AnotherCustomStaticGroup(StaticGroupBase):
@@ -485,13 +487,14 @@ file paths::
     Instead, a more modularized "init method pattern" is recommended::
 
         from pathlib import Path
-        from jtcmake import StaticGroupBase, GroupsGroup, Rule, SELF
+        from jtcmake import StaticGroupBase, Rule, SELF
+        import jtcmake as jtc
 
         class CustomStaticGroup(StaticGroupBase):
             rule: Rule
-            ggroup: GroupsGroup
-            rgroup: RulesGroup
-            ugroup: UntypedGroup
+            ggroup: jtc.GroupsGroup
+            rgroup: jtc.RulesGroup
+            ugroup: jtc.UntypedGroup
             sgroup: AnotherCustomStaticGroup
 
             def init(self):
@@ -525,9 +528,9 @@ file paths::
 
       class CustomStaticGroup(StaticGroupBase):
           rule: Rule[Literal["rule.txt"]]
-          ggroup: GroupsGroup[YetAnotherCustomStaticGroup]
-          rgroup: RulesGroup
-          ugroup: UntypedGroup
+          ggroup: jtc.GroupsGroup[YetAnotherCustomStaticGroup]
+          rgroup: jtc.RulesGroup
+          ugroup: jtc.UntypedGroup
           sgroup: AnotherCustomStaticGroup
 
   Generic type parameters are ignored at runtime.
@@ -565,7 +568,10 @@ names are dynamically determined at run time.
     root.set_default_child(CustomGroup)
 
     for i in range(N):
-        root.add_group(f"group-{i}").init()
+        root.add_group(f"group{i}").set_prefix(prefix=f"{i}-").init()
+
+    assert len(root.groups) == N
+    assert str(root.group50.child[0]) == "output/50-a.txt"
 
 The type hint ``GroupsGroup[CustomGroup]`` is only for static type checking
 and ignored at runtime.
@@ -590,10 +596,14 @@ names are dynamically determined at run time.
 
     N = 100
 
-    root: RulesGroup[CustomGroup] = RulesGroup("output")
+    root = RulesGroup("output")
 
     for i in range(N):
-        root.add(f"rule-{i}").init()
+        root.add(f"rule{i}", "<R>.txt", Path.write_text)(SELF, "abc")
+
+    assert len(root.rules) == N
+    assert str(root.rule50[0]) == "output/rule50.txt"
+
 
 .. seealso::
 
@@ -633,7 +643,7 @@ of UntypedGroup like you can insert items to a dict.
   g.add_group("bar")
 
   # Append a rule to the child group
-  g.bar.add("baz.txt", shutil.copy)(g.foo, SELF)
+  g.bar.add("baz.txt", shutil.copy)(g["foo.txt"][0], SELF)
 
   assert isinstance(g["foo.txt"], Rule)
   assert isinstance(g.bar, UntypedGroup)
