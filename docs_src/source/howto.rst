@@ -70,7 +70,7 @@ Overview
 
 Typical workflow using JTCMake consists of two steps:
 
-1. Create a *group tree* and define *rules* as nodes in the tree
+1. Create a *group tree* and define *rules* as the nodes in the group tree
 2. Call ``make()`` on a sub-tree (or the root) to execute the rules
 
 
@@ -218,27 +218,48 @@ JTCMake performs incremental build in a define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.
 
 
-****************
+*************
+Core Concepts
+*************
+
+This chapter describes some major concepts of JTCMake.
+The actual APIs are explained in the `Construction of Group Trees`_ chapter.
+
+Rules and Dependency
+====================
+
+Rules are the the smallest unit of work. A rule consists of a *method* that
+takes some inputs (*input files* and other kind of Python objects like integers)
+and produces files (*output files*).
+
+.. image:: _static/rule_in_out.svg
+
+Dependency between two rules is judged based on the input/output files:
+when an output file of rule *A* is an input to rule *B*, *B* is considered to
+depend on *A*.
+
+Dependencies between a set of rules can be described using a dependency graph.
+JTCMake imposes a restriction on dependency graphs that they must be asyclic.
+
+
 Group Tree Model
-****************
+================
 
-This chapter describes the conceptual aspects of *group trees*.
-Actual coding using group trees is explained in the next chapter.
-
-JTCMake stores a set of rules in a tree called *group tree*, instead of a
-flat data structure. A group tree contains three kinds of nodes:
+JTCMake maintains the definition of rules in a tree called *group tree*,
+instead of storing them in a flat data structure.
+Group trees may contain three kinds of nodes:
 
 .. list-table:: Group Tree Nodes
   :header-rows: 1
 
-  * - Name
+  * - Kind
     - Role
     - Properties
     - Children
   * - Group
     - cluster of rules.
-    - ``basename``
-      ``path-prefix``
+    - | ``basename``
+      | ``path-prefix``
     - arbitrary number of groups and rules
   * - Rule
     - a rule (unit of task).
@@ -246,14 +267,11 @@ flat data structure. A group tree contains three kinds of nodes:
     - 1 or more files
   * - File
     - an output file of a rule
-    - ``basename``
-      ``path-base``
+    - | ``basename``
+      | ``path-base``
     - 
 
-Groups and files have two properties 
-where as rules have ``basename`` only.
-
-.. image:: ./_static/group-tree-model.svg
+.. image:: ./figure_group_tree/tmp-group-tree.svg
   :width: 1200
 
 Every node in the tree can be specified using its (fully qualified) *name* which
@@ -261,11 +279,11 @@ is the *basenames* of all its ancesters and itself concatenated.
 For example, the name of the leftmost rule in the above figure is
 ``<ROOT>.foo.a`` and its second child's name is ``<ROOT>.foo.a.f2``.
 
-Similarly, every file node's path is given by joining *path-prefixes* of its
-ancester groups and its *path-base*.
-For example, the path of the leftmost file in the above figure is
-``top/foo-f1.txt`` whereas the path of the forth file from the left
-(whose name is ``<ROOT>.bar.baz1.c.x``) is ``top/baz/y``.
+Similarly, the (fully qualified) *path* of any file node is given by joining
+*path-prefixes* of its ancester groups and the *path-base* of itself.
+For example, the six files in the above figure have names and paths as follows.
+
+.. literalinclude:: ./figure_group_tree/tmp-files.txt
 
 Managing rules this way serves two benefits:
 
@@ -282,32 +300,364 @@ Managing rules this way serves two benefits:
   It again reduces the cognitive load to comprehend the tasks and their outputs. 
 
 
-Rule
-====
-
-
-Group Tree
-==========
-
-
 ***************************
 Construction of Group Trees
 ***************************
 
+As described in the `Overview`_ chapter, our first step in the JTCMake workflow
+is to create a group tree that holds the definition of rules inside.
+
 Group Node Classes
 ==================
+
+There are four classes that represent a group node.
+The reason why there are four but not one is solely the capability of
+fine-graned static program analysis.
+If you write your code with no support from IDEs or static type checkers,
+UntypedGroup alone is sufficient. But if you are to write a long complex code
+and still be productive, you should use the other three classes
+(StaticGroupBase, GroupsGroup, and RulesGroup) with an IDE and static type
+checkers.
+
+Here is a summary of the classes.
+
+.. list-table:: Summary of Group Classes (1)
+  :widths: 2 2 1 1 3
+  :header-rows: 1
+
+  * - Class Name
+    - Children
+    - Container
+    - Typing
+    - Analogous to
+  * - StaticGroupBase
+    - Groups/Rules
+    - static
+    - Strongest
+    - TypedDict/dataclasses
+  * - GroupsGroup
+    - Groups
+    - dynamic
+    - Strong
+    - ``dict[str, Group]``
+  * - RulesGroup
+    - Rules
+    - dynamic
+    - Strong
+    - ``dict[str, Rule]``
+  * - UntypedGroup
+    - Groups/Rules
+    - dynamic
+    - Weak
+    - ``dict[str, Group | Rule]``
+
 
 StaticGroupBase
 ---------------
 
+*StaticGroupBase* is the base class for *static groups*.
+You should always subclass it to create a custom static group.
+When subclassing it, you must give the names and types of the child nodes
+(groups and rules) via type annotations:
+
+.. testcode:: sample_StaticGroupBase
+
+    from jtcmake import StaticGroupBase, Rule, SELF
+    import jtcmake as jtc
+
+    class AnotherCustomStaticGroup(StaticGroupBase):
+        grandchild: Rule
+
+    class CustomStaticGroup(StaticGroupBase):
+        rule: Rule
+        ggroup: jtc.GroupsGroup
+        rgroup: jtc.RulesGroup
+        ugroup: jtc.UntypedGroup
+        sgroup: AnotherCustomStaticGroup
+    
+These child nodes are automatically instanciated when the parent node is
+instanciated:
+
+.. testcode:: sample_StaticGroupBase
+    
+    root = CustomStaticGroup("output")
+
+    """
+    By the above call, an instance of CustomStaticGroup is created, which
+    triggers the automatic instanciation of the three children ``ggroup``,
+    ``rgroup``, ``ugroup``, and ``sgroup``.
+    Instanciation of sgroup (AnotherCustomStaticGroup) in turn invokes the
+    instanciation of its child ``sgroup.grandchild``.
+    """
+
+    # You can read the child nodes without explicitly creating them
+    assert isinstance(root.rule, Rule)
+    assert isinstance(root.ggroup, jtc.GroupsGroup)
+    assert isinstance(root.rgroup, jtc.RulesGroup)
+    assert isinstance(root.ugroup, jtc.UntypedGroup)
+    assert isinstance(root.sgroup, AnotherCustomStaticGroup)
+    assert isinstance(root.sgroup.grandchild, Rule)
+
+At this point, the children are instanciated but not complete.
+You have to *initialize* the child rule ``root.rule`` by attaching methods and
+inputs using :func:``jtcmake.Rule.init``.
+
+.. testcode:: sample_StaticGroupBase
+
+    from pathlib import Path
+
+    root.rule.init("rule.txt", Path.write_text)(SELF, "Hello")
+
+The dynamic-container-like child groups ``root.ggroup``, ``root.rgroup``, and
+``root.ugroup`` are now empty.
+You need to append children to them as necessary::
+
+    # Append child groups to ``root.ggroup``.
+    root.ggroup.add_group(...)
+
+    # Append child rules to ``root.rgroup``.
+    root.rgroup.add(...)
+
+    # Append child groups and rules to ``root.ugroup``.
+    root.ugroup.add_group(...)
+    root.ugroup.add(...)
+
+See the later sections and the API reference of GroupsGroup, RulesGroup, and
+UntypedGroup for more information.
+
+Finally, you need to *initialize* ``root.sgroup`` just as you did with the root.
+i.e. you need to initialize ``root.sgroup.grandchild``
+
+.. testcode:: sample_StaticGroupBase
+
+    import shutil
+
+    root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule[0], SELF)
+ 
+
+Now the whole group tree is initialized and you can, for example, check the
+file paths::
+
+    # 0-th file of ``root.rule`` (the only file of the rule)
+    print(root.rule[0])
+
+    # 0-th file of ``root.sgroup.grandchild`` (the only file of the rule )
+    print(root.sgroup.grandchild[0])
+
+.. code-block:: text
+
+    output/rule.txt
+    ouptut/sgroup/foo.txt
+
+
+.. hint:: The *init method pattern*
+
+    In the above example, the initialization code for the group tree is written
+    in the top level block, i.e
+
+    .. code-block::
+
+        from pathlib import Path
+        from jtcmake import StaticGroupBase, Rule, SELF
+        import jtcmake as jtc
+
+        class CustomStaticGroup(StaticGroupBase):
+            rule: Rule
+            ggroup: jtc.GroupsGroup
+            rgroup: jtc.RulesGroup
+            ugroup: jtc.UntypedGroup
+            sgroup: AnotherCustomStaticGroup
+        
+        class AnotherCustomStaticGroup(StaticGroupBase):
+            grandchild: Rule
+
+        root = CustomStaticGroup("output")
+
+        # Child rule of self
+        root.rule.init("rule.txt", Path.write_text)(SELF, "Hello")
+
+        # Child groups of self
+        # root.ggroup.add_group(...) ...
+
+        # Grandchild rule of self
+        root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule[0], SELF)
+
+    A "flat" initialization code like this is hard to maintain and reuse
+    (especially when it grows).
+    Instead, a more modularized "init method pattern" is recommended::
+
+        from pathlib import Path
+        from jtcmake import StaticGroupBase, Rule, SELF
+        import jtcmake as jtc
+
+        class CustomStaticGroup(StaticGroupBase):
+            rule: Rule
+            ggroup: jtc.GroupsGroup
+            rgroup: jtc.RulesGroup
+            ugroup: jtc.UntypedGroup
+            sgroup: AnotherCustomStaticGroup
+
+            def init(self):
+                # Child rule of self
+                self.rule.init("rule.txt", Path.write_text)(SELF, "Hello")
+
+                # Child groups of self
+                # self.ggroup.add_group(...) ...
+
+                # Grandchildren of self
+                self.sgroup.init(self.rule)
+
+        
+        class AnotherCustomStaticGroup(StaticGroupBase):
+            grandchild: Rule
+
+            def init(self, src_file: Path):
+                self.grandchild.init("foo.txt", shutil.copy)(src_file, SELF)
+
+
+        root = CustomStaticGroup("output")
+        root.init()
+
+
+.. hint:: Precise Type Annotation
+
+  In the above example, generic type parameters for the type annotations of
+  child nodes are omitted.
+  However in practice, you can, and basically you should, provide ones to get
+  better support from IDEs and type checkers::
+
+      class CustomStaticGroup(StaticGroupBase):
+          rule: Rule[Literal["rule.txt"]]
+          ggroup: jtc.GroupsGroup[YetAnotherCustomStaticGroup]
+          rgroup: jtc.RulesGroup
+          ugroup: jtc.UntypedGroup
+          sgroup: AnotherCustomStaticGroup
+
+  Generic type parameters are ignored at runtime.
+
+.. seealso::
+
+  - :class:`jtcmake.StaticGroupBase`.
+  - :func:`Rule.init <jtcmake.Rule.init>`
+  - :func:`Rule.init_deco <jtcmake.Rule.init_deco>`
+  - :func:`Rule.initvf <jtcmake.Rule.initvf>`
+  - :func:`Rule.initvf_deco <jtcmake.Rule.initvf_deco>`
+
+
 GroupsGroup
 -----------
+
+*GroupsGroup* may have children of groups only.
+You should use this class instead of `StaticGroupBase`_ when the child groups'
+names are dynamically determined at run time.
+
+.. testcode::
+
+    from pathlib import Path
+    from jtcmake import GroupsGroup, StaticGroupBase, Rule, SELF
+
+    N = 100
+
+    class CustomGroup(StaticGroupBase):
+        child: Rule[str]
+
+        def init(self):
+            self.child.init("a.txt", Path.write_text)(SELF, "abc")
+
+    root: GroupsGroup[CustomGroup] = GroupsGroup("output")
+    root.set_default_child(CustomGroup)
+
+    for i in range(N):
+        root.add_group(f"group{i}").set_prefix(prefix=f"{i}-").init()
+
+    assert len(root.groups) == N
+    assert str(root.group50.child[0]) == "output/50-a.txt"
+
+The type hint ``GroupsGroup[CustomGroup]`` is only for static type checking
+and ignored at runtime.
+
+.. seealso::
+
+  - :class:`jtcmake.GroupsGroup`.
+  - :func:`jtcmake.GroupsGroup.add_group`
+
 
 RulesGroup
 ----------
 
+*RulesGroup* may have children of rules only.
+You should use this class instead of `StaticGroupBase`_ when the child rules'
+names are dynamically determined at run time.
+
+.. testcode::
+
+    from pathlib import Path
+    from jtcmake import RulesGroup, SELF
+
+    N = 100
+
+    root = RulesGroup("output")
+
+    for i in range(N):
+        root.add(f"rule{i}", "<R>.txt", Path.write_text)(SELF, "abc")
+
+    assert len(root.rules) == N
+    assert str(root.rule50[0]) == "output/rule50.txt"
+
+
+.. seealso::
+
+  - :class:`jtcmake.RulesGroup`.
+  - :func:`jtcmake.RulesGroup.add`
+  - :func:`jtcmake.RulesGroup.add_deco`
+  - :func:`jtcmake.RulesGroup.addvf`
+  - :func:`jtcmake.RulesGroup.addvf_deco`
+
+
 UntypedGroup
 ------------
+
+*UntypedGroup* can have arbitrary number of groups and rules as children.
+This class is a dynamic container: you can add child groups/rules to an instance
+of UntypedGroup like you can insert items to a dict.
+
+.. note::
+  As mentioned at the beginning of this chapter, UntypedGroup is not sutable
+  for creating a deep tree containing a large number of rules because it is
+  weakly type-annotated.  Some sample codes in this tutorial use UntypedGroup
+  only to keep them visually concise.
+
+.. testcode:: sample_UntypedGroup
+
+  import shutil
+  from pathlib import Path
+  from jtcmake import UntypedGroup, SELF, Rule
+
+  # Create a root node
+  g = UntypedGroup("output")
+
+  # Append a rule
+  g.add("foo.txt", Path.write_text)(SELF, "abc")
+
+  # Append a group. The added group is also an UntypedGroup.
+  g.add_group("bar")
+
+  # Append a rule to the child group
+  g.bar.add("baz.txt", shutil.copy)(g["foo.txt"][0], SELF)
+
+  assert isinstance(g["foo.txt"], Rule)
+  assert isinstance(g.bar, UntypedGroup)
+  assert isinstance(g.bar["baz.txt"], Rule)
+
+
+.. seealso::
+
+  - :class:`jtcmake.UntypedGroup`.
+  - :func:`jtcmake.UntypedGroup.add_group`
+  - :func:`jtcmake.UntypedGroup.add`
+  - :func:`jtcmake.UntypedGroup.add_deco`
+  - :func:`jtcmake.UntypedGroup.addvf`
+  - :func:`jtcmake.UntypedGroup.addvf_deco`
 
 
 ***********
@@ -324,3 +674,10 @@ Make
 
 Parallel Execution
 ------------------
+
+
+Visualization
+=============
+
+
+

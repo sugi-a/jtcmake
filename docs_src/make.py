@@ -23,11 +23,16 @@ def example_hello():
 def example_c_build():
     shell("cd source/example_c_build && python _make_resources.py")
 
+@add
+def figure_group_tree():
+    shell("cd source/figure_group_tree && python draw.py")
+
 
 @add
 def html():
     tasks["example_c_build"]()
     tasks["example_hello"]()
+    tasks["figure_group_tree"]()
     shell("sphinx-build -b html ./source ../docs")
     shell("touch ../docs/.nojekyll")
 
