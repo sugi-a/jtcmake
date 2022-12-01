@@ -167,6 +167,10 @@ def _check_update_1(
         if not f.exists():
             if not dry_run or isorig:
                 return UpdateResults.Infeasible(f"Input file {f} is missing")
+        elif not f.is_file():
+            return UpdateResults.Infeasible(
+                f"Input file path {f} points to a directory"
+            )
         elif os.path.getmtime(f) == 0:
             if not dry_run or isorig:
                 return UpdateResults.Infeasible(
