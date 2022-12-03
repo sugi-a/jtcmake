@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 description = "Simple but effective general purpose build tool for Python"
 readme = "README.md"
 authors = [
-    { name = "Amane Sugiyama", email = "42127588+sugi-a@users.noreply.github.com" },
+    { name = "Amane Sugiyama", email = "sugi98765@gmail.com" },
 ]
 urls = { repo = "https://github.com/sugi-a/jtcmake" }
 classifiers = [
