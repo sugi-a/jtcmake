@@ -299,6 +299,9 @@ class RuleStore:
         memo: IMemo,
         name: Tuple[str, ...],
     ) -> _RawRule[int, INoArgFunc]:
+        if len(yp2f) == 0:
+            raise ValueError("Rules must have at least one output file.")
+
         # Check duplicated registration of yfiles
         for p, f in yp2f.items():
             if p in self.ypath2idx:
