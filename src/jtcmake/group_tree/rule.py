@@ -7,6 +7,7 @@ from os import PathLike
 from typing import (
     Any,
     Callable,
+    Iterable,
     Mapping,
     Optional,
     Tuple,
@@ -21,6 +22,8 @@ from typing import (
     overload,
 )
 from typing_extensions import TypeGuard, ParamSpec, Concatenate
+
+from ..raw_rule import IMemo
 
 from ..core.make import MakeSummary
 
@@ -158,11 +161,12 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
+        noskip: bool,
     ):
         if self.initialized:
             raise RuntimeError(f"Rule {self.name} is already initialized")
 
-        self._init_main(yfiles, method, args, kwargs)
+        self._init_main(yfiles, method, args, kwargs, noskip)
         self._info.rules_to_be_init.remove(self._name)
 
     def __init_at_once__(
@@ -174,13 +178,14 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
+        noskip: bool,
     ) -> Rule[K]:
         self._info = group_tree_info
         self._name = name
         self._file_keys_hint = None
         self._parent = parent
         self._file_keys = []  # do not read before the rule is fully initialized
-        self._init_main(yfiles, method, args, kwargs)
+        self._init_main(yfiles, method, args, kwargs, noskip)
 
         return self
 
@@ -267,6 +272,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         method: object,
         args: object,
         kwargs: object,
+        noskip: bool,
     ):
         args_ = (args, kwargs)
 
@@ -302,7 +308,10 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         method_ = _NoArgFunc(method, method_args, method_kwargs)
 
         # Create memo
-        memo = self._info.memo_factory(args_)
+        if noskip:
+            memo = _UnequalMemo()
+        else:
+            memo = self._info.memo_factory(args_)
 
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
@@ -320,7 +329,13 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
                 setattr(self, k, f)
 
     @overload
-    def init(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+    def init(
+        self,
+        method: Callable[P, None],
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[P, Rule[K]]:
         ...
 
     @overload
@@ -334,11 +349,18 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[K]]:
         ...
 
     def init(
-        self, output_files: object, method: object = None, /
+        self,
+        output_files: object,
+        method: object = None,
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[..., Rule[K]]:
         """
         Create a temporary function to complete initialization of this rule.
@@ -487,10 +509,12 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
 
                 import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
         """
-        return self._init(output_files, method, IFile_fact=File)
+        return self._init(output_files, method, File, noskip)
 
     @overload
-    def initvf(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+    def initvf(
+        self, method: Callable[P, None], /, *, noskip: bool = False
+    ) -> Callable[P, Rule[K]]:
         ...
 
     @overload
@@ -504,11 +528,18 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[K]]:
         ...
 
     def initvf(
-        self, output_files: object, method: object = None, /
+        self,
+        output_files: object,
+        method: object = None,
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[..., Rule[K]]:
         """
         Create a temporary function to initialize this rule.
@@ -519,15 +550,14 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         Seealso:
             :func:`init`
         """
-        return self._init(output_files, method, IFile_fact=VFile)
+        return self._init(output_files, method, VFile, noskip)
 
     def _init(
         self,
         output_files: object,
-        method: object = None,
-        /,
-        *,
+        method: object,
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[P, Rule[K]]:
         if method is None:
             output_files, method = self.name_tuple[-1], output_files
@@ -537,7 +567,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         )
 
         def _rule_initializer(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
-            self.__init_full__(yfiles, method, args, kwargs)
+            self.__init_full__(yfiles, method, args, kwargs, noskip)
             return self
 
         return _rule_initializer
@@ -552,6 +582,8 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
                 PathLike[K],
             ]
         ] = None,
+        *,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to initialize this rule.
@@ -617,7 +649,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
             :func:`init`
 
         """
-        return self._init_deco(output_files, IFile_fact=File)
+        return self._init_deco(output_files, File, noskip)
 
     def initvf_deco(
         self,
@@ -629,6 +661,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
                 PathLike[K],
             ]
         ] = None,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to initialize this rule.
@@ -639,13 +672,13 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         Seealso:
             :func:`init_deco`, :func:`init`
         """
-        return self._init_deco(output_files, IFile_fact=VFile)
+        return self._init_deco(output_files, VFile, noskip)
 
     def _init_deco(
         self,
-        output_files: object = None,
-        *,
+        output_files: object,
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         if output_files is None:
             output_files = self.name_tuple[-1]
@@ -656,7 +689,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
 
         def decorator(method: _T_deco_f):
             args, kwargs = Rule_init_parse_deco_func(method)
-            self.__init_full__(yfiles, method, args, kwargs)
+            self.__init_full__(yfiles, method, args, kwargs, noskip)
             return method
 
         return decorator
@@ -721,6 +754,20 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
     @property
     def real_value(self) -> object:
         return self[0].real_value
+
+
+class _UnequalMemo(IMemo):
+    def compare(self, other: object) -> bool:
+        del other
+        return False
+
+    def dumps(self) -> Iterable[bytes]:
+        return []
+
+    @classmethod
+    def loads(cls, data: bytes) -> IMemo:
+        del data
+        return _UnequalMemo()
 
 
 def Rule_init_parse_deco_func(

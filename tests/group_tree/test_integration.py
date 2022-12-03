@@ -29,3 +29,21 @@ def test_error_on_dupe_registration():
     g.add_group("a")
     with pytest.raises(KeyError):
         g.add("a", Path.write_text)(SELF, "a")
+
+
+def test_noskip(tmp_path: Path):
+    g = UntypedGroup(tmp_path)
+
+    flag = False
+
+    @g.add_deco("a", noskip=True)
+    def _(slf: Path = SELF):
+        nonlocal flag
+        flag = True
+        slf.touch()
+
+    g.make()
+    assert flag
+    flag = False
+    g.make()
+    assert flag
