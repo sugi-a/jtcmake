@@ -40,6 +40,7 @@ from .core import (
     IAtom,
 )
 from .event_logger import INoArgFunc
+from .fake_path import FakePath
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
@@ -124,7 +125,9 @@ def require_init(
     return _method
 
 
-class Rule(IRule, Generic[K]):
+class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
+    IRule, IAtom, FakePath, Generic[K]
+):
     _raw_rule_id: int
     _info: GroupTreeInfo
     _name: Tuple[str]
@@ -196,10 +199,13 @@ class Rule(IRule, Generic[K]):
             return self._files[key]
 
     @property
-    def parent(self) -> IGroup:
+    def parent(  # pyright: ignore [reportIncompatibleMethodOverride]
+        self,
+    ) -> IGroup:
+        """Parent group node of this rule."""
         return self._parent
 
-    def touch(
+    def touch(  # pyright: ignore [reportIncompatibleMethodOverride]
         self,
         file: bool = True,
         memo: bool = True,
@@ -708,6 +714,14 @@ class Rule(IRule, Generic[K]):
     def xfiles(self) -> Collection[str]:
         return self._xfiles
 
+    @property
+    def memo_value(self) -> object:
+        return self[0].memo_value
+
+    @property
+    def real_value(self) -> object:
+        return self[0].real_value
+
 
 def Rule_init_parse_deco_func(
     method: object,
@@ -922,9 +936,16 @@ def _find_xfiles_in_args(
 
     def check(v: object):
         if isinstance(v, IFile):
-            absp = os.path.abspath(v)
+            f = v
+        elif isinstance(v, IRule):
+            f = next(iter(v.files.values()))
+        else:
+            f = None
+
+        if f is not None:
+            absp = os.path.abspath(f)
             if absp not in ypaths:
-                res[absp] = v
+                res[absp] = f
 
     map_structure(check, args)
 
