@@ -626,7 +626,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
                             path.write_text(text)
 
                         @self.rule2.init_deco("<R>.txt")
-                        def method_for_rule2(src=self.rule1[0], dst=SELF, repeat=repeat):
+                        def method_for_rule2(src=self.rule1, dst=SELF, repeat=repeat):
                             text = src.read_text()
                             dst.write_text(text * repeat)
 
