@@ -39,10 +39,10 @@ class StaticLibrary(StaticGroupBase):
         for src in srcs:
             self.objects.addvf(src.stem, "<R>.o", shell)("gcc -c -o", SELF, src)
 
-        objs = [rule[0] for rule in self.objects.rules.values()]
-
         # Archive the object files into a static library
-        self.library.initvf(f"lib{libname}.a", shell)("ar rv", SELF, *objs)
+        self.library.initvf(f"lib{libname}.a", shell)(
+            "ar rv", SELF, *self.objects.rules.values()
+        )
 
         return self
         
@@ -63,8 +63,8 @@ class Main(StaticGroupBase):
                 SELF,
                 f"-I{SRCDIR_LIBA} -I{SRCDIR_LIBB}",
                 src,
-                self.liba.library[0],
-                self.libb.library[0],
+                self.liba.library,
+                self.libb.library,
             )
 
         return self
