@@ -295,10 +295,10 @@ libb into the executables.</p></li>
 <span class="linenos">39</span>        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">srcs</span><span class="p">:</span>
 <span class="linenos">40</span>            <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">addvf</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="s2">&quot;&lt;R&gt;.o&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span><span class="s2">&quot;gcc -c -o&quot;</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">src</span><span class="p">)</span>
 <span class="linenos">41</span>
-<span class="linenos">42</span>        <span class="n">objs</span> <span class="o">=</span> <span class="p">[</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-<span class="linenos">43</span>
-<span class="linenos">44</span>        <span class="c1"># Archive the object files into a static library</span>
-<span class="linenos">45</span>        <span class="bp">self</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">initvf</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lib</span><span class="si">{</span><span class="n">libname</span><span class="si">}</span><span class="s2">.a&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span><span class="s2">&quot;ar rv&quot;</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="o">*</span><span class="n">objs</span><span class="p">)</span>
+<span class="linenos">42</span>        <span class="c1"># Archive the object files into a static library</span>
+<span class="linenos">43</span>        <span class="bp">self</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">initvf</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lib</span><span class="si">{</span><span class="n">libname</span><span class="si">}</span><span class="s2">.a&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="p">)(</span>
+<span class="linenos">44</span>            <span class="s2">&quot;ar rv&quot;</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">rules</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<span class="linenos">45</span>        <span class="p">)</span>
 <span class="linenos">46</span>
 <span class="linenos">47</span>        <span class="k">return</span> <span class="bp">self</span>
 <span class="linenos">48</span>        
@@ -319,8 +319,8 @@ libb into the executables.</p></li>
 <span class="linenos">63</span>                <span class="n">SELF</span><span class="p">,</span>
 <span class="linenos">64</span>                <span class="sa">f</span><span class="s2">&quot;-I</span><span class="si">{</span><span class="n">SRCDIR_LIBA</span><span class="si">}</span><span class="s2"> -I</span><span class="si">{</span><span class="n">SRCDIR_LIBB</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
 <span class="linenos">65</span>                <span class="n">src</span><span class="p">,</span>
-<span class="linenos">66</span>                <span class="bp">self</span><span class="o">.</span><span class="n">liba</span><span class="o">.</span><span class="n">library</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<span class="linenos">67</span>                <span class="bp">self</span><span class="o">.</span><span class="n">libb</span><span class="o">.</span><span class="n">library</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<span class="linenos">66</span>                <span class="bp">self</span><span class="o">.</span><span class="n">liba</span><span class="o">.</span><span class="n">library</span><span class="p">,</span>
+<span class="linenos">67</span>                <span class="bp">self</span><span class="o">.</span><span class="n">libb</span><span class="o">.</span><span class="n">library</span><span class="p">,</span>
 <span class="linenos">68</span>            <span class="p">)</span>
 <span class="linenos">69</span>
 <span class="linenos">70</span>        <span class="k">return</span> <span class="bp">self</span>
@@ -647,7 +647,7 @@ UntypedGroup for more information.</p>
 i.e. you need to initialize <code class="docutils literal notranslate"><span class="pre">root.sgroup.grandchild</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
 
-<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now the whole group tree is initialized and you can, for example, check the
@@ -691,7 +691,7 @@ in the top level block, i.e</p>
 <span class="c1"># root.ggroup.add_group(...) ...</span>
 
 <span class="c1"># Grandchild rule of self</span>
-<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+<span class="n">root</span><span class="o">.</span><span class="n">sgroup</span><span class="o">.</span><span class="n">grandchild</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">root</span><span class="o">.</span><span class="n">rule</span><span class="p">,</span> <span class="n">SELF</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>A “flat” initialization code like this is hard to maintain and reuse
@@ -851,7 +851,7 @@ only to keep them visually concise.</p>
 <span class="n">g</span><span class="o">.</span><span class="n">add_group</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
 
 <span class="c1"># Append a rule to the child group</span>
-<span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;baz.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;baz.txt&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">],</span> <span class="n">SELF</span><span class="p">)</span>
 
 <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">],</span> <span class="n">Rule</span><span class="p">)</span>
 <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">bar</span><span class="p">,</span> <span class="n">UntypedGroup</span><span class="p">)</span>

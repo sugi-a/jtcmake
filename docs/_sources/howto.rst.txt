@@ -432,7 +432,7 @@ i.e. you need to initialize ``root.sgroup.grandchild``
 
     import shutil
 
-    root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule[0], SELF)
+    root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule, SELF)
  
 
 Now the whole group tree is initialized and you can, for example, check the
@@ -480,7 +480,7 @@ file paths::
         # root.ggroup.add_group(...) ...
 
         # Grandchild rule of self
-        root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule[0], SELF)
+        root.sgroup.grandchild.init("foo.txt", shutil.copy)(root.rule, SELF)
 
     A "flat" initialization code like this is hard to maintain and reuse
     (especially when it grows).
@@ -643,7 +643,7 @@ of UntypedGroup like you can insert items to a dict.
   g.add_group("bar")
 
   # Append a rule to the child group
-  g.bar.add("baz.txt", shutil.copy)(g["foo.txt"][0], SELF)
+  g.bar.add("baz.txt", shutil.copy)(g["foo.txt"], SELF)
 
   assert isinstance(g["foo.txt"], Rule)
   assert isinstance(g.bar, UntypedGroup)
