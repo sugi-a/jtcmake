@@ -59,6 +59,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#group-tree-model">Group Tree Model</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#defining-rules">Defining Rules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#group-node-classes">Group Node Classes</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#staticgroupbase">StaticGroupBase</a></li>
@@ -519,6 +520,18 @@ It again reduces the cognitive load to comprehend the tasks and their outputs.</
 </div></blockquote>
 </section>
 </section>
+<section id="defining-rules">
+<h2>Defining Rules<a class="headerlink" href="#defining-rules" title="Permalink to this heading"></a></h2>
+<p>This chapter explains how to define rules.
+For the sake of simplicity, rules will be defined in a “flat” tree (tree with a
+depth of 1) of <code class="xref py py-class docutils literal notranslate"><span class="pre">RulesGroup</span></code>.
+General group trees will be covered in <a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a> .</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">RulesGroup</span><span class="p">,</span> <span class="n">SELF</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">RulesGroup</span><span class="p">(</span><span class="s2">&quot;root-dir&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="construction-of-group-trees">
 <h2>Construction of Group Trees<a class="headerlink" href="#construction-of-group-trees" title="Permalink to this heading"></a></h2>
 <p>As described in the <a class="reference internal" href="#overview">Overview</a> chapter, our first step in the JTCMake workflow
@@ -753,9 +766,7 @@ better support from IDEs and type checkers:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="reference.html#jtcmake.StaticGroupBase" title="jtcmake.StaticGroupBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.StaticGroupBase</span></code></a>.</p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.Rule.init" title="jtcmake.Rule.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.init</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.init_deco" title="jtcmake.Rule.init_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.init_deco</span></code></a></p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.Rule.initvf" title="jtcmake.Rule.initvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.initvf</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.Rule.initvf_deco" title="jtcmake.Rule.initvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">Rule.initvf_deco</span></code></a></p></li>
 </ul>
 </div>
 </section>
@@ -819,9 +830,7 @@ names are dynamically determined at run time.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup" title="jtcmake.RulesGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.RulesGroup</span></code></a>.</p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.add" title="jtcmake.RulesGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.add()</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.add_deco" title="jtcmake.RulesGroup.add_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.add_deco()</span></code></a></p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.addvf" title="jtcmake.RulesGroup.addvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.addvf()</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.RulesGroup.addvf_deco" title="jtcmake.RulesGroup.addvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.addvf_deco()</span></code></a></p></li>
 </ul>
 </div>
 </section>
@@ -864,9 +873,7 @@ only to keep them visually concise.</p>
 <li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup" title="jtcmake.UntypedGroup"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup</span></code></a>.</p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add_group" title="jtcmake.UntypedGroup.add_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add_group()</span></code></a></p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add" title="jtcmake.UntypedGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add()</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.add_deco" title="jtcmake.UntypedGroup.add_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.add_deco()</span></code></a></p></li>
 <li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.addvf" title="jtcmake.UntypedGroup.addvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.addvf()</span></code></a></p></li>
-<li><p><a class="reference internal" href="reference.html#jtcmake.UntypedGroup.addvf_deco" title="jtcmake.UntypedGroup.addvf_deco"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.UntypedGroup.addvf_deco()</span></code></a></p></li>
 </ul>
 </div>
 </section>
