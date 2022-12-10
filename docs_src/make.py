@@ -28,32 +28,32 @@ def autoself(f: Callable[[], object]) -> Callable[[], object]:
 
 g = RulesGroup(prefix="tmp-")
 
-@g.add_deco("example_hello", noskip=True)
+@g.add("example_hello", noskip=True)
 @autoself
 def example_hello():
     shell("cd source/example_hello && python make.py")
 
 
-@g.add_deco("example_c_build", noskip=True)
+@g.add("example_c_build", noskip=True)
 @autoself
 def example_c_build():
     shell("cd source/example_c_build && python _make_resources.py")
 
 
-@g.add_deco("figure_group_tree", noskip=True)
+@g.add("figure_group_tree", noskip=True)
 @autoself
 def figure_group_tree():
     shell("cd source/figure_group_tree && python draw.py")
 
 
-@g.add_deco("html", noskip=True)
+@g.add("html", noskip=True)
 @autoself
 def html(_ = [g.example_c_build, g.example_hello, g.figure_group_tree]):
     shell("sphinx-build -b html ./source ../docs")
     shell("touch ../docs/.nojekyll")
 
 
-@g.add_deco("doctest", noskip=True)
+@g.add("doctest", noskip=True)
 @autoself
 def doctest():
     shell("sphinx-build -b doctest ./source ../tmp-sphinx-doctest")

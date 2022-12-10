@@ -3,7 +3,6 @@ from os import PathLike
 from abc import ABCMeta, abstractmethod
 from typing import (
     Dict,
-    Optional,
     Sequence,
     TypeVar,
     Union,
@@ -54,13 +53,32 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
     ) -> Callable[P, Rule[str]]:
         ...
 
+    @overload
+    def add(
+        self,
+        name: StrOrPath,
+        output_files: Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[K, PathLike[str]]],
+            K,
+            PathLike[str],
+            None,
+        ] = None,
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
+        ...
+
     def add(
         self,
         name: object,
-        outs: object,
+        outs: object = None,
         method: object = None,
+        /,
+        *,
         noskip: bool = False,
-    ) -> Callable[..., Rule[str]]:
+    ) -> Callable[..., object]:
         """
         Create a temporary function to add a rule to this group.
 
@@ -74,17 +92,21 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
 
         Returns:
-            *rule_adder*, a temporary function whose signature is the same as
-            the given ``method``.
+            If ``method`` is provided, it returns a function *rule_adder*,
+            whose signature is the same as the given ``method``.
             Calling it as ``rule_adder(*args, **kwargs)`` appends
             a new rule to the group.
+
+            If ``method`` is not provided, it returns a decorator function
+            *method_decorator*, which consumes a function and appends a new rule
+            whose method is the given function.
 
             While executing this rule, ``method`` is called as
             ``method(*args, **kwargs)``.
 
         Example:
 
-            ::
+            With ``method`` provided::
 
                 from __future__ import annotations
                 from pathlib import Path
@@ -124,6 +146,32 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
                 assert Path("out/y.txt").read_text() == "gh"
                 assert Path("out/baz.txt").read_text() == "abcdefgh"
 
+            Without ``method``::
+
+                from __future__ import annotations
+                from pathlib import Path
+                from jtcmake import RulesGroup, SELF, VFile, File
+
+                g = RulesGroup("out")
+
+                @g.add("foo")
+                def foo(dst: Path = SELF):
+                    dst.write_text("abc")
+
+                @g.add("bar")
+                def bar(dst: Path = SELF):
+                    dst.write_text("xyz")
+
+                @g.add("baz")
+                def baz(dst: Path = SELF, srcs: list[Path] = [g.foo, g.bar]):
+                    with dst.open("w") as f:
+                        f.writelines(src.read_text() for src in srcs)
+
+                g.make()
+
+                assert Path("out/foo").read_text() == "abc"
+                assert Path("out/bar").read_text() == "xyz"
+                assert Path("out/baz").read_text() == "abcxyz"
         """
 
         return self._add(name, outs, method, File, noskip)
@@ -156,13 +204,32 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
     ) -> Callable[P, Rule[str]]:
         ...
 
+    @overload
+    def addvf(
+        self,
+        name: StrOrPath,
+        output_files: Union[
+            Mapping[K, StrOrPath],
+            Sequence[Union[K, PathLike[str]]],
+            K,
+            PathLike[str],
+            None,
+        ] = None,
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
+        ...
+
     def addvf(
         self,
         name: object,
-        outs: object,
+        outs: object = None,
         method: object = None,
+        /,
+        *,
         noskip: bool = False,
-    ) -> Callable[..., Rule[str]]:
+    ) -> Callable[..., object]:
         """
         Create a temporary function to add a rule to this group.
 
@@ -180,148 +247,36 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         method: object,
         IFile_fact: Callable[[StrOrPath], IFile],
         noskip: bool,
-    ) -> Callable[..., Rule[str]]:
-        if method is None:
-            outs, method = name, outs
-
+    ) -> Callable[..., object]:
         if not isinstance(name, str):
             raise TypeError("name must be str or os.PathLike")
 
-        name_ = str(name)
+        if method is None:
+            if callable(outs):
+                outs, method = name, outs
+            elif outs is None:
+                outs = name
+
+        assert callable(method) or method is None
 
         outs_: Dict[str, IFile] = parse_args_output_files(
-            name_, None, outs, IFile_fact
+            name, None, outs, IFile_fact
         )
 
-        def _rule_adder(*args: object, **kwargs: object) -> Rule[str]:
-            return self._add_rule(name_, outs_, method, args, kwargs, noskip)
+        if method is None:
 
-        return _rule_adder
+            def method_decorator(method: Callable[[], object]):
+                args, kwargs = Rule_init_parse_deco_func(method)
+                self._add_rule(name, outs_, method, args, kwargs, noskip)
+                return method
 
-    def add_deco(
-        self,
-        name: StrOrPath,
-        output_files: Optional[
-            Union[
-                Mapping[K, StrOrPath],
-                Sequence[Union[str, PathLike[str]]],
-                str,
-                PathLike[str],
-            ]
-        ] = None,
-        /,
-        *,
-        noskip: bool = False,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        """
-        Create a temporary decorator function to add a rule to this group.
-        This is a decorator version of :func:`add`.
-        It's useful when you want to define a method for the new rule
-        on-the-fly instead of passing an existing function
-        (see the examples below).
+            return method_decorator
+        else:
 
-        This method workds similarly to :func:`Rule.init_deco`.
-        See its documentation for detail.
+            def rule_adder(*args: object, **kwargs: object) -> Rule[str]:
+                return self._add_rule(name, outs_, method, args, kwargs, noskip)
 
-        Args:
-            name: name of the rule to be added
-            output_files: output files of the rule.
-                See :func:`add` for more information.
-                Just like :func:`add`, file paths will be internally
-                converted to :class:`jtcmake.File` if they aren't either
-                :class:`jtcmake.File` or :class:`jtcmake.VFile`.
-
-        Returns:
-            **rule_method_decorator**.
-
-        Usage:
-            Invoking the ``rule_method_decorator`` with the method you want to
-            bind to the new rule creates the rule and append it to this group.
-
-            All the arguments to the method must have a default value. ::
-
-                g.add_deco("myrule1")(lambda p=SELF: p.write_text("abc"))
-
-                @g.add_deco("myrule2", "out.txt")
-                def method_for_myrule2(src=g.myrule1[0], dst=SELF, n=2):
-                    text = src.read_text()
-                    dst.write_text(text * 2)
-
-                g.make()
-
-                assert g.myrule2[0].read_text() == "abcabc"
-
-            The above is equivalent to ::
-
-                g.add("myrule1", lambda p=SELF: p.write_text("abc"))(SELF)
-
-                def method_for_myrule2(src=g.myrule1[0], dst=SELF, n=2):
-                    text = src.read_text()
-                    dst.write_text(text * 2)
-
-                g.add("myrule2", "out.txt", method_for_myrule2)(
-                    g.myrule1[0], SELF, 2
-                )
-        """
-        return self._add_deco(name, output_files, File, noskip)
-
-    def addvf_deco(
-        self,
-        name: StrOrPath,
-        output_files: Optional[
-            Union[
-                Mapping[K, StrOrPath],
-                Sequence[Union[str, PathLike[str]]],
-                str,
-                PathLike[str],
-            ]
-        ] = None,
-        /,
-        *,
-        noskip: bool = False,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        """
-        Create a temporary decorator function to add a rule to this group.
-
-        This method is equal to :func:`add_deco` except the default file
-        constructor is :class:`jtcmake.VFile` instead of :class:`File`.
-
-        See :func:`add_deco` and :func:`add` for more information.
-        """
-        return self._add_deco(name, output_files, VFile, noskip)
-
-    def _add_deco(
-        self,
-        name: StrOrPath,
-        output_files: Optional[
-            Union[
-                Mapping[K, StrOrPath],
-                Sequence[Union[str, PathLike[str]]],
-                str,
-                PathLike[str],
-            ]
-        ],
-        IFile_fact: Callable[[StrOrPath], IFile],
-        noskip: bool,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        if output_files is None:
-            output_files = name
-
-        if not isinstance(name, str):
-            raise TypeError("name must be str or os.PathLike")
-
-        name_ = str(name)
-
-        output_files_: Dict[str, IFile] = parse_args_output_files(
-            name_, None, output_files, IFile_fact
-        )
-
-        def rule_method_decorator(method: _T_deco_f):
-            args, kwargs = Rule_init_parse_deco_func(method)
-            self._add_rule(name_, output_files_, method, args, kwargs, noskip)
-            return method
-
-        return rule_method_decorator
+            return rule_adder
 
     def _add_rule(
         self,

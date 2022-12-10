@@ -300,6 +300,22 @@ Managing rules this way serves two benefits:
   It again reduces the cognitive load to comprehend the tasks and their outputs. 
 
 
+**************
+Defining Rules
+**************
+
+This chapter explains how to define rules.
+For the sake of simplicity, rules will be defined in a "flat" tree (tree with a
+depth of 1) of :class:`RulesGroup`.
+General group trees will be covered in `Construction of Group Trees`_ .
+
+.. testcode::
+
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("root-dir")
+  
+
 ***************************
 Construction of Group Trees
 ***************************
@@ -539,9 +555,7 @@ file paths::
 
   - :class:`jtcmake.StaticGroupBase`.
   - :func:`Rule.init <jtcmake.Rule.init>`
-  - :func:`Rule.init_deco <jtcmake.Rule.init_deco>`
   - :func:`Rule.initvf <jtcmake.Rule.initvf>`
-  - :func:`Rule.initvf_deco <jtcmake.Rule.initvf_deco>`
 
 
 GroupsGroup
@@ -609,9 +623,7 @@ names are dynamically determined at run time.
 
   - :class:`jtcmake.RulesGroup`.
   - :func:`jtcmake.RulesGroup.add`
-  - :func:`jtcmake.RulesGroup.add_deco`
   - :func:`jtcmake.RulesGroup.addvf`
-  - :func:`jtcmake.RulesGroup.addvf_deco`
 
 
 UntypedGroup
@@ -655,9 +667,7 @@ of UntypedGroup like you can insert items to a dict.
   - :class:`jtcmake.UntypedGroup`.
   - :func:`jtcmake.UntypedGroup.add_group`
   - :func:`jtcmake.UntypedGroup.add`
-  - :func:`jtcmake.UntypedGroup.add_deco`
   - :func:`jtcmake.UntypedGroup.addvf`
-  - :func:`jtcmake.UntypedGroup.addvf_deco`
 
 
 ***********
