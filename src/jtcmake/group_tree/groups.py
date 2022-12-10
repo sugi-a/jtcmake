@@ -87,7 +87,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
                 self.child_rule.init("<R>.txt", Path.write_text)(SELF, text)
 
                 # Initialize the child group
-                self.child_group.init(self.child_rule[0], repeat)
+                self.child_group.init(self.child_rule, repeat)
 
                 return self
 
@@ -478,12 +478,12 @@ class UntypedGroup(
         def _write_0(p: Path = SELF):
             p.write_text("0")
 
-        g.add("rule1", add1)(g.rule0[0], SELF)
+        g.add("rule1", add1)(g.rule0, SELF)
 
         # ``add_group`` with ``child_group_type=None`` adds an UntypedGroup
         g.add_group("group1")
 
-        g.group1.add("rule2", add1)(g.rule1[0], SELF)
+        g.group1.add("rule2", add1)(g.rule1, SELF)
 
         class Child(StaticGroupBase):
             __globals__ = globals()  # For Sphinx's doctest. Not necessary in normal situations.
@@ -491,7 +491,7 @@ class UntypedGroup(
 
         g.add_group("group2", Child)
 
-        g.group2.rule.init("rule3", add1)(g.group1.rule2[0], SELF)
+        g.group2.rule.init("rule3", add1)(g.group1.rule2, SELF)
 
         g.make()
 

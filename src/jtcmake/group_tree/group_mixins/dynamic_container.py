@@ -38,17 +38,28 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[str]]:
         ...
 
     @overload
     def add(
-        self, name: StrOrPath, method: Callable[P, object], /
+        self,
+        name: StrOrPath,
+        method: Callable[P, object],
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[str]]:
         ...
 
     def add(
-        self, name: object, outs: object, method: object = None
+        self,
+        name: object,
+        outs: object,
+        method: object = None,
+        noskip: bool = False,
     ) -> Callable[..., Rule[str]]:
         """
         Create a temporary function to add a rule to this group.
@@ -115,7 +126,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         """
 
-        return self._add(name, outs, method, IFile_fact=File)
+        return self._add(name, outs, method, File, noskip)
 
     @overload
     def addvf(
@@ -129,17 +140,28 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[str]]:
         ...
 
     @overload
     def addvf(
-        self, name: StrOrPath, method: Callable[P, object], /
+        self,
+        name: StrOrPath,
+        method: Callable[P, object],
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[str]]:
         ...
 
     def addvf(
-        self, name: object, outs: object, method: object = None
+        self,
+        name: object,
+        outs: object,
+        method: object = None,
+        noskip: bool = False,
     ) -> Callable[..., Rule[str]]:
         """
         Create a temporary function to add a rule to this group.
@@ -149,15 +171,15 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         See the documentation of :func:`self.add <.add>` for more information.
         """
-        return self._add(name, outs, method, IFile_fact=VFile)
+        return self._add(name, outs, method, VFile, noskip)
 
     def _add(
         self,
         name: object,
         outs: object,
-        method: object = None,
-        *,
+        method: object,
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[..., Rule[str]]:
         if method is None:
             outs, method = name, outs
@@ -172,7 +194,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         )
 
         def _rule_adder(*args: object, **kwargs: object) -> Rule[str]:
-            return self._add_rule(name_, outs_, method, args, kwargs)
+            return self._add_rule(name_, outs_, method, args, kwargs, noskip)
 
         return _rule_adder
 
@@ -188,6 +210,8 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             ]
         ] = None,
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to add a rule to this group.
@@ -239,7 +263,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
                     g.myrule1[0], SELF, 2
                 )
         """
-        return self._add_deco(name, output_files, IFile_fact=File)
+        return self._add_deco(name, output_files, File, noskip)
 
     def addvf_deco(
         self,
@@ -253,6 +277,8 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
             ]
         ] = None,
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to add a rule to this group.
@@ -262,7 +288,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         See :func:`add_deco` and :func:`add` for more information.
         """
-        return self._add_deco(name, output_files, IFile_fact=VFile)
+        return self._add_deco(name, output_files, VFile, noskip)
 
     def _add_deco(
         self,
@@ -274,9 +300,9 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
                 str,
                 PathLike[str],
             ]
-        ] = None,
-        *,
+        ],
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         if output_files is None:
             output_files = name
@@ -292,7 +318,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
 
         def rule_method_decorator(method: _T_deco_f):
             args, kwargs = Rule_init_parse_deco_func(method)
-            self._add_rule(name_, output_files_, method, args, kwargs)
+            self._add_rule(name_, output_files_, method, args, kwargs, noskip)
             return method
 
         return rule_method_decorator
@@ -304,6 +330,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
+        noskip: bool,
     ) -> Rule[str]:
         if name in self.rules:
             raise KeyError(
@@ -328,6 +355,7 @@ class DynamicRuleContainerMixin(IGroup, metaclass=ABCMeta):
                 method,
                 args,
                 kwargs,
+                noskip,
             )
 
             return r

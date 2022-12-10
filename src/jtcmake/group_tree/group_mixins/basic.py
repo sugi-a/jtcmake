@@ -5,10 +5,8 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from logging import Logger
 from typing import (
-    Callable,
     Optional,
     Tuple,
-    Type,
     TypeVar,
     Union,
     Sequence,
@@ -17,7 +15,13 @@ from typing import (
 
 from ..atom import unwrap_memo_values
 
-from ...memo import ILazyMemo, create_lazy_memo_type, StrHashMemo, IMemo
+from ...memo import (
+    Memo,
+    IMemo,
+    string_normalizer,
+    string_deserializer,
+    string_serializer,
+)
 
 from ...core.make import MakeSummary
 
@@ -77,10 +81,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             loglevel, use_default_logger, logfile
         )
 
-        lazy_memo_type = create_lazy_memo_type(StrHashMemo.create)
-        memo_factory = create_lazy_memo_factory(lazy_memo_type)
-
-        info = GroupTreeInfo(writer, memo_factory, self)
+        info = GroupTreeInfo(writer, string_memo_factory, self)
 
         self.__init_as_child__(info, self, ())
 
@@ -232,11 +233,13 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
         return TextWriter(sys.stderr, loglevel)
 
 
-def create_lazy_memo_factory(
-    lazy_memo_type: Type[ILazyMemo],
-) -> Callable[[object], IMemo]:
-    def _res(args: object) -> IMemo:
-        args, lazy_args = unwrap_memo_values(args)
-        return lazy_memo_type.create(args, lazy_args)
-
-    return _res
+def string_memo_factory(memo_file: StrOrPath, args: object) -> IMemo:
+    args, lazy_args = unwrap_memo_values(args)
+    return Memo(
+        args,
+        lazy_args,
+        memo_file,
+        string_normalizer,
+        string_serializer,
+        string_deserializer,
+    )

@@ -3,6 +3,7 @@ import os
 import inspect
 import time
 import re
+from pathlib import Path
 from os import PathLike
 from typing import (
     Any,
@@ -22,6 +23,8 @@ from typing import (
 )
 from typing_extensions import TypeGuard, ParamSpec, Concatenate
 
+from ..raw_rule import IMemo
+
 from ..core.make import MakeSummary
 
 from ..utils.dict_view import DictView
@@ -40,6 +43,7 @@ from .core import (
     IAtom,
 )
 from .event_logger import INoArgFunc
+from .fake_path import FakePath
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
@@ -124,7 +128,9 @@ def require_init(
     return _method
 
 
-class Rule(IRule, Generic[K]):
+class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
+    IRule, IAtom, FakePath, Generic[K]
+):
     _raw_rule_id: int
     _info: GroupTreeInfo
     _name: Tuple[str]
@@ -155,11 +161,12 @@ class Rule(IRule, Generic[K]):
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
+        noskip: bool,
     ):
         if self.initialized:
             raise RuntimeError(f"Rule {self.name} is already initialized")
 
-        self._init_main(yfiles, method, args, kwargs)
+        self._init_main(yfiles, method, args, kwargs, noskip)
         self._info.rules_to_be_init.remove(self._name)
 
     def __init_at_once__(
@@ -171,13 +178,14 @@ class Rule(IRule, Generic[K]):
         method: object,
         args: Tuple[object, ...],
         kwargs: Dict[str, object],
+        noskip: bool,
     ) -> Rule[K]:
         self._info = group_tree_info
         self._name = name
         self._file_keys_hint = None
         self._parent = parent
         self._file_keys = []  # do not read before the rule is fully initialized
-        self._init_main(yfiles, method, args, kwargs)
+        self._init_main(yfiles, method, args, kwargs, noskip)
 
         return self
 
@@ -196,10 +204,13 @@ class Rule(IRule, Generic[K]):
             return self._files[key]
 
     @property
-    def parent(self) -> IGroup:
+    def parent(  # pyright: ignore [reportIncompatibleMethodOverride]
+        self,
+    ) -> IGroup:
+        """Parent group node of this rule."""
         return self._parent
 
-    def touch(
+    def touch(  # pyright: ignore [reportIncompatibleMethodOverride]
         self,
         file: bool = True,
         memo: bool = True,
@@ -236,7 +247,7 @@ class Rule(IRule, Generic[K]):
                 logwriter.info(f"touch {f}")
 
         if memo:
-            self._info.rule_store.rules[self.raw_rule_id].update_memo()
+            self._info.rule_store.rules[self.raw_rule_id].memo.update()
 
     def clean(self) -> None:
         """
@@ -261,7 +272,11 @@ class Rule(IRule, Generic[K]):
         method: object,
         args: object,
         kwargs: object,
+        noskip: bool,
     ):
+        if len(yfiles) == 0:
+            raise ValueError("Rules must have at least one output file.")
+
         args_ = (args, kwargs)
 
         # Add path prefix
@@ -296,7 +311,12 @@ class Rule(IRule, Generic[K]):
         method_ = _NoArgFunc(method, method_args, method_kwargs)
 
         # Create memo
-        memo = self._info.memo_factory(args_)
+        if noskip:
+            memo = _UnequalMemo()
+        else:
+            memo = self._info.memo_factory(
+                _get_default_memo_file(next(iter(yp2f.values()))), args_
+            )
 
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
@@ -314,7 +334,13 @@ class Rule(IRule, Generic[K]):
                 setattr(self, k, f)
 
     @overload
-    def init(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+    def init(
+        self,
+        method: Callable[P, None],
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[P, Rule[K]]:
         ...
 
     @overload
@@ -328,11 +354,18 @@ class Rule(IRule, Generic[K]):
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[K]]:
         ...
 
     def init(
-        self, output_files: object, method: object = None, /
+        self,
+        output_files: object,
+        method: object = None,
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[..., Rule[K]]:
         """
         Create a temporary function to complete initialization of this rule.
@@ -481,10 +514,12 @@ class Rule(IRule, Generic[K]):
 
                 import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
         """
-        return self._init(output_files, method, IFile_fact=File)
+        return self._init(output_files, method, File, noskip)
 
     @overload
-    def initvf(self, method: Callable[P, None], /) -> Callable[P, Rule[K]]:
+    def initvf(
+        self, method: Callable[P, None], /, *, noskip: bool = False
+    ) -> Callable[P, Rule[K]]:
         ...
 
     @overload
@@ -498,11 +533,18 @@ class Rule(IRule, Generic[K]):
         ],
         method: Callable[P, object],
         /,
+        *,
+        noskip: bool = False,
     ) -> Callable[P, Rule[K]]:
         ...
 
     def initvf(
-        self, output_files: object, method: object = None, /
+        self,
+        output_files: object,
+        method: object = None,
+        /,
+        *,
+        noskip: bool = False,
     ) -> Callable[..., Rule[K]]:
         """
         Create a temporary function to initialize this rule.
@@ -513,15 +555,14 @@ class Rule(IRule, Generic[K]):
         Seealso:
             :func:`init`
         """
-        return self._init(output_files, method, IFile_fact=VFile)
+        return self._init(output_files, method, VFile, noskip)
 
     def _init(
         self,
         output_files: object,
-        method: object = None,
-        /,
-        *,
+        method: object,
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[P, Rule[K]]:
         if method is None:
             output_files, method = self.name_tuple[-1], output_files
@@ -531,7 +572,7 @@ class Rule(IRule, Generic[K]):
         )
 
         def _rule_initializer(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
-            self.__init_full__(yfiles, method, args, kwargs)
+            self.__init_full__(yfiles, method, args, kwargs, noskip)
             return self
 
         return _rule_initializer
@@ -546,6 +587,8 @@ class Rule(IRule, Generic[K]):
                 PathLike[K],
             ]
         ] = None,
+        *,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to initialize this rule.
@@ -588,7 +631,7 @@ class Rule(IRule, Generic[K]):
                             path.write_text(text)
 
                         @self.rule2.init_deco("<R>.txt")
-                        def method_for_rule2(src=self.rule1[0], dst=SELF, repeat=repeat):
+                        def method_for_rule2(src=self.rule1, dst=SELF, repeat=repeat):
                             text = src.read_text()
                             dst.write_text(text * repeat)
 
@@ -611,7 +654,7 @@ class Rule(IRule, Generic[K]):
             :func:`init`
 
         """
-        return self._init_deco(output_files, IFile_fact=File)
+        return self._init_deco(output_files, File, noskip)
 
     def initvf_deco(
         self,
@@ -623,6 +666,7 @@ class Rule(IRule, Generic[K]):
                 PathLike[K],
             ]
         ] = None,
+        noskip: bool = False,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         """
         Create a temporary decorator function to initialize this rule.
@@ -633,13 +677,13 @@ class Rule(IRule, Generic[K]):
         Seealso:
             :func:`init_deco`, :func:`init`
         """
-        return self._init_deco(output_files, IFile_fact=VFile)
+        return self._init_deco(output_files, VFile, noskip)
 
     def _init_deco(
         self,
-        output_files: object = None,
-        *,
+        output_files: object,
         IFile_fact: Callable[[StrOrPath], IFile],
+        noskip: bool,
     ) -> Callable[[_T_deco_f], _T_deco_f]:
         if output_files is None:
             output_files = self.name_tuple[-1]
@@ -650,7 +694,7 @@ class Rule(IRule, Generic[K]):
 
         def decorator(method: _T_deco_f):
             args, kwargs = Rule_init_parse_deco_func(method)
-            self.__init_full__(yfiles, method, args, kwargs)
+            self.__init_full__(yfiles, method, args, kwargs, noskip)
             return method
 
         return decorator
@@ -707,6 +751,31 @@ class Rule(IRule, Generic[K]):
     @require_init
     def xfiles(self) -> Collection[str]:
         return self._xfiles
+
+    @property
+    def memo_value(self) -> object:
+        return self[0].memo_value
+
+    @property
+    def real_value(self) -> object:
+        return self[0].real_value
+
+    @property
+    def memo_file(self) -> Path:
+        """File into which the memo is saved"""
+        return _get_default_memo_file(self[0])
+
+
+def _get_default_memo_file(output0: Path) -> Path:
+    return output0.parent / ".jtcmake" / output0.name
+
+
+class _UnequalMemo(IMemo):
+    def compare(self) -> bool:
+        return False
+
+    def update(self):
+        ...
 
 
 def Rule_init_parse_deco_func(
@@ -922,9 +991,16 @@ def _find_xfiles_in_args(
 
     def check(v: object):
         if isinstance(v, IFile):
-            absp = os.path.abspath(v)
+            f = v
+        elif isinstance(v, IRule):
+            f = next(iter(v.files.values()))
+        else:
+            f = None
+
+        if f is not None:
+            absp = os.path.abspath(f)
             if absp not in ypaths:
-                res[absp] = v
+                res[absp] = f
 
     map_structure(check, args)
 

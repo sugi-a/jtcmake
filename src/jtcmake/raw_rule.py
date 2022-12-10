@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import (
     Callable,
     Generic,
-    Iterable,
     Optional,
     Sequence,
     Set,
@@ -18,16 +17,11 @@ from .core.abc import IRule, UpdateResults, UpdateResult
 
 class IMemo(metaclass=ABCMeta):
     @abstractmethod
-    def compare(self, other: IMemo) -> bool:
+    def compare(self) -> bool:
         ...
 
     @abstractmethod
-    def dumps(self) -> Iterable[bytes]:
-        ...
-
-    @classmethod
-    @abstractmethod
-    def loads(cls, data: bytes) -> IMemo:
+    def update(self) -> None:
         ...
 
 
@@ -103,7 +97,6 @@ class Rule(IRule, Generic[TId, _T_method]):
                 dry_run=dry_run,
                 par_updated=par_updated,
                 memo=self.memo,
-                old_memo_file=self.metadata_fname,
             )
             if res is not None:
                 return res
@@ -119,7 +112,7 @@ class Rule(IRule, Generic[TId, _T_method]):
 
     def postprocess(self, succ: bool):
         if succ:
-            self.update_memo()
+            self.memo.update()
         else:
             # set mtime to 0
             for f in self.yfiles:
@@ -127,22 +120,6 @@ class Rule(IRule, Generic[TId, _T_method]):
                     os.utime(f, (0, 0))
                 except Exception:
                     pass
-
-            # delete vfile cache
-            try:
-                os.remove(self.metadata_fname)
-            except Exception:
-                pass
-
-    @property
-    def metadata_fname(self) -> Path:
-        p = self.yfiles[0]
-        return p.parent / ".jtcmake" / p.name
-
-    def update_memo(self):
-        os.makedirs(os.path.dirname(self.metadata_fname), exist_ok=True)
-        with self.metadata_fname.open("wb") as f:
-            f.writelines(self.memo.dumps())
 
     @property
     def method(self) -> _T_method:
@@ -208,23 +185,12 @@ def _check_update_4(
         return UpdateResults.Necessary()
 
 
-def _check_update_5(
-    memo: IMemo, old_memo_file: Path, **_: object
-) -> Optional[UpdateResult]:
-    if not os.path.exists(old_memo_file):
-        return UpdateResults.Necessary()
-
-    with old_memo_file.open("rb") as f:
-        try:
-            memo_data = f.read()
-        except OSError:
-            return UpdateResults.Necessary()
-
+def _check_update_5(memo: IMemo, **_: object) -> Optional[UpdateResult]:
     try:
-        old_memo = memo.loads(memo_data)
+        if memo.compare():
+            return None
+        else:
+            return UpdateResults.Necessary()
     except Exception:
         # TODO: warn
-        return UpdateResults.Necessary()
-
-    if not memo.compare(old_memo):
         return UpdateResults.Necessary()
