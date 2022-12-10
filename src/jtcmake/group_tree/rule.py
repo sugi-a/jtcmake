@@ -3,11 +3,11 @@ import os
 import inspect
 import time
 import re
+from pathlib import Path
 from os import PathLike
 from typing import (
     Any,
     Callable,
-    Iterable,
     Mapping,
     Optional,
     Tuple,
@@ -247,7 +247,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
                 logwriter.info(f"touch {f}")
 
         if memo:
-            self._info.rule_store.rules[self.raw_rule_id].update_memo()
+            self._info.rule_store.rules[self.raw_rule_id].memo.update()
 
     def clean(self) -> None:
         """
@@ -274,6 +274,9 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         kwargs: object,
         noskip: bool,
     ):
+        if len(yfiles) == 0:
+            raise ValueError("Rules must have at least one output file.")
+
         args_ = (args, kwargs)
 
         # Add path prefix
@@ -311,7 +314,9 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         if noskip:
             memo = _UnequalMemo()
         else:
-            memo = self._info.memo_factory(args_)
+            memo = self._info.memo_factory(
+                _get_default_memo_file(next(iter(yp2f.values()))), args_
+            )
 
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
@@ -755,19 +760,22 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
     def real_value(self) -> object:
         return self[0].real_value
 
+    @property
+    def memo_file(self) -> Path:
+        """File into which the memo is saved"""
+        return _get_default_memo_file(self[0])
+
+
+def _get_default_memo_file(output0: Path) -> Path:
+    return output0.parent / ".jtcmake" / output0.name
+
 
 class _UnequalMemo(IMemo):
-    def compare(self, other: object) -> bool:
-        del other
+    def compare(self) -> bool:
         return False
 
-    def dumps(self) -> Iterable[bytes]:
-        return []
-
-    @classmethod
-    def loads(cls, data: bytes) -> IMemo:
-        del data
-        return _UnequalMemo()
+    def update(self):
+        ...
 
 
 def Rule_init_parse_deco_func(

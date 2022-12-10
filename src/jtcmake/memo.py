@@ -1,8 +1,9 @@
 from __future__ import annotations
 import os
 import json
+from pathlib import Path
 from hashlib import sha256
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from numbers import Complex
 from typing import (
     Callable,
@@ -12,9 +13,9 @@ from typing import (
     Sequence,
     Set,
     Tuple,
-    Type,
     List,
-    Union,
+    TypeVar,
+    Generic,
 )
 
 from .raw_rule import IMemo
@@ -22,112 +23,88 @@ from .raw_rule import IMemo
 
 ENCODING = "utf8"
 
+_T_Memo = TypeVar("_T_Memo")
 
-class ILazyMemo(IMemo, metaclass=ABCMeta):
+
+class Memo(IMemo, Generic[_T_Memo], metaclass=ABCMeta):
+    def __init__(
+        self,
+        args: object,
+        lazy_args_gen: Callable[[], object],
+        memo_file: str | os.PathLike[str],
+        normalizer: Callable[[object], _T_Memo],
+        serializer: Callable[[_T_Memo], str],
+        deserializer: Callable[[str], _T_Memo],
+    ) -> None:
+        self.memo_file = Path(memo_file)
+        self.normalizer = normalizer
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+        self.args = normalizer(args)
+        self.lazy_args_gen = lazy_args_gen
+        self._lazy_args = None
+
     @property
-    def memo(self) -> IMemo:
-        ...
+    def lazy_args(self) -> _T_Memo:
+        if self._lazy_args is None:
+            self._lazy_args = self.normalizer(self.lazy_args_gen())
 
-    @property
-    def lazy_memo(self) -> IMemo:
-        ...
+        return self._lazy_args
 
-    @classmethod
-    @abstractmethod
-    def create(cls, args: object, lazy_args: Callable[[], object]) -> ILazyMemo:
-        ...
+    def compare(self) -> bool:
+        return self.load_memo() == (self.args, self.lazy_args)
 
+    def update(self):
+        self.store_memo()
 
-def create_lazy_memo_type(
-    memo_factory: Callable[[object], IMemo]
-) -> Type[ILazyMemo]:
-    from_bytes = memo_factory(None).loads
+    def load_memo(self) -> None | tuple[object, object]:
+        try:
+            with open(self.memo_file) as f:
+                obj: dict[str, object] = json.load(f)
+        except Exception:
+            return None
 
-    class LazyMemo(ILazyMemo):
-        __slots__ = ("_memo", "lazy_args")
-        _memo: IMemo
-        lazy_args: Union[Callable[[], object], IMemo]
+        if not isinstance(
+            obj, dict
+        ):  # pyright: ignore [reportUnnecessaryIsInstance]
+            return None
 
-        def __init__(
-            self,
-            memo: IMemo,
-            lazy_args: Union[Callable[[], object], IMemo],
-        ):
-            self._memo = memo
-            self.lazy_args = lazy_args
+        args, lazy_args = obj.get("args"), obj.get("lazy_args")
 
-        @property
-        def memo(self) -> IMemo:
-            return self._memo
+        if not isinstance(args, str) or not isinstance(lazy_args, str):
+            return None
 
-        @property
-        def lazy_memo(self) -> IMemo:
-            if isinstance(self.lazy_args, IMemo):
-                return self.lazy_args
-            else:
-                return memo_factory(self.lazy_args())
+        return self.deserializer(args), self.deserializer(lazy_args)
 
-        def compare(self, other: IMemo) -> bool:
-            if isinstance(other, ILazyMemo):
-                return self.memo.compare(other.memo) and self.lazy_memo.compare(
-                    other.lazy_memo
-                )
-            else:
-                return False
+    def store_memo(self):
+        saved_obj = {
+            "args": self.serializer(self.args),
+            "lazy_args": self.serializer(self.lazy_args),
+        }
 
-        @classmethod
-        def create(
-            cls, args: object, lazy_args: Callable[[], object]
-        ) -> ILazyMemo:
-            return cls(memo_factory(args), lazy_args)
-
-        def dumps(self) -> Iterable[bytes]:
-            memo_ = b"".join(self.memo.dumps()).hex()
-            lazy_memo_ = b"".join(self.lazy_memo.dumps()).hex()
-            return [json.dumps([memo_, lazy_memo_]).encode(ENCODING)]
-
-        @classmethod
-        def loads(cls, data: bytes) -> ILazyMemo:
-            o = json.loads(data.decode(ENCODING))
-            assert isinstance(o, list)
-
-            memo = from_bytes(bytes.fromhex(o[0]))
-            lazy_args = from_bytes(bytes.fromhex(o[1]))
-
-            return cls(memo, lazy_args)
-
-    return LazyMemo
+        os.makedirs(self.memo_file.parent, exist_ok=True)
+        with open(self.memo_file, "w") as f:
+            json.dump(saved_obj, f)
 
 
 MAX_RAW_REPRESENTATION_LEN = 1000
 
 
-class StrHashMemo(IMemo):
-    __slots__ = ("text",)
-    text: str
+def string_normalizer(args: object) -> str:
+    s = stringify(args, None)
+    if len(s) > MAX_RAW_REPRESENTATION_LEN:
+        return _hash_fn(s)
+    else:
+        return s
 
-    def __init__(self, text: str):
-        if len(text) > MAX_RAW_REPRESENTATION_LEN:
-            self.text = _hash_fn(text)
-        else:
-            self.text = text
 
-    def compare(self, other: IMemo) -> bool:
-        if isinstance(other, StrHashMemo):
-            return self.text == other.text
-        else:
-            return False
+def string_serializer(s: str) -> str:
+    return s
 
-    def dumps(self) -> Iterable[bytes]:
-        return [self.text.encode(ENCODING)]
 
-    @classmethod
-    def loads(cls, data: bytes) -> StrHashMemo:
-        return cls(data.decode(ENCODING))
-
-    @classmethod
-    def create(cls, args: object) -> StrHashMemo:
-        return cls(stringify(args, None))
+def string_deserializer(s: str) -> str:
+    return s
 
 
 def _hash_fn(s: str):

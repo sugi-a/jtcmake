@@ -10,6 +10,7 @@ import pytest
 from jtcmake.group_tree.core import IFile
 from jtcmake.group_tree import rule
 from jtcmake.group_tree.atom import Atom
+from jtcmake.group_tree.groups import UntypedGroup
 
 
 if sys.platform == "win32":
@@ -241,3 +242,13 @@ def test_Rule_init_parse_deco_func(method, expect):
             rule.Rule_init_parse_deco_func(method) == expect
     else:
         rule.Rule_init_parse_deco_func(method) == expect
+
+
+def test_memo_file():
+    g = UntypedGroup()
+
+    def _f(p: Path):
+        del p
+
+    r = g.add("a", _f)(rule.SELF)
+    assert os.path.abspath(r.memo_file) == os.path.abspath("./.jtcmake/a")

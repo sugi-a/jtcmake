@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Optional, Union
 import pytest
 
 from jtcmake.core.abc import UpdateResults
@@ -77,28 +77,11 @@ class Memo(IMemo):
     def __init__(self, res: bool):
         self.res = res
 
-    def compare(self, other: IMemo):
+    def compare(self):
         return self.res
 
-    def dumps(self) -> Iterable[bytes]:
+    def update(self):
         ...
-
-    @classmethod
-    def loads(cls, data: bytes) -> IMemo:
-        ...
-
-
-def test_metadata_fname(mocker: Any):
-    """Rule.metadata_fname is decided based on the name of the first
-    output file (p) as follows:
-        metadata_fname := p.parent / '.jtcmake' / p.name
-    """
-    y1, y2 = Path("a/b.c"), Path("d/e.f")
-    memo = mocker.MagicMock()
-    r = Rule([y1, y2], [], [], [], set(), _method, memo, 0)
-    assert os.path.abspath(r.metadata_fname) == os.path.abspath(
-        "a/.jtcmake/b.c"
-    )
 
 
 """
@@ -199,19 +182,15 @@ def test_check_update_4(
 
 
 @pytest.mark.parametrize(
-    "memo,old_memo_file,expect",
+    "memo,expect",
     [
-        (Memo(True), Path, Necessary),
-        (Memo(False), EPath(), Necessary),
-        (Memo(True), EPath(), NoneType),
+        (Memo(False), Necessary),
+        (Memo(True), NoneType),
     ],
 )
-def test_check_update_5(
-    tmp_path: Path, memo: Any, old_memo_file: Any, expect: Any
-):
+def test_check_update_5(memo: Any, expect: Any):
     func = raw_rule._check_update_5  # pyright: ignore [reportPrivateUsage]
-    old_memo_file = old_memo_file(tmp_path / "a")
-    assert isinstance(func(memo, old_memo_file), expect)
+    assert isinstance(func(memo), expect)
 
 
 def test_preprocess(tmp_path: Path, mocker: Any):
@@ -254,7 +233,5 @@ def test_postprocess(tmp_path: Path, mocker: Any):
     touch(x1, x2)
 
     r.postprocess(True)
-
-    mock_memo.dumps.assert_called_once_with()
 
     # TODO: test

@@ -299,9 +299,6 @@ class RuleStore:
         memo: IMemo,
         name: Tuple[str, ...],
     ) -> _RawRule[int, INoArgFunc]:
-        if len(yp2f) == 0:
-            raise ValueError("Rules must have at least one output file.")
-
         # Check duplicated registration of yfiles
         for p, f in yp2f.items():
             if p in self.ypath2idx:
@@ -365,7 +362,7 @@ class GroupTreeInfo:
 
     rule_store: RuleStore
     logwriter: IWriter
-    memo_factory: Callable[[object], IMemo]
+    memo_factory: Callable[[StrOrPath, object], IMemo]
     memo_store: Dict[int, IAtom]
     rules_to_be_init: Set[Tuple[str, ...]]
     root: IGroup
@@ -373,7 +370,7 @@ class GroupTreeInfo:
     def __init__(
         self,
         logwriter: IWriter,
-        memo_factory: Callable[[object], IMemo],
+        memo_factory: Callable[[StrOrPath, object], IMemo],
         root: IGroup,
     ):
         self.logwriter = logwriter
