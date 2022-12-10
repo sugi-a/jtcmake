@@ -359,14 +359,31 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
     ) -> Callable[P, Rule[K]]:
         ...
 
+    @overload
     def init(
         self,
-        output_files: object,
+        output_files: Optional[
+            Union[
+                Mapping[K, StrOrPath],
+                Sequence[Union[K, PathLike[K]]],
+                K,
+                PathLike[K],
+            ]
+        ] = None,
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
+        ...
+
+    def init(
+        self,
+        output_files: object = None,
         method: object = None,
         /,
         *,
         noskip: bool = False,
-    ) -> Callable[..., Rule[K]]:
+    ) -> Callable[..., object]:
         """
         Create a temporary function to complete initialization of this rule.
 
@@ -538,14 +555,26 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
     ) -> Callable[P, Rule[K]]:
         ...
 
+    @overload
     def initvf(
         self,
-        output_files: object,
+        output_files: Optional[
+            Mapping[K, StrOrPath] | Sequence[K | PathLike[K]] | K | PathLike[K]
+        ] = None,
+        /,
+        *,
+        noskip: bool = False,
+    ) -> Callable[[_T_deco_f], _T_deco_f]:
+        ...
+
+    def initvf(
+        self,
+        output_files: object = None,
         method: object = None,
         /,
         *,
         noskip: bool = False,
-    ) -> Callable[..., Rule[K]]:
+    ) -> Callable[..., object]:
         """
         Create a temporary function to initialize this rule.
 
@@ -563,141 +592,32 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         method: object,
         IFile_fact: Callable[[StrOrPath], IFile],
         noskip: bool,
-    ) -> Callable[P, Rule[K]]:
+    ) -> Callable[..., object]:
         if method is None:
-            output_files, method = self.name_tuple[-1], output_files
+            if callable(output_files):
+                output_files, method = self.name_tuple[-1], output_files
+            elif output_files is None:
+                output_files = self.name_tuple[-1]
 
         yfiles = parse_args_output_files(
             self.name_tuple[-1], self._file_keys_hint, output_files, IFile_fact
         )
 
-        def _rule_initializer(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
-            self.__init_full__(yfiles, method, args, kwargs, noskip)
-            return self
+        if method is None:
 
-        return _rule_initializer
+            def decorator(method: Callable[[], object]):
+                args, kwargs = Rule_init_parse_deco_func(method)
+                self.__init_full__(yfiles, method, args, kwargs, noskip)
+                return method
 
-    def init_deco(
-        self,
-        output_files: Optional[
-            Union[
-                Mapping[K, StrOrPath],
-                Sequence[Union[K, PathLike[K]]],
-                K,
-                PathLike[K],
-            ]
-        ] = None,
-        *,
-        noskip: bool = False,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        """
-        Create a temporary decorator function to initialize this rule.
-        This is a decorator version of :func:`init`.
-        This is useful when you want to define a method for the rule
-        on-the-fly instead of passing an existing function
-        (see the examples below).
+            return decorator
+        else:
 
-        Args:
-            output_files: output files of this rule.
-                If not specified, this rule's name will be used.
-                Just like :func:`init`, file paths will be internally converted
-                to :class:`File` if they aren't either :class:`File` or
-                :class:`VFile`.
+            def rule_initializer(*args: P.args, **kwargs: P.kwargs) -> Rule[K]:
+                self.__init_full__(yfiles, method, args, kwargs, noskip)
+                return self
 
-                See :func:`init` for more information.
-
-        Returns:
-            **rule_method_decorator**.
-
-            Invoking the ``rule_method_decorator`` with the method you want to
-            bind to this rule completes initialization of the rule.
-
-            All the arguments to the method must have a default value
-            (see the example).
-
-        Example:
-            .. testcode::
-
-                from jtcmake import StaticGroupBase, Rule, SELF
-
-                class MyGroup(StaticGroupBase):
-                    __globals__ = globals()  # Only for Sphinx's doctest. Not necessary in normal situations.
-                    rule1: Rule[str]
-                    rule2: Rule[str]
-
-                    def init(self, text: str, repeat: int) -> MyGroup:
-                        @self.rule1.init_deco("<R>.txt")
-                        def method_for_rule1(path=SELF, text=text):
-                            path.write_text(text)
-
-                        @self.rule2.init_deco("<R>.txt")
-                        def method_for_rule2(src=self.rule1, dst=SELF, repeat=repeat):
-                            text = src.read_text()
-                            dst.write_text(text * repeat)
-
-                        return self
-
-
-                MyGroup("out").init("abc", 2).make()
-
-                assert Path("out/rule1.txt").read_text() == "abc"
-                assert Path("out/rule2.txt").read_text() == "abcabc"
-
-                MyGroup("out").init("abc", 3).make()
-
-                assert Path("out/rule1.txt").read_text() == "abc"
-                assert Path("out/rule2.txt").read_text() == "abcabcabc"
-
-                import shutil; shutil.rmtree("out")  # Cleanup for Sphinx's doctest
-
-        Seealso:
-            :func:`init`
-
-        """
-        return self._init_deco(output_files, File, noskip)
-
-    def initvf_deco(
-        self,
-        output_files: Optional[
-            Union[
-                Mapping[K, StrOrPath],
-                Sequence[Union[K, PathLike[K]]],
-                K,
-                PathLike[K],
-            ]
-        ] = None,
-        noskip: bool = False,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        """
-        Create a temporary decorator function to initialize this rule.
-
-        This method is equal to :func:`init_deco` except the default class
-        constructor is :class:`VFile` instead of :class:`File`.
-
-        Seealso:
-            :func:`init_deco`, :func:`init`
-        """
-        return self._init_deco(output_files, VFile, noskip)
-
-    def _init_deco(
-        self,
-        output_files: object,
-        IFile_fact: Callable[[StrOrPath], IFile],
-        noskip: bool,
-    ) -> Callable[[_T_deco_f], _T_deco_f]:
-        if output_files is None:
-            output_files = self.name_tuple[-1]
-
-        yfiles = parse_args_output_files(
-            self.name_tuple[-1], self._file_keys_hint, output_files, IFile_fact
-        )
-
-        def decorator(method: _T_deco_f):
-            args, kwargs = Rule_init_parse_deco_func(method)
-            self.__init_full__(yfiles, method, args, kwargs, noskip)
-            return method
-
-        return decorator
+            return rule_initializer
 
     def _get_info(self) -> GroupTreeInfo:
         return self._info
@@ -886,7 +806,7 @@ def parse_args_output_files(
     else:
         raise TypeError(
             "output_files must be str | PathLike | Sequence[str|PathLike] "
-            "| Mapping[str|PathLike]."
+            f"| Mapping[str|PathLike]. Given {output_files}"
         )
 
     if not _check_file_keys(outs, key_hints):

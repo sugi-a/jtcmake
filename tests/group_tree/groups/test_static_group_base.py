@@ -51,7 +51,7 @@ class Static1(StaticGroupBase):
     g1: GroupsGroup[Static2]
 
     def init(self, text1: str, text2: str) -> Static1:
-        @self.r1.init_deco({"a": "<R>-<F>", "b": "<R>-<F>"})
+        @self.r1.init({"a": "<R>-<F>", "b": "<R>-<F>"})
         def _(  # pyright: ignore [reportUnusedFunction]
             a: Path = SELF.a, b: Path = SELF.b, t1: str = text1, t2: str = text2
         ):

@@ -97,7 +97,7 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
             foo: Rule[str]
 
             def init(self, src: Path, repeat: int) -> MyChildGroup:
-                @self.foo.init_deco("<R>.txt")
+                @self.foo.init("<R>.txt")
                 def _(src=src, dst=SELF, repeat=repeat):
                     text = src.read_text()
                     dst.write_text(text * repeat)
@@ -474,7 +474,7 @@ class UntypedGroup(
 
         g = UntypedGroup("out")
 
-        @g.add_deco("rule0")
+        @g.add("rule0")
         def _write_0(p: Path = SELF):
             p.write_text("0")
 

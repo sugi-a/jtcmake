@@ -36,7 +36,7 @@ def test_noskip(tmp_path: Path):
 
     flag = False
 
-    @g.add_deco("a", noskip=True)
+    @g.add("a", noskip=True)
     def _(slf: Path = SELF):
         nonlocal flag
         flag = True
