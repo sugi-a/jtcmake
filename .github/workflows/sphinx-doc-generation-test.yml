@@ -1,0 +1,29 @@
+name: DocGenerationTest
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        sudo apt install graphviz
+        python -m pip install --upgrade pip
+        python -m pip install sphinx sphinx-rtd-theme
+        python -m pip install -e .
+    - name: Check if docs are generated without errors
+      run: |
+        cd docs_src && python make.py html
