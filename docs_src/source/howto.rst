@@ -24,7 +24,7 @@ It shares the essence with Makefile:
 Furthermore, JTCMake has strong features such as
 
 Content-based Skippability Check
-  In addition to the modification-time-based skippability check, JTCMake
+  In addition to the modification-timestamp-based skippability check, JTCMake
   can be configured to check if a rule is skippable based on the input files'
   content modification.
 
@@ -202,8 +202,9 @@ Skipping Completed Rules
 ------------------------
 
 Just like Makefile, JTCMake by default checks the existence and modification
-time of the input/output files of each rule, and if the output files are there
-and newer than the input files, JTCMake skips the rule to save computation cost.
+timestamp of the input/output files of each rule, and if the output files are
+there and newer than the input files, JTCMake skips the rule to save
+computation cost.
 
 Additionally, JTCMake supports content-based check of execution necessesity.
 In the above code, we use that feature (by :class:`jtcmake.VFile`,
@@ -240,6 +241,31 @@ depend on *A*.
 
 Dependencies between a set of rules can be described using a dependency graph.
 JTCMake imposes a restriction on dependency graphs that they must be asyclic.
+
+
+"Up-to-date" Criteria
+=====================
+
+When ordered to perform "make" on a set of rules, JTCMake does not necessarily
+execute all of them: it skips the rules that are considered to be "up-to-date".
+There are two major mechanisms used to judge whether a rule is skippable.
+
+1. **mtime comparison** - if an input file is newer than an output file, 
+   the rule is considered to be not skippable.
+   The newness of the files is judged based on their mtime
+   (modification-timestamp) attribute provided by the file system.
+2. **Memoization** - if any input value (file content or python variable) is
+   different from the one recorded last time the rule was "made", the rule
+   is considered to be not skippable.
+
+For each input file, you can configure which criterion to apply.
+Files which are handled by memoization are called **value files**.
+In other words, JTCMake does not check the mtime of a file if it is set to be
+a *value file*. Instead, its content is checked.
+
+Input python objects are basically all memoized but you can configure for
+each of them how to memoize them. For example, you can exclude certain inputs
+from the memoization list.
 
 
 Group Tree Model
@@ -609,6 +635,83 @@ Note that ``list``, ``tuple``, ``dict``, and ``set`` are the only supported
 container types. JTCMake does not look inside other containers types like
 ``collections.deque`` or dataclasses.
 
+Value File
+----------
+
+As explained in `"Up-to-date" Criteria`, JTCMake performs content-based
+skippability check for **value files** rather than the mtime-based check.
+
+Owned (not original) files may be declared to be value files in two ways.
+First is Wrapping the base-path by :class:`jtcmake.VFile` when specifying the
+``output_files`` for :func:`jtcmake.RulesGroup.add`
+
+.. testcode::
+
+  import time
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF, VFile, File
+
+  g = RulesGroup("output")
+
+  @g.add("foo", { "a": "a.txt", "b": VFile("b.txt" ) })
+  def make_foo(a: Path = SELF.a, b: Path = SELF.b):
+      a.touch(); b.touch()
+
+  @g.add("bar")
+  def make_bar(slf: Path = SELF, a: Path = g.foo.a, b: Path = g.foo.b):
+      print("make_bar")
+      slf.touch()
+
+  assert isinstance(g.foo.a, File)   # g.foo.a is a normal file
+  assert isinstance(g.foo.b, VFile)  # g.foo.b is a value file
+
+  g.make()
+
+  time.sleep(0.1)
+
+  print("touch a")
+  g.foo.a.touch()
+  g.make()  # bar will be "made" because now "a.txt" is newer than bar
+
+  time.sleep(0.1)
+
+  print("touch b")
+  g.foo.b.touch()
+  g.make()  # bar will be skipped
+
+
+.. testoutput::
+  :options: +NORMALIZE_WHITESPACE
+  
+  make_bar
+  touch a
+  make_bar
+  touch b
+
+Alternatively you can use the APIs like
+:func:`addvf <jtcmake.RulesGroup.addvf>` and
+:func:`initvf <jtcmake.StaticGroupBase.initvf>` instead of 
+:func:`add <jtcmake.RulesGroup.add>` and
+:func:`init <jtcmake.StaticGroupBase.init>`.
+
+.. testcode::
+
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF, VFile, File
+
+  g = RulesGroup("output")
+
+  @g.addvf("foo", { "a": "a.txt", "b": "b.txt" })
+  def make_foo(a: Path = SELF.a, b: Path = SELF.b):
+      a.touch(); b.touch()
+
+  # Both a.txt and b.txt are value files
+  assert isinstance(g.foo.a, VFile)
+  assert isinstance(g.foo.b, VFile)
+
+Original value files may be defined using :class:`jtcmake.VFile` just like
+normal files are defined by :class:`jtcmake.File`.
+
 
 Group Node Classes
 ==================
@@ -956,11 +1059,6 @@ of UntypedGroup like you can insert items to a dict.
   - :func:`jtcmake.UntypedGroup.add_group`
   - :func:`jtcmake.UntypedGroup.add`
   - :func:`jtcmake.UntypedGroup.addvf`
-
-
-***********
-Memoization
-***********
 
 
 *************
