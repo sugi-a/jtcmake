@@ -56,6 +56,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#core-concepts">Core Concepts</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#rules-and-dependency">Rules and Dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#up-to-date-criteria">“Up-to-date” Criteria</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#group-tree-model">Group Tree Model</a></li>
 </ul>
 </li>
@@ -67,6 +68,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#dependency-of-rules">Dependency of Rules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#original-files">Original Files</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#selfs-and-files-in-nested-arguments">SELFs and Files in Nested Arguments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#value-file">Value File</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#group-node-classes">Group Node Classes</a><ul>
@@ -78,7 +80,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#memoization">Memoization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#miscellaneous">Miscellaneous</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#make">Make</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#parallel-execution">Parallel Execution</a></li>
@@ -128,7 +129,7 @@ up-to-date</p></li>
 </ul>
 <p>Furthermore, JTCMake has strong features such as</p>
 <dl>
-<dt>Content-based Skippability Check</dt><dd><p>In addition to the modification-time-based skippability check, JTCMake
+<dt>Content-based Skippability Check</dt><dd><p>In addition to the modification-timestamp-based skippability check, JTCMake
 can be configured to check if a rule is skippable based on the input files’
 content modification.</p>
 </dd>
@@ -421,8 +422,9 @@ It is as easy as running <code class="docutils literal notranslate"><span class=
 <section id="skipping-completed-rules">
 <h4>Skipping Completed Rules<a class="headerlink" href="#skipping-completed-rules" title="Permalink to this heading"></a></h4>
 <p>Just like Makefile, JTCMake by default checks the existence and modification
-time of the input/output files of each rule, and if the output files are there
-and newer than the input files, JTCMake skips the rule to save computation cost.</p>
+timestamp of the input/output files of each rule, and if the output files are
+there and newer than the input files, JTCMake skips the rule to save
+computation cost.</p>
 <p>Additionally, JTCMake supports content-based check of execution necessesity.
 In the above code, we use that feature (by <a class="reference internal" href="reference.html#jtcmake.VFile" title="jtcmake.VFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code></a>,
 <a class="reference internal" href="reference.html#jtcmake.Rule.initvf" title="jtcmake.Rule.initvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.Rule.initvf()</span></code></a>, and so on) so re-running the script
@@ -449,6 +451,28 @@ when an output file of rule <em>A</em> is an input to rule <em>B</em>, <em>B</em
 depend on <em>A</em>.</p>
 <p>Dependencies between a set of rules can be described using a dependency graph.
 JTCMake imposes a restriction on dependency graphs that they must be asyclic.</p>
+</section>
+<section id="up-to-date-criteria">
+<h3>“Up-to-date” Criteria<a class="headerlink" href="#up-to-date-criteria" title="Permalink to this heading"></a></h3>
+<p>When ordered to perform “make” on a set of rules, JTCMake does not necessarily
+execute all of them: it skips the rules that are considered to be “up-to-date”.
+There are two major mechanisms used to judge whether a rule is skippable.</p>
+<ol class="arabic simple">
+<li><p><strong>mtime comparison</strong> - if an input file is newer than an output file,
+the rule is considered to be not skippable.
+The newness of the files is judged based on their mtime
+(modification-timestamp) attribute provided by the file system.</p></li>
+<li><p><strong>Memoization</strong> - if any input value (file content or python variable) is
+different from the one recorded last time the rule was “made”, the rule
+is considered to be not skippable.</p></li>
+</ol>
+<p>For each input file, you can configure which criterion to apply.
+Files which are handled by memoization are called <strong>value files</strong>.
+In other words, JTCMake does not check the mtime of a file if it is set to be
+a <em>value file</em>. Instead, its content is checked.</p>
+<p>Input python objects are basically all memoized but you can configure for
+each of them how to memoize them. For example, you can exclude certain inputs
+from the memoization list.</p>
 </section>
 <section id="group-tree-model">
 <h3>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading"></a></h3>
@@ -806,6 +830,74 @@ BAR: xyz
 container types. JTCMake does not look inside other containers types like
 <code class="docutils literal notranslate"><span class="pre">collections.deque</span></code> or dataclasses.</p>
 </section>
+<section id="value-file">
+<h4>Value File<a class="headerlink" href="#value-file" title="Permalink to this heading"></a></h4>
+<p>As explained in <cite>“Up-to-date” Criteria</cite>, JTCMake performs content-based
+skippability check for <strong>value files</strong> rather than the mtime-based check.</p>
+<p>Owned (not original) files may be declared to be value files in two ways.
+First is Wrapping the base-path by <a class="reference internal" href="reference.html#jtcmake.VFile" title="jtcmake.VFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code></a> when specifying the
+<code class="docutils literal notranslate"><span class="pre">output_files</span></code> for <a class="reference internal" href="reference.html#jtcmake.RulesGroup.add" title="jtcmake.RulesGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.RulesGroup.add()</span></code></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">RulesGroup</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">VFile</span><span class="p">,</span> <span class="n">File</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">RulesGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="nd">@g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="s2">&quot;a.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">VFile</span><span class="p">(</span><span class="s2">&quot;b.txt&quot;</span> <span class="p">)</span> <span class="p">})</span>
+<span class="k">def</span> <span class="nf">make_foo</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">SELF</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">SELF</span><span class="o">.</span><span class="n">b</span><span class="p">):</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">touch</span><span class="p">();</span> <span class="n">b</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+
+<span class="nd">@g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">make_bar</span><span class="p">(</span><span class="n">slf</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">b</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;make_bar&quot;</span><span class="p">)</span>
+    <span class="n">slf</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">File</span><span class="p">)</span>   <span class="c1"># g.foo.a is a normal file</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">VFile</span><span class="p">)</span>  <span class="c1"># g.foo.b is a value file</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>
+
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;touch a&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">a</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>  <span class="c1"># bar will be &quot;made&quot; because now &quot;a.txt&quot; is newer than bar</span>
+
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;touch b&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">b</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">make</span><span class="p">()</span>  <span class="c1"># bar will be skipped</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>make_bar
+touch a
+make_bar
+touch b
+</pre></div>
+</div>
+<p>Alternatively you can use the APIs like
+<a class="reference internal" href="reference.html#jtcmake.RulesGroup.addvf" title="jtcmake.RulesGroup.addvf"><code class="xref py py-func docutils literal notranslate"><span class="pre">addvf</span></code></a> and
+<code class="xref py py-func docutils literal notranslate"><span class="pre">initvf</span></code> instead of
+<a class="reference internal" href="reference.html#jtcmake.RulesGroup.add" title="jtcmake.RulesGroup.add"><code class="xref py py-func docutils literal notranslate"><span class="pre">add</span></code></a> and
+<code class="xref py py-func docutils literal notranslate"><span class="pre">init</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">RulesGroup</span><span class="p">,</span> <span class="n">SELF</span><span class="p">,</span> <span class="n">VFile</span><span class="p">,</span> <span class="n">File</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">RulesGroup</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">)</span>
+
+<span class="nd">@g</span><span class="o">.</span><span class="n">addvf</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="s2">&quot;a.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="s2">&quot;b.txt&quot;</span> <span class="p">})</span>
+<span class="k">def</span> <span class="nf">make_foo</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">SELF</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">SELF</span><span class="o">.</span><span class="n">b</span><span class="p">):</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">touch</span><span class="p">();</span> <span class="n">b</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+
+<span class="c1"># Both a.txt and b.txt are value files</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">VFile</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">VFile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Original value files may be defined using <a class="reference internal" href="reference.html#jtcmake.VFile" title="jtcmake.VFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.VFile</span></code></a> just like
+normal files are defined by <a class="reference internal" href="reference.html#jtcmake.File" title="jtcmake.File"><code class="xref py py-class docutils literal notranslate"><span class="pre">jtcmake.File</span></code></a>.</p>
+</section>
 </section>
 <section id="group-node-classes">
 <h3>Group Node Classes<a class="headerlink" href="#group-node-classes" title="Permalink to this heading"></a></h3>
@@ -1150,9 +1242,6 @@ only to keep them visually concise.</p>
 </div>
 </section>
 </section>
-</section>
-<section id="memoization">
-<h2>Memoization<a class="headerlink" href="#memoization" title="Permalink to this heading"></a></h2>
 </section>
 <section id="miscellaneous">
 <h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this heading"></a></h2>
