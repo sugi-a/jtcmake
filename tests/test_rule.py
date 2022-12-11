@@ -219,19 +219,30 @@ def test_postprocess(tmp_path: Path, mocker: Any):
     x2 = tmp_path / "x2"
     xisorig = [True, True]
 
-    r = Rule(
-        [y],
-        [x1, x2],
-        xisorig,
-        [True, False],
-        set(),
-        _method,
-        mock_memo,
-        0,
-    )
+    def meth():
+        ...
 
-    touch(x1, x2)
+    r = Rule([y], [x1, x2], xisorig, [True, False], set(), meth, mock_memo, 0)
+
+    touch(y, x1, x2)
 
     r.postprocess(True)
 
-    # TODO: test
+    mock_memo.update.assert_called_once()
+
+
+def test_postprocess_fail_missing_yfile(tmp_path: Path, mocker: Any):
+    mock_memo = mocker.MagicMock(IMemo)
+
+    y = tmp_path / "y"
+    x1 = tmp_path / "x1"
+    x2 = tmp_path / "x2"
+    xisorig = [True, True]
+
+    def meth():
+        ...
+
+    r = Rule([y], [x1, x2], xisorig, [True, False], set(), meth, mock_memo, 0)
+
+    with pytest.raises(FileNotFoundError):
+        r.postprocess(True)
