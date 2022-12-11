@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 from dataclasses import dataclass
 import subprocess
 from html import escape
@@ -114,9 +114,9 @@ G = Group("<ROOT>", "top/", [
 
 def main():
     code = gen_dot(G)
-    subprocess.run(
+    assert subprocess.run(
         ["dot", "-Tsvg", "-otmp-group-tree.svg"], input=code.encode(),
-    )
+    ).returncode == 0
 
     files_txt = gen_file_table(_get_files(G))
     Path("tmp-files.txt").write_text(files_txt)
