@@ -112,6 +112,21 @@ class Rule(IRule, Generic[TId, _T_method]):
 
     def postprocess(self, succ: bool):
         if succ:
+            # Check if all the output files have been made
+            missing_yfiles: set[str] = set()
+
+            for f in self.yfiles:
+                if not f.exists() or not f.is_file():
+                    missing_yfiles.add(str(f))
+
+            if len(missing_yfiles) != 0:
+                raise FileNotFoundError(
+                    "The following output files have not been made:\n\t"
+                    + "\n\t".join(missing_yfiles)
+                    + "\nNote that the method of the rule must create all the "
+                    "output files."
+                )
+
             self.memo.update()
         else:
             # set mtime to 0
