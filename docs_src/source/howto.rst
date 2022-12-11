@@ -300,28 +300,315 @@ Managing rules this way serves two benefits:
   It again reduces the cognitive load to comprehend the tasks and their outputs. 
 
 
-**************
-Defining Rules
-**************
-
-This chapter explains how to define rules.
-For the sake of simplicity, rules will be defined in a "flat" tree (tree with a
-depth of 1) of :class:`RulesGroup`.
-General group trees will be covered in `Construction of Group Trees`_ .
-
-.. testcode::
-
-  from jtcmake import RulesGroup, SELF
-
-  g = RulesGroup("root-dir")
-  
-
 ***************************
 Construction of Group Trees
 ***************************
 
 As described in the `Overview`_ chapter, our first step in the JTCMake workflow
 is to create a group tree that holds the definition of rules inside.
+
+
+Defining Rules
+==============
+
+This section explains how to define rules in a group tree.
+For the sake of simplicity, rules will be defined in a "flat" tree (tree with a
+depth of 1) of :class:`RulesGroup`.
+General group trees will be covered in `Construction of Group Trees`_ .
+
+
+.. testcode:: defining_rules
+
+  from __future__ import annotations
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  def method(f1: Path, f2: Path, texts: list[str]):
+      f1.write_text(texts[0])
+      f2.write_text(texts[1])
+
+  g.add("foo", { "a": "foo-a.txt", "b": "foo-b.txt" }, method)(
+      SELF.a, SELF.b, ["abc", "xyz"]
+  )
+
+  g.make()
+
+  assert Path("output/foo-a.txt").read_text() == "abc"
+  assert Path("output/foo-b.txt").read_text() == "xyz"
+
+The 2nd argument for ``add`` is a dictionary containing the output files.
+It's keys are the *basenames* of the files and the corresponding values are the
+*path-prefixes* of the files (see `Group Tree Model`_ for these terms).
+
+The 3rd argument is the method to be used to create the output files.
+All the output files must be passed to the method as parameters.
+
+Calling ``add`` does not immediately appends a rule to the group.
+Instead it returns a temporary function ``rule_adder`` whose signature is the
+same as the ``method``, which is in this case
+``(f1: Path, f2: Path, texts: list[str]) -> NoneType``.
+Calling ``rule_adder`` with the arguments which must be eventually passed to
+``method`` finishes the regstration of the new rule.
+The key point here is to use the special constant :class:`jtcmake.SELF` to
+represent the node of the new rule. There are several notations using ``SELF``
+to specify the output files.
+
+.. list-table::
+  :header-rows: 1
+
+  * - File
+    - Attribute
+    - Indexing with the basename
+    - Indexing with the index
+    - Bare self
+  * - ``output/foo-a.txt``
+    - ``SELF.a``
+    - ``SELF["a"]``
+    - ``SELF[0]``
+    - ``SELF``
+  * - ``output/foo-b.txt``
+    - ``SELF.b``
+    - ``SELF["b"]``
+    - ``SELF[1]``
+    - 
+
+Accessing Rule/File nodes
+-------------------------
+
+You can reference the rule node either by the attribute-access or indxing:
+
+.. testcode:: defining_rules
+
+  from jtcmake import Rule
+
+  assert isinstance(g.foo, Rule)
+  assert g.foo is g["foo"]
+
+You can get the output file nodes of the rule as follows:
+
+.. testcode:: defining_rules
+
+  from jtcmake import IFile
+
+  foo = g.foo
+
+  assert isinstance(foo.a, IFile)
+  assert isinstance(foo.b, IFile)
+  assert foo.a == foo["a"] == foo[0]
+  assert foo.b == foo["b"] == foo[1]
+
+File nodes implements the ``pathlib.Path`` interface
+
+.. testcode:: defining_rules
+
+  assert isinstance(foo.a, Path)
+  assert isinstance(foo.b, Path)
+  assert foo.a.samefile("output/foo-a.txt")
+  assert foo.b.samefile("output/foo-b.txt")
+
+Simpified Notation of Output Files
+----------------------------------
+
+``output_files`` passed to ``add`` can be a list (or tuple) of base-paths
+instead of a dict.
+
+.. testcode:: defining_rules
+
+  from __future__ import annotations
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  def method(f1: Path, f2: Path, texts: list[str]):
+      f1.write_text(texts[0])
+      f2.write_text(texts[1])
+
+  g.add("foo", ["foo-a.txt", "foo-b.txt"], method)(
+      SELF[0], SELF[1], ["abc", "xyz"]
+  )
+
+  g.make()
+
+  assert Path("output/foo-a.txt").read_text() == "abc"
+  assert Path("output/foo-b.txt").read_text() == "xyz"
+
+  assert g.foo["foo-a.txt"].samefile("output/foo-a.txt")
+  assert g.foo["foo-b.txt"].samefile("output/foo-b.txt")
+
+When given a list ``[x, y, ...]`` instead of a dict, ``add`` converts it to a
+dict ``{ str(x): x, str(y): y, ... }``.
+
+``output_files`` may be a str or PathLike when there is only one output file
+for the rule (which is the most common case):
+
+.. testcode::
+
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  g.add("foo", "foo-a.txt", Path.write_text)(SELF, "abc")
+
+  g.make()
+
+  assert g.foo[0].read_text() == "abc"
+
+``output_files`` may even be completely omitted when the rule has only one
+output file and its basename is equal to to its path-base:
+
+.. testcode::
+
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  g.add("foo-a.txt", Path.write_text)(SELF, "abc")
+
+  g.make()
+
+  assert Path("output/foo-a.txt").read_text() == "abc"
+
+
+Decorator-style Registration
+----------------------------
+
+It is common that we need to define a dedicated method for a rule.
+In that case, the decorator-style rule definition helps make your code concise.
+
+Calling ``add`` with ``method`` omitted returns a decorator function.
+Applying it to a function appends a new rule whose method is the decorated
+function. All the arguments of the decorated function must have default values:
+
+.. testcode:: defining_rules
+
+  from __future__ import annotations
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  @g.add("foo", { "a": "foo-a.txt", "b": "foo-b.txt" })
+  def method(f1: Path=SELF.a, f2: Path=SELF.b, texts: list[str]=["abc", "xyz"]):
+      f1.write_text(texts[0])
+      f2.write_text(texts[1])
+
+  g.make()
+
+  assert Path("output/foo-a.txt").read_text() == "abc"
+  assert Path("output/foo-b.txt").read_text() == "xyz"
+
+
+Dependency of Rules
+-------------------
+
+Supplying a rule's outputs to another rule is as easy as putting the output
+file nodes of the former rule as the arguments of the method of the latter rule.
+
+.. testcode::
+
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  def invert(src: Path, dst: Path):
+      dst.write_text(src.read_text()[::-1])
+
+  g = RulesGroup("output")
+
+  g.add("foo", "foo.txt", Path.write_text)(SELF, "123")
+
+  g.add("bar", "bar.txt", invert)(g.foo[0], SELF)
+
+  g.make()
+
+  assert Path("output/foo.txt").read_text() == "123"
+  assert Path("output/bar.txt").read_text() == "321"
+
+You can omit the indexing, in this case, ``foo[0]`` (or ``foo["foo.txt"]``),
+and write ::
+
+  g.add("bar", "bar.txt", invert)(g.foo, SELF)
+
+to pass the first (0-th) output file of the source rule.
+
+
+Original Files
+--------------
+
+Like the C source files in `Example: Build Script for a C language project`_ ,
+we often have input files that are not output files of a rule.
+Here, we will refer to such files as *original files*.
+
+We can define original files by wrapping them by :class:`jtcmake.File` .
+
+.. testcode::
+
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF, File
+
+  # Prepare an original file
+  Path("tmp-original.txt").write_text("123")
+
+  def invert(src: Path, dst: Path):
+      dst.write_text(src.read_text()[::-1])
+
+  g = RulesGroup("output")
+
+  g.add("foo.txt", invert)(File("tmp-original.txt"), SELF)
+
+  g.make()
+
+  assert Path("output/foo.txt").read_text() == "321"
+
+
+SELFs and Files in Nested Arguments
+-----------------------------------
+
+When passed to the ``rule_adder`` temporary function, ``SELF`` and Files may be
+placed in a compound structure of ``list``, ``tuple``, ``dict``, and ``set`` .
+i.e. JTCMake digs into nested structures like ``[{"a": (1, SELF.a)}]`` to find
+SELF and Files and replace them with appropriate Path objects and resolve
+dependency between rules.
+
+.. testcode::
+
+  from __future__ import annotations
+  from pathlib import Path
+  from jtcmake import RulesGroup, SELF
+
+  g = RulesGroup("output")
+
+  def summarize(
+      source_files: dict[str, Path],  # mapping (title => path)
+      dst: Path  # write summary to this files
+  ):
+      with dst.open("w") as f:
+          for key, path in source_files.items():
+              f.write(f"{key}: {path.read_text()}\n")
+
+  g.add("foo", Path.write_text)(SELF, "abc")
+  g.add("bar", Path.write_text)(SELF, "xyz")
+  g.add("summary.txt", summarize)({ "FOO": g.foo, "BAR": g.bar }, SELF)
+
+  g.make()
+
+  print(g["summary.txt"][0].read_text())
+
+.. testoutput::
+  :options: +NORMALIZE_WHITESPACE
+
+  FOO: abc
+  BAR: xyz
+
+
+Note that ``list``, ``tuple``, ``dict``, and ``set`` are the only supported
+container types. JTCMake does not look inside other containers types like
+``collections.deque`` or dataclasses.
+
 
 Group Node Classes
 ==================
@@ -573,6 +860,7 @@ names are dynamically determined at run time.
     N = 100
 
     class CustomGroup(StaticGroupBase):
+        __globals__ = globals()
         child: Rule[str]
 
         def init(self):
