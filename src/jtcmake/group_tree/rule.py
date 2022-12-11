@@ -635,15 +635,19 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         *,
         njobs: Optional[int] = None,
     ) -> MakeSummary:
-        """Make this rule and its dependencies
+        """
+        Make this rule and its dependencies
+
         Args:
             dry_run:
                 instead of actually excuting the methods,
                 print expected execution logs.
+
             keep_going:
                 If False (default), stop everything when a rule fails.
                 If True, when a rule fails, keep executing other rules
                 except the ones depend on the failed rule.
+
             njobs:
                 Maximum number of rules that can be made concurrently.
                 Defaults to 1 (single process, single thread).
