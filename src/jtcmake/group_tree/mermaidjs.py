@@ -32,16 +32,18 @@ def print_mermaid(
 
     Example:
 
-        import shutil
-        import jtcmake as jtc
+        ::
 
-        g = jtc.UntypedGroup("root")
-        g.add("a", shutil.copy)(jtc.File("src1.txt"), SELF)
-        g.add("b", shutil.copy)(jtc.File("src2.txt"), SELF)
-        g.add("c", shutil.copy)(jtc.File("src3.txt"), SELF)
+            import shutil
+            import jtcmake as jtc
 
-        print_method(g, "graph.html")  # visualize the whole tree
-        print_method([g.a, g.c], "graph.html")  # visualize specific nodes
+            g = jtc.UntypedGroup("root")
+            g.add("a", shutil.copy)(jtc.File("src1.txt"), SELF)
+            g.add("b", shutil.copy)(jtc.File("src2.txt"), SELF)
+            g.add("c", shutil.copy)(jtc.File("src3.txt"), SELF)
+
+            print_method(g, "graph.html")  # visualize the whole tree
+            print_method([g.a, g.c], "graph.html")  # visualize specific nodes
     """
     target_nodes = _parse_args_nodes(target_nodes)
     direction = _parse_args_direction(direction)
