@@ -111,6 +111,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.files"><code class="docutils literal notranslate"><span class="pre">Rule.files</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.init"><code class="docutils literal notranslate"><span class="pre">Rule.init()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.initvf"><code class="docutils literal notranslate"><span class="pre">Rule.initvf()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.make"><code class="docutils literal notranslate"><span class="pre">Rule.make()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.memo_file"><code class="docutils literal notranslate"><span class="pre">Rule.memo_file</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.memo_value"><code class="docutils literal notranslate"><span class="pre">Rule.memo_value</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#jtcmake.Rule.parent"><code class="docutils literal notranslate"><span class="pre">Rule.parent</span></code></a></li>
@@ -123,6 +124,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#jtcmake.IFile"><code class="docutils literal notranslate"><span class="pre">IFile</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#jtcmake.make"><code class="docutils literal notranslate"><span class="pre">make()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#jtcmake.print_graphviz"><code class="docutils literal notranslate"><span class="pre">print_graphviz()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.print_mermaid"><code class="docutils literal notranslate"><span class="pre">print_mermaid()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jtcmake.print_method"><code class="docutils literal notranslate"><span class="pre">print_method()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2049,6 +2052,29 @@ constructor is <a class="reference internal" href="#jtcmake.VFile" title="jtcmak
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="jtcmake.Rule.make">
+<span class="sig-name descname"><span class="pre">make</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">MakeSummary</span></span></span><a class="headerlink" href="#jtcmake.Rule.make" title="Permalink to this definition"></a></dt>
+<dd><p>Make this rule and its dependencies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dry_run</strong> – instead of actually excuting the methods,
+print expected execution logs.</p></li>
+<li><p><strong>keep_going</strong> – If False (default), stop everything when a rule fails.
+If True, when a rule fails, keep executing other rules
+except the ones depend on the failed rule.</p></li>
+<li><p><strong>njobs</strong> – Maximum number of rules that can be made concurrently.
+Defaults to 1 (single process, single thread).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Seealso:</dt><dd><p><a class="reference internal" href="#jtcmake.make" title="jtcmake.make"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.make()</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="jtcmake.Rule.memo_file">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">memo_file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#jtcmake.Rule.memo_file" title="Permalink to this definition"></a></dt>
@@ -2183,6 +2209,32 @@ Jupyter only). Graph format depends on the file extension:</p>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jtcmake.print_mermaid">
+<span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">print_mermaid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_nodes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">GroupTreeNode</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">GroupTreeNode</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">StrOrPath</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_dependency_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Direction</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'LR'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mermaidjs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'https://unpkg.com/mermaid&#64;9.2.2/dist/mermaid.js'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.print_mermaid" title="Permalink to this definition"></a></dt>
+<dd><p>Visualizes the structure of a group tree and dependency of its rules using
+<em>mermaid.js</em>.</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">jtcmake</span> <span class="k">as</span> <span class="nn">jtc</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">jtc</span><span class="o">.</span><span class="n">UntypedGroup</span><span class="p">(</span><span class="s2">&quot;root&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">jtc</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;src1.txt&quot;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">jtc</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;src2.txt&quot;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">)(</span><span class="n">jtc</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s2">&quot;src3.txt&quot;</span><span class="p">),</span> <span class="n">SELF</span><span class="p">)</span>
+
+<span class="n">print_method</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="s2">&quot;graph.html&quot;</span><span class="p">)</span>  <span class="c1"># visualize the whole tree</span>
+<span class="n">print_method</span><span class="p">([</span><span class="n">g</span><span class="o">.</span><span class="n">a</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">c</span><span class="p">],</span> <span class="s2">&quot;graph.html&quot;</span><span class="p">)</span>  <span class="c1"># visualize specific nodes</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jtcmake.print_method">
+<span class="sig-prename descclassname"><span class="pre">jtcmake.</span></span><span class="sig-name descname"><span class="pre">print_method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">IRule</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jtcmake.print_method" title="Permalink to this definition"></a></dt>
+<dd><p>Show how the method of the given rule will be called.</p>
 </dd></dl>
 
 </section>

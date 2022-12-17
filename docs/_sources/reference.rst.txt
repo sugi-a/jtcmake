@@ -44,3 +44,6 @@ API Reference
 
 .. autofunction:: jtcmake.print_graphviz
 
+.. autofunction:: jtcmake.print_mermaid
+
+.. autofunction:: jtcmake.print_method
