@@ -403,6 +403,9 @@ def require_tree_init(
             )
         return method(self, *args, **kwargs)
 
+    _method.__annotations__ = method.__annotations__
+    _method.__doc__ = method.__doc__
+
     return _method
 
 

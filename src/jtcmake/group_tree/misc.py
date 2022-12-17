@@ -4,6 +4,9 @@ from .event_logger import tostrs_func_call
 
 
 def print_method(rule: IRule):
+    """
+    Show how the method of the given rule will be called.
+    """
     info = rule._get_info()  # pyright: ignore [reportPrivateUsage]
     raw_rule = info.rule_store.rules[rule.raw_rule_id]
     sl = []

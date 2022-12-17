@@ -1068,12 +1068,18 @@ Miscellaneous
 Make
 ====
 
-Parallel Execution
-------------------
+.. seealso::
+
+  - :func:`jtcmake.StaticGroupBase.make`
+  - :func:`jtcmake.Rule.make`
+  - :func:`jtcmake.make`
 
 
 Visualization
 =============
 
+.. seealso::
 
-
+  - :func:`jtcmake.print_graphviz`
+  - :func:`jtcmake.print_mermaid`
+  - :func:`jtcmake.print_method`
