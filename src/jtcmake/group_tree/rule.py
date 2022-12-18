@@ -44,6 +44,7 @@ from .core import (
 )
 from .event_logger import INoArgFunc
 from .fake_path import FakePath
+from ..memo import Memo
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")
@@ -139,6 +140,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
     _file_keys_hint: Optional[List[K]]
     _file_keys: List[K]
     _parent: IGroup
+    _memo: Memo[object] | None
 
     def __init_partial__(
         self,
@@ -314,9 +316,7 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         if noskip:
             memo = _UnequalMemo()
         else:
-            memo = self._info.memo_factory(
-                _get_default_memo_file(next(iter(yp2f.values()))), args_
-            )
+            memo = self._info.memo_factory(next(iter(yp2f.values())), args_)
 
         # Update the RuleStore (create and add a new raw Rule)
         raw_rule = self._info.rule_store.add(
@@ -328,6 +328,9 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         self._files = DictView(yfiles)
         self._xfiles = list(xp2f)
         self._file_keys = list(yfiles)
+
+        if isinstance(memo, Memo):
+            self._memo = memo
 
         for k, f in yfiles.items():
             if k.isidentifier() and not hasattr(self, k):
@@ -685,13 +688,11 @@ class Rule(  # pyright: ignore [reportIncompatibleMethodOverride]
         return self[0].real_value
 
     @property
-    def memo_file(self) -> Path:
-        """File into which the memo is saved"""
-        return _get_default_memo_file(self[0])
-
-
-def _get_default_memo_file(output0: Path) -> Path:
-    return output0.parent / ".jtcmake" / output0.name
+    def memo_file(self) -> Path | None:
+        if self._memo is None:
+            return None
+        else:
+            return self._memo.memo_file
 
 
 class _UnequalMemo(IMemo):

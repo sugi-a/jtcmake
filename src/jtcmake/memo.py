@@ -35,11 +35,14 @@ class Memo(IMemo, Generic[_T_Memo], metaclass=ABCMeta):
         normalizer: Callable[[object], _T_Memo],
         serializer: Callable[[_T_Memo], str],
         deserializer: Callable[[str], _T_Memo],
+        extra_info: str = "",
     ) -> None:
         self.memo_file = Path(memo_file)
         self.normalizer = normalizer
         self.serializer = serializer
         self.deserializer = deserializer
+
+        self.extra_info = extra_info
 
         self.args = normalizer(args)
         self.lazy_args_gen = lazy_args_gen
@@ -81,6 +84,7 @@ class Memo(IMemo, Generic[_T_Memo], metaclass=ABCMeta):
         saved_obj = {
             "args": self.serializer(self.args),
             "lazy_args": self.serializer(self.lazy_args),
+            "extra_info": self.extra_info,
         }
 
         os.makedirs(self.memo_file.parent, exist_ok=True)

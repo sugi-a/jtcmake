@@ -1,6 +1,8 @@
+from __future__ import annotations
 import os
 import sys
 import time
+import hashlib
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from logging import Logger
@@ -63,6 +65,7 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             WritableProtocol,
             Sequence[Union[StrOrPath, Logger, WritableProtocol]],
         ] = None,
+        memodir: StrOrPath | None = None,
     ):
         """
         Args:
@@ -81,7 +84,12 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
             loglevel, use_default_logger, logfile
         )
 
-        info = GroupTreeInfo(writer, string_memo_factory, self)
+        if memodir is None:
+            memo_factory = string_memo_factory
+        else:
+            memo_factory = CustomDirMemoFactory(Path(memodir))
+
+        info = GroupTreeInfo(writer, memo_factory, self)
 
         self.__init_as_child__(info, self, ())
 
@@ -190,8 +198,10 @@ def create_logwriter_list(loglevel: Loglevel, logfile: object) -> List[IWriter]:
     if logfile is None:
         return []
     elif isinstance(logfile, (list, tuple)):
-        logfile_: Sequence[object] = logfile
-        return [create_logwriter(f, loglevel) for f in logfile_]
+        return [
+            create_logwriter(f, loglevel)
+            for f in logfile  # pyright: ignore [reportUnknownVariableType]
+        ]
     else:
         return [create_logwriter(logfile, loglevel)]
 
@@ -233,8 +243,9 @@ def create_default_logwriter(loglevel: Loglevel) -> IWriter:
         return TextWriter(sys.stderr, loglevel)
 
 
-def string_memo_factory(memo_file: StrOrPath, args: object) -> IMemo:
+def string_memo_factory(output0: Path, args: object) -> IMemo:
     args, lazy_args = unwrap_memo_values(args)
+    memo_file = _get_default_memo_file(output0)
     return Memo(
         args,
         lazy_args,
@@ -243,3 +254,32 @@ def string_memo_factory(memo_file: StrOrPath, args: object) -> IMemo:
         string_serializer,
         string_deserializer,
     )
+
+
+def _get_default_memo_file(output0: Path) -> Path:
+    return output0.parent / ".jtcmake" / (output0.name + ".json")
+
+
+class CustomDirMemoFactory:
+    __slots__ = ["memodir"]
+    memodir: Path
+
+    def __call__(self, output0: Path, args: object) -> IMemo:
+        args, lazy_args = unwrap_memo_values(args)
+        memo_file = self.memodir / _create_memo_file_basename(output0)
+        return Memo(
+            args,
+            lazy_args,
+            memo_file,
+            string_normalizer,
+            string_serializer,
+            string_deserializer,
+        )
+
+    def __init__(self, memodir: Path) -> None:
+        self.memodir = memodir
+
+
+def _create_memo_file_basename(output0: Path) -> str:
+    stem = hashlib.md5(os.path.abspath(output0).encode("utf8")).digest().hex()
+    return stem + ".json"

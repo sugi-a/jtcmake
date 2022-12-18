@@ -362,7 +362,7 @@ class GroupTreeInfo:
 
     rule_store: RuleStore
     logwriter: IWriter
-    memo_factory: Callable[[StrOrPath, object], IMemo]
+    memo_factory: Callable[[Path, object], IMemo]
     memo_store: Dict[int, IAtom]
     rules_to_be_init: Set[Tuple[str, ...]]
     root: IGroup
@@ -370,7 +370,7 @@ class GroupTreeInfo:
     def __init__(
         self,
         logwriter: IWriter,
-        memo_factory: Callable[[StrOrPath, object], IMemo],
+        memo_factory: Callable[[Path, object], IMemo],
         root: IGroup,
     ):
         self.logwriter = logwriter
