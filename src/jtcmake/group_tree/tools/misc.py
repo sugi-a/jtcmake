@@ -2,10 +2,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .core import IRule
-from .group_mixins.basic import create_default_logwriter
-from .group_mixins.selector import SelectorMixin
-from .event_logger import tostrs_func_call
+from ..core import IRule
+from ..group_mixins.basic import create_default_logwriter
+from ..group_mixins.selector import SelectorMixin
+from ..event_logger import tostrs_func_call
 
 from typing_extensions import TypeAlias
 
@@ -104,11 +104,11 @@ def _trie_tostr(
         if i == len(tri) - 1:
             is_last.add(depth)
 
-        l = 0
+        width = 0
 
         if depth == 0:
             dst.append(f"{k}")
-            l += len(dst[-1])
+            width += len(dst[-1])
         else:
             for j in range(1, depth):
                 if j in is_last:
@@ -116,18 +116,18 @@ def _trie_tostr(
                 else:
                     dst.append(f"{JOINT0}   ")
 
-                l += len(dst[-1])
+                width += len(dst[-1])
 
             if depth in is_last:
                 dst.append(f"{JOINT2}{JOINT3}{JOINT3} {k}")
             else:
                 dst.append(f"{JOINT1}{JOINT3}{JOINT3} {k}")
 
-            l += len(dst[-1])
+            width += len(dst[-1])
 
         if isinstance(v, str):
             if print_name:
-                dst.append(" " * (tree_width - l + 4) + v + "\n")
+                dst.append(" " * (tree_width - width + 4) + v + "\n")
             else:
                 dst.append("\n")
         else:
@@ -140,12 +140,12 @@ def _trie_tostr(
 
 
 def _calc_trie_str_width(tri: _Trie) -> int:
-    l = 0
+    width = 0
 
     for k, v in tri.items():
         if isinstance(v, str):
-            l = max(l, len(k))
+            width = max(width, len(k))
         else:
-            l = max(l, _calc_trie_str_width(v) + 4)
+            width = max(width, _calc_trie_str_width(v) + 4)
 
-    return l
+    return width

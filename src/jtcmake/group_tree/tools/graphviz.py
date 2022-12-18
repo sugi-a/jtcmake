@@ -10,9 +10,9 @@ from typing import Literal, Optional, Sequence, Union
 
 from typing_extensions import TypeAlias
 
-from .core import IGroup, IRule, get_group_info_of_nodes
-from ..logwriter import term_is_jupyter
-from .mermaidjs import (
+from ..core import IGroup, IRule, get_group_info_of_nodes
+from ...logwriter import term_is_jupyter
+from .mermaid import (
     collect_targets,
     GroupTreeNode,
     _relpath,  # pyright: ignore [reportPrivateUsage]

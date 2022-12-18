@@ -8,9 +8,13 @@ from .group_tree.core import make
 from .group_tree.atom import Atom, Mem, Memstr, Memnone
 from .group_tree.rule import Rule, SELF
 from .group_tree.file import File, VFile, IFile
-from .group_tree.graphviz import print_graphviz
-from .group_tree.mermaidjs import print_mermaid
-from .group_tree.misc import print_method, print_dirtree, stringify_dirtree
+from .group_tree.tools.graphviz import print_graphviz
+from .group_tree.tools.mermaid import print_mermaid
+from .group_tree.tools.misc import (
+    print_method,
+    print_dirtree,
+    stringify_dirtree,
+)
 from .core.make import MakeSummary
 
 VERSION = "0.5.0-alpha"
