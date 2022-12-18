@@ -1,11 +1,12 @@
 from __future__ import annotations
 import os
 from pathlib import Path
+from typing import NamedTuple
 
 from ..core import IRule
 from ..group_mixins.basic import create_default_logwriter
 from ..group_mixins.selector import SelectorMixin
-from ..event_logger import tostrs_func_call
+from ..event_logger import tostrs_func_call, RichStr
 
 from typing_extensions import TypeAlias
 
@@ -18,13 +19,18 @@ def print_method(rule: IRule):
     raw_rule = info.rule_store.rules[rule.raw_rule_id]
     sl = []
     method = raw_rule.method
-    tostrs_func_call(sl, method, method.args, method.kwargs)
+    tostrs_func_call(sl, method.method, method.args, method.kwargs)
 
     a = create_default_logwriter("debug")
     a.debug(*sl)
 
 
-_Trie: TypeAlias = "dict[str, _Trie | str]"
+class FileInfo(NamedTuple):
+    path: Path
+    name: str
+
+
+_Trie: TypeAlias = "dict[str, _Trie | FileInfo]"
 
 
 def print_dirtree(
@@ -32,7 +38,8 @@ def print_dirtree(
     show_name: bool = False,
     base: str | os.PathLike[str] | None = None,
 ):
-    print(stringify_dirtree(g, show_name, base))
+    strs = _stringify_dirtree(g, show_name, base)
+    create_default_logwriter("debug").debug(*strs)
 
 
 def stringify_dirtree(
@@ -40,6 +47,15 @@ def stringify_dirtree(
     show_name: bool = False,
     base: str | os.PathLike[str] | None = None,
 ):
+    strs = _stringify_dirtree(g, show_name, base)
+    return "".join(strs)
+
+
+def _stringify_dirtree(
+    g: SelectorMixin,
+    show_name: bool = False,
+    base: str | os.PathLike[str] | None = None,
+) -> list[str]:
     if base is None:
         base = os.getcwd()
 
@@ -54,12 +70,12 @@ def stringify_dirtree(
             except Exception:
                 path = Path(os.path.abspath(f))
 
-            _trie_add(tri, path.parts, r.name + "/" + k)
+            _trie_add(tri, path.parts, FileInfo(path, r.name + "/" + k))
 
-    return "".join(_trie_tostr(tri, show_name))
+    return _trie_tostr(tri, show_name)
 
 
-def _trie_add(tri: _Trie, path: tuple[str, ...], label: str):
+def _trie_add(tri: _Trie, path: tuple[str, ...], label: FileInfo):
     if len(path) == 1:
         assert tri.get(path[0]) is None
         tri[path[0]] = label
@@ -68,7 +84,7 @@ def _trie_add(tri: _Trie, path: tuple[str, ...], label: str):
             nxt = tri[path[0]] = {}
         else:
             nxt = tri[path[0]]
-            assert not isinstance(nxt, str)
+            assert not isinstance(nxt, FileInfo)
 
         _trie_add(nxt, path[1:], label)
 
@@ -106,8 +122,16 @@ def _trie_tostr(
 
         width = 0
 
+        if isinstance(v, FileInfo):
+            if v.path.exists():
+                basename = RichStr(k, c=(0x4F, 0x8A, 0x10))
+            else:
+                basename = RichStr(k, c=(0xD8, 0x00, 0x0C))
+        else:
+            basename = k
+
         if depth == 0:
-            dst.append(f"{k}")
+            dst.append(basename)
             width += len(dst[-1])
         else:
             for j in range(1, depth):
@@ -119,15 +143,17 @@ def _trie_tostr(
                 width += len(dst[-1])
 
             if depth in is_last:
-                dst.append(f"{JOINT2}{JOINT3}{JOINT3} {k}")
+                dst.append(f"{JOINT2}{JOINT3}{JOINT3} ")
+                dst.append(basename)
             else:
-                dst.append(f"{JOINT1}{JOINT3}{JOINT3} {k}")
+                dst.append(f"{JOINT1}{JOINT3}{JOINT3} ")
+                dst.append(basename)
 
-            width += len(dst[-1])
+            width += 4 + len(dst[-1])
 
-        if isinstance(v, str):
+        if isinstance(v, FileInfo):
             if print_name:
-                dst.append(" " * (tree_width - width + 4) + v + "\n")
+                dst.append(" " * (tree_width - width + 4) + v.name + "\n")
             else:
                 dst.append("\n")
         else:
@@ -143,7 +169,7 @@ def _calc_trie_str_width(tri: _Trie) -> int:
     width = 0
 
     for k, v in tri.items():
-        if isinstance(v, str):
+        if isinstance(v, FileInfo):
             width = max(width, len(k))
         else:
             width = max(width, _calc_trie_str_width(v) + 4)
