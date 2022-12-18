@@ -87,6 +87,9 @@ class BasicInitMixin(IGroup, metaclass=ABCMeta):
         if memodir is None:
             memo_factory = string_memo_factory
         else:
+            if not os.path.exists(memodir):
+                raise FileNotFoundError(f"memodir ({memodir}) was not found")
+
             memo_factory = CustomDirMemoFactory(Path(memodir))
 
         info = GroupTreeInfo(writer, memo_factory, self)
@@ -274,6 +277,7 @@ class CustomDirMemoFactory:
             string_normalizer,
             string_serializer,
             string_deserializer,
+            extra_info=os.path.abspath(output0),
         )
 
     def __init__(self, memodir: Path) -> None:
