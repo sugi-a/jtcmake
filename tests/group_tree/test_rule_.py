@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import sys
+import hashlib
 from pathlib import Path, WindowsPath, PosixPath
 from collections.abc import Container, Collection, Iterator
 
@@ -245,10 +246,16 @@ def test_Rule_init_parse_deco_func(method, expect):
 
 
 def test_memo_file():
+    def _f(_: Path):
+        ...
+
     g = UntypedGroup()
-
-    def _f(p: Path):
-        del p
-
     r = g.add("a", _f)(rule.SELF)
-    assert os.path.abspath(r.memo_file) == os.path.abspath("./.jtcmake/a")
+    assert os.path.abspath(r.memo_file) == os.path.abspath("./.jtcmake/a.json")
+
+    g = UntypedGroup(memodir="./memodir")
+    r = g.add("a", _f)(rule.SELF)
+    basename = hashlib.md5(os.path.abspath(r[0]).encode("utf8")).digest().hex()
+    assert os.path.abspath(r.memo_file) == os.path.abspath(
+        f"./memodir/{basename}.json"
+    )
