@@ -6,9 +6,9 @@ from pathlib import Path
 from collections import deque
 from typing import Literal, Union, Optional, Sequence
 
-from ..utils.strpath import StrOrPath
-from .core import IGroup, IRule, get_group_info_of_nodes
-from ..logwriter import term_is_jupyter
+from ...utils.strpath import StrOrPath
+from ..core import IGroup, IRule, get_group_info_of_nodes
+from ...logwriter import term_is_jupyter
 
 CDN_SCRIPT = "https://unpkg.com/mermaid@9.2.2/dist/mermaid.js"
 CDN_INTEGRITY = (
