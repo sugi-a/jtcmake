@@ -153,7 +153,7 @@ class ColorTextWriter(IWriter):
     def _write(self, *args: str, level: Loglevel):
         color = (
             {
-                "debug": (0x4F, 0x8A, 0x10),
+                "debug": None,
                 "info": None,
                 "warning": (0x9F, 0x60, 0x00),
                 "error": (0xD8, 0x00, 0x0C),
