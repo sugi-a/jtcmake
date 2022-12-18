@@ -245,7 +245,7 @@ def test_Rule_init_parse_deco_func(method, expect):
         rule.Rule_init_parse_deco_func(method) == expect
 
 
-def test_memo_file():
+def test_memo_file(tmp_path: Path):
     def _f(_: Path):
         ...
 
@@ -253,9 +253,9 @@ def test_memo_file():
     r = g.add("a", _f)(rule.SELF)
     assert os.path.abspath(r.memo_file) == os.path.abspath("./.jtcmake/a.json")
 
-    g = UntypedGroup(memodir="./memodir")
+    g = UntypedGroup(memodir=tmp_path)
     r = g.add("a", _f)(rule.SELF)
     basename = hashlib.md5(os.path.abspath(r[0]).encode("utf8")).digest().hex()
     assert os.path.abspath(r.memo_file) == os.path.abspath(
-        f"./memodir/{basename}.json"
+        tmp_path / f"{basename}.json"
     )
