@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jtcmake"
-license = { file = "LICENSE" }
+license = { text = "MIT License" }
 description = "Simple but effective general purpose build tool for Python"
 readme = "README.md"
 authors = [
