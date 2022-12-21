@@ -17,7 +17,7 @@ from .group_tree.tools.misc import (
 )
 from .core.make import MakeSummary
 
-VERSION = "0.5.0"
+VERSION = "0.5.1-alpha"
 
 __all__ = [
     "SELF",
