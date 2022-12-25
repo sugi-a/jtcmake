@@ -111,7 +111,8 @@ def test_basic(mp: bool):
     log.clear()
     res = make_(id2rule, [0, 1], False, False, callback)
 
-    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
+    assert res == MakeSummary.create({0: "update", 1: "update"})
+
     assert_same_log(
         log,
         [
@@ -134,7 +135,7 @@ def test_basic(mp: bool):
     log.clear()
     res = make_(id2rule, [0], False, False, callback)
 
-    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
+    assert res == MakeSummary.create({0: "update"})
     assert_same_log(
         log,
         [
@@ -151,7 +152,7 @@ def test_basic(mp: bool):
     log.clear()
     res = make_(id2rule, [1], False, False, callback)
 
-    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
+    assert res == MakeSummary.create({0: "update", 1: "update"})
     assert_same_log(
         log,
         [
@@ -199,7 +200,7 @@ def test_skip(mp: bool):
 
     res = make_(id2rule, [2], False, False, callback)
 
-    assert res == MakeSummary(total=2, update=0, skip=2, fail=0, discard=0)
+    assert res == MakeSummary.create({1: "skip", 2: "skip"})
     assert_same_log(
         log,
         [
@@ -217,7 +218,7 @@ def test_skip(mp: bool):
 
     res = make_(id2rule, [2], False, False, callback)
 
-    assert res == MakeSummary(total=2, update=1, skip=1, fail=0, discard=0)
+    assert res == MakeSummary.create({1: "skip", 2: "update"})
     assert_same_log(
         log,
         [
@@ -255,14 +256,14 @@ def test_dryrun(mp: bool):
     log.clear()
     res = make_(id2rule, [1], True, False, callback)
 
-    assert res == MakeSummary(total=1, update=1, skip=0, fail=0, discard=0)
+    assert res == MakeSummary.create({1: "update"})
     assert_same_log(log, [("check_update", r1, False, True), events.DryRun(r1)])
 
     # dry-run r2
     log.clear()
     res = make_(id2rule, [2], True, False, callback)
 
-    assert res == MakeSummary(total=2, update=2, skip=0, fail=0, discard=0)
+    assert res == MakeSummary.create({1: "update", 2: "update"})
     assert_same_log(
         log,
         [
@@ -283,7 +284,7 @@ def test_preprocess_error():
     log.clear()
     res = make(id2rule, [0], False, False, callback)
 
-    assert res == MakeSummary(1, 0, 0, 1, 0)
+    assert res == MakeSummary.create({0: "fail"})
     assert_same_log(
         log,
         [
@@ -309,7 +310,7 @@ def test_exec_error():
     log.clear()
     res = make(id2rule, [0], False, False, callback)
 
-    assert res == MakeSummary(1, 0, 0, 1, 0)
+    assert res == MakeSummary.create({0: "fail"})
     assert_same_log(
         log,
         [
@@ -332,7 +333,7 @@ def test_postprocess_error():
     log.clear()
     res = make(id2rule, [0], False, False, callback)
 
-    assert res == MakeSummary(1, 0, 0, 1, 0)
+    assert res == MakeSummary.create({0: "fail"})
     assert_same_log(
         log,
         [

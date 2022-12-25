@@ -451,7 +451,9 @@ def make(
         that are defined on the notebook is not inter-process transferable.
     """
     if len(rule_or_groups) == 0:
-        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
+        return MakeSummary(
+            total=0, update=0, skip=0, fail=0, discard=0, detail={}
+        )
 
     for node in rule_or_groups:
         if not isinstance(
