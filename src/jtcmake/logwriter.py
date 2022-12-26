@@ -219,21 +219,18 @@ HTML_COLOR_MAP: Dict[Loglevel, Tuple[int, int, int]] = {
 
 
 class HTMLFileWriterOpenOnDemand(IWriter):
-    basedir: Optional[Path]
     fname: Path
 
     def __init__(
         self,
         loglevel: Loglevel,
         fname: StrOrPath,
-        basedir: Optional[Path] = None,
     ):
         super().__init__(loglevel)
 
         os.makedirs(Path(fname).parent, exist_ok=True)
 
-        self.basedir = basedir
-        self.fname = Path(fname)
+        self.fname = Path(os.path.abspath(fname))
 
     def _write(self, *args: str, level: Loglevel):
         color = HTML_COLOR_MAP[level]
@@ -247,12 +244,12 @@ class HTMLFileWriterOpenOnDemand(IWriter):
                 '<body><pre style="background-color: '
                 f'rgb({bgcolor[0]}, {bgcolor[1]}, {bgcolor[2]})">'
             )
-            f.write(create_html(args_, self.basedir))
+            f.write(create_html(args_, self.fname.parent))
             f.write("</pre></body></html>")
 
 
 class HTMLJupyterWriter(IWriter):
-    basedir: Optional[Path]
+    basedir: Path
 
     def __init__(self, loglevel: Loglevel, basedir: Optional[StrOrPath] = None):
         super().__init__(loglevel)
@@ -260,7 +257,7 @@ class HTMLJupyterWriter(IWriter):
 
         del display, HTML
 
-        self.basedir = Path(basedir) if basedir else None
+        self.basedir = Path(basedir if basedir else os.getcwd())
 
     def _write(self, *args: str, level: Loglevel):
         from IPython.display import display, HTML  # pyright: ignore
@@ -279,7 +276,7 @@ class HTMLJupyterWriter(IWriter):
         )
 
 
-def create_html(sl: Sequence[str], basedir: Optional[StrOrPath] = None) -> str:
+def create_html(sl: Sequence[str], basedir: StrOrPath) -> str:
     sl = [x if isinstance(x, RichStr) else RichStr(x) for x in sl]
     groups: List[List[RichStr]] = []
     for s in sl:
@@ -303,13 +300,12 @@ def _richstr_to_html(s: RichStr, basedir: str) -> str:
     attr = s.attr
 
     if attr.link is not None:
-        if basedir is not None:
-            try:
-                link = os.path.relpath(attr.link, basedir)
-            except Exception:
-                link = attr.link
-        else:
+        try:
+            link = os.path.relpath(attr.link, basedir)
+            print(link)
+        except Exception:
             link = attr.link
+
         starts.append(f'<a href="{Path(link).as_posix()}">')
         ends.append("</a>")
 
