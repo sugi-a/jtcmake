@@ -184,7 +184,8 @@ def gen_dot_code(
             p = _relpath(f, basedir)
 
         if os.path.exists(f):
-            if make_results[info.rule_store.ypath2idx[f]] == "skip":
+            rule_id = info.rule_store.ypath2idx[f]
+            if rule_id == -1 or make_results[rule_id] == "skip":
                 color = COLOR_BLUE
             else:
                 color = COLOR_YELLOW

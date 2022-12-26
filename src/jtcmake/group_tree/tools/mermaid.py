@@ -294,7 +294,8 @@ def gen_mermaid_code(
 
     for f, id in fid.items():
         if os.path.exists(f):
-            if make_summary.detail[info.rule_store.ypath2idx[f]] == "skip":
+            rule_id = info.rule_store.ypath2idx[f]
+            if rule_id == -1 or make_summary.detail[rule_id] == "skip":
                 res.append((1, f"style {id} fill:#{COLOR_BLUE}"))
             else:
                 res.append((1, f"style {id} fill:#{COLOR_YELLOW}"))
