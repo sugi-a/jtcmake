@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import NamedTuple
 
+from jtcmake.logwriter import HTMLFileWriterOpenOnDemand
+
 from ...core.make import make
 from ..core import IRule, get_group_info_of_nodes
 from ..group_mixins.basic import create_default_logwriter
@@ -39,7 +41,8 @@ _Trie: TypeAlias = "dict[str, _Trie | FileInfo]"
 def print_dirtree(
     g: SelectorMixin,
     show_name: bool = False,
-    base: str | os.PathLike[str] | None = None,
+    output_file: str | os.PathLike[str] | None = None,
+    basedir: str | os.PathLike[str] | None = None,
 ):
     """
     Print the directory tree that the output files of ``g`` spans.
@@ -50,20 +53,29 @@ def print_dirtree(
     * Yellow: the file exists but will be updated when executing "make"
     * Red: the file does not exist and will be updated when executing "make"
     """
-    strs = _stringify_dirtree(g, show_name, base)
-    create_default_logwriter("debug").debug(*strs)
+
+    strs = _stringify_dirtree(g, show_name, basedir)
+
+    if output_file is None:
+        create_default_logwriter("debug").debug(*strs)
+    else:
+        output_file = Path(output_file)
+        if output_file.suffix in (".html", ".htm"):
+            HTMLFileWriterOpenOnDemand("debug", output_file).info(*strs)
+        else:
+            output_file.write_text("".join(strs))
 
 
 def stringify_dirtree(
     g: SelectorMixin,
     show_name: bool = False,
-    base: str | os.PathLike[str] | None = None,
+    basedir: str | os.PathLike[str] | None = None,
 ):
     """
     Take a group node and return the directory tree that the output files of
     it spans.
     """
-    strs = _stringify_dirtree(g, show_name, base)
+    strs = _stringify_dirtree(g, show_name, basedir)
     return "".join(strs)
 
 
@@ -75,10 +87,10 @@ COLOR_YELLOW = (196, 160, 0)
 def _stringify_dirtree(
     g: SelectorMixin,
     show_name: bool = False,
-    base: str | os.PathLike[str] | None = None,
+    basedir: str | os.PathLike[str] | None = None,
 ) -> list[str]:
-    if base is None:
-        base = os.getcwd()
+    if basedir is None:
+        basedir = os.getcwd()
 
     rules = g.select_rules("**/*")
 
@@ -97,7 +109,7 @@ def _stringify_dirtree(
 
         for k, f in r.files.items():
             try:
-                path = Path(os.path.relpath(f, base))
+                path = Path(os.path.relpath(f, basedir))
             except Exception:
                 path = Path(os.path.abspath(f))
 
@@ -166,7 +178,7 @@ def _trie_tostr(
         width = 0
 
         if isinstance(v, FileInfo):
-            pathbase = RichStr(k, c=v.path_color)
+            pathbase = RichStr(k, c=v.path_color, link=v.path)
         else:
             pathbase = k
 
