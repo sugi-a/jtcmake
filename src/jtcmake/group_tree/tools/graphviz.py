@@ -10,6 +10,7 @@ from typing import Literal, Optional, Sequence, Union
 
 from typing_extensions import TypeAlias
 
+from ...core.make import make
 from ..core import IGroup, IRule, get_group_info_of_nodes
 from ...logwriter import term_is_jupyter
 from .mermaid import (
@@ -109,6 +110,14 @@ def gen_dot_code(
         info.root, target_nodes, max_dependency_depth
     )
 
+    make_results = make(
+        info.rule_store.rules,
+        [r.raw_rule_id for r in rid],
+        dry_run=True,
+        keep_going=True,
+        callback=lambda _: None,
+    ).detail
+
     implicit_nodes = (
         set(itertools.chain(gid.values(), rid.values())) - explicit_nodes
     )
@@ -174,6 +183,14 @@ def gen_dot_code(
         else:
             p = _relpath(f, basedir)
 
+        if os.path.exists(f):
+            if make_results[info.rule_store.ypath2idx[f]] == "skip":
+                color = COLOR_BLUE
+            else:
+                color = COLOR_YELLOW
+        else:
+            color = COLOR_RED
+
         res.append(
             (
                 idt,
@@ -182,7 +199,7 @@ def gen_dot_code(
                 f'fontname="sans-serif"; '
                 f'style="filled"; '
                 f"shape=box; "
-                f'fillcolor="#e9edc9"; '
+                f'fillcolor="#{color}"; '
                 'color = "#d4a373";'
                 f'URL="{_relpath(f, basedir)}"; '
                 f"];",
@@ -207,6 +224,11 @@ def gen_dot_code(
     res.append((0, "}"))
 
     return "\n".join("  " * idt + line for idt, line in res) + "\n"
+
+
+COLOR_RED = "ffadad"
+COLOR_BLUE = "caffbf"
+COLOR_YELLOW = "ffd6a5"
 
 
 def convert(dot_code: str, t: str = "svg"):
