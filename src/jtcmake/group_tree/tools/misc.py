@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 from typing import NamedTuple
 
-from ..core import IRule
+from ...core.make import make
+from ..core import IRule, get_group_info_of_nodes
 from ..group_mixins.basic import create_default_logwriter
 from ..group_mixins.selector import SelectorMixin
 from ..event_logger import tostrs_func_call, RichStr
@@ -28,6 +29,8 @@ def print_method(rule: IRule):
 class FileInfo(NamedTuple):
     path: Path
     name: str
+    path_color: tuple[int, int, int] | None = None
+    name_color: tuple[int, int, int] | None = None
 
 
 _Trie: TypeAlias = "dict[str, _Trie | FileInfo]"
@@ -38,6 +41,15 @@ def print_dirtree(
     show_name: bool = False,
     base: str | os.PathLike[str] | None = None,
 ):
+    """
+    Print the directory tree that the output files of ``g`` spans.
+
+    The color of the file names mean:
+
+    * Green: the file exists and will be skipped when executing "make"
+    * Yellow: the file exists but will be updated when executing "make"
+    * Red: the file does not exist and will be updated when executing "make"
+    """
     strs = _stringify_dirtree(g, show_name, base)
     create_default_logwriter("debug").debug(*strs)
 
@@ -47,8 +59,17 @@ def stringify_dirtree(
     show_name: bool = False,
     base: str | os.PathLike[str] | None = None,
 ):
+    """
+    Take a group node and return the directory tree that the output files of
+    it spans.
+    """
     strs = _stringify_dirtree(g, show_name, base)
     return "".join(strs)
+
+
+COLOR_RED = (0xD8, 0x00, 0x0C)
+COLOR_BLUE = (0x4F, 0x8A, 0x10)
+COLOR_YELLOW = (196, 160, 0)
 
 
 def _stringify_dirtree(
@@ -63,14 +84,36 @@ def _stringify_dirtree(
 
     tri: _Trie = {}
 
+    make_summary = make(
+        get_group_info_of_nodes([g]).rule_store.rules,
+        [r.raw_rule_id for r in rules],
+        dry_run=True,
+        keep_going=True,
+        callback=lambda _: None,
+    )
+
     for r in rules:
+        make_result = make_summary.detail[r.raw_rule_id]
+
         for k, f in r.files.items():
             try:
                 path = Path(os.path.relpath(f, base))
             except Exception:
                 path = Path(os.path.abspath(f))
 
-            _trie_add(tri, path.parts, FileInfo(path, r.name + "/" + k))
+            if path.exists():
+                if make_result == "skip":
+                    color = COLOR_BLUE
+                else:
+                    color = COLOR_YELLOW
+            else:
+                color = COLOR_RED
+
+            _trie_add(
+                tri,
+                path.parts,
+                FileInfo(path, r.name + "/" + k, color, color),
+            )
 
     return _trie_tostr(tri, show_name)
 
@@ -123,15 +166,12 @@ def _trie_tostr(
         width = 0
 
         if isinstance(v, FileInfo):
-            if v.path.exists():
-                basename = RichStr(k, c=(0x4F, 0x8A, 0x10))
-            else:
-                basename = RichStr(k, c=(0xD8, 0x00, 0x0C))
+            pathbase = RichStr(k, c=v.path_color)
         else:
-            basename = k
+            pathbase = k
 
         if depth == 0:
-            dst.append(basename)
+            dst.append(pathbase)
             width += len(dst[-1])
         else:
             for j in range(1, depth):
@@ -144,16 +184,19 @@ def _trie_tostr(
 
             if depth in is_last:
                 dst.append(f"{JOINT2}{JOINT3}{JOINT3} ")
-                dst.append(basename)
+                dst.append(pathbase)
             else:
                 dst.append(f"{JOINT1}{JOINT3}{JOINT3} ")
-                dst.append(basename)
+                dst.append(pathbase)
 
             width += 4 + len(dst[-1])
 
         if isinstance(v, FileInfo):
             if print_name:
-                dst.append(" " * (tree_width - width + 4) + v.name + "\n")
+                name = RichStr(v.name, c=v.name_color)
+                dst.append(" " * (tree_width - width + 4))
+                dst.append(name)
+                dst.append("\n")
             else:
                 dst.append("\n")
         else:
