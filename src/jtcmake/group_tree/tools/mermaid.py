@@ -6,6 +6,7 @@ from pathlib import Path
 from collections import deque
 from typing import Literal, Union, Optional, Sequence
 
+from ...core.make import make
 from ...utils.strpath import StrOrPath
 from ..core import IGroup, IRule, get_group_info_of_nodes
 from ...logwriter import term_is_jupyter
@@ -202,6 +203,14 @@ def gen_mermaid_code(
         info.root, target_nodes, max_dependency_depth
     )
 
+    make_summary = make(
+        info.rule_store.rules,
+        [r.raw_rule_id for r in rid],
+        dry_run=True,
+        keep_going=True,
+        callback=lambda _: None,
+    )
+
     res.append((0, f"flowchart {direction}"))
 
     implicit_nodes = (
@@ -283,7 +292,21 @@ def gen_mermaid_code(
     for id in implicit_nodes:
         res.append((1, f"style {id} stroke-dasharray: 5 5"))
 
+    for f, id in fid.items():
+        if os.path.exists(f):
+            if make_summary.detail[info.rule_store.ypath2idx[f]] == "skip":
+                res.append((1, f"style {id} fill:#{COLOR_BLUE}"))
+            else:
+                res.append((1, f"style {id} fill:#{COLOR_YELLOW}"))
+        else:
+            res.append((1, f"style {id} fill:#{COLOR_RED}"))
+
     return "\n".join("  " * idt + line for idt, line in res) + "\n"
+
+
+COLOR_RED = "ffadad"
+COLOR_BLUE = "caffbf"
+COLOR_YELLOW = "ffd6a5"
 
 
 def _assert_node_list(nodes: object) -> list[GroupTreeNode]:
