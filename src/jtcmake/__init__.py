@@ -17,7 +17,7 @@ from .group_tree.tools.misc import (
 )
 from .core.make import MakeSummary
 
-VERSION = "0.5.1-alpha"
+VERSION = "0.0.0a0"  # Automatically set by hatch
 
 __all__ = [
     "SELF",

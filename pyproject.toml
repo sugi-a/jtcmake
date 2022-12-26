@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=42"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "jtcmake"
 license = { text = "MIT License" }
-description = "Simple but effective general purpose build tool for Python"
+description = "Simple but effective general purpose build tool"
 readme = "README.md"
 authors = [
     { name = "Amane Sugiyama", email = "sugi98765@gmail.com" },
@@ -26,15 +26,32 @@ requires-python = ">=3.8"
 dependencies = ["typing_extensions"]
 dynamic = ["version"]
 
-[tool.setuptools]
-package-dir = { "" = "src" }
+[project.optional-dependencies]
+test = [
+    "black>=22.12",
+    "flake8>=6.0",
+    "pyright>=1.1",
+    "pytest>=7.2",
+    "pytest-mock>=3.10",
+]
+deploy = [
+    "build>=0.9",
+    "twine>=4.0",
+    "hatch>=1.6",
+]
+docs = [
+    "sphinx>=5.3",
+    "sphinx-rtd-theme>=1.1",
+]
 
-[tool.setuptools.package-data]
-jtcmake = ["py.typed"]
+[tool.hatch.build]
+only-packages = true
 
-[tool.setuptools.dynamic]
-version = { attr = "jtcmake.VERSION" }
+[tool.hatch.build.targets.wheel]
+packages = ["src/jtcmake"]
 
+[tool.hatch.version]
+path = "src/jtcmake/__init__.py"
 
 [tool.black]
 include = '(src|tests)/.+\.pyi?$'
