@@ -1,7 +1,17 @@
+from __future__ import annotations
 from multiprocessing.pool import Pool
 import traceback
 import enum
-from typing import Callable, List, NamedTuple, Optional, Set, Sequence, TypeVar
+from typing import (
+    Callable,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Set,
+    Sequence,
+    TypeVar,
+)
 
 from . import events
 from .abc import IRule, IEvent, UpdateResults
@@ -14,12 +24,28 @@ class Result(enum.Enum):
     Fatal = 4
 
 
+SummaryKey = Literal["update", "skip", "fail", "discard"]
+
+
 class MakeSummary(NamedTuple):
     total: int  # planned to be update
     update: int  # actually updated (method called)
     skip: int  # "nothing to do with ..."
     fail: int  # failed ones
     discard: int  # not checked because of abort
+    detail: dict[int, SummaryKey]
+
+    @classmethod
+    def create(cls, detail: dict[int, SummaryKey]):
+        a: dict[SummaryKey, int] = {
+            "update": 0,
+            "skip": 0,
+            "fail": 0,
+            "discard": 0,
+        }
+        for _, key in detail.items():
+            a[key] += 1
+        return cls(**a, total=len(detail), detail=detail)
 
 
 def _toplogical_sort(
@@ -56,18 +82,20 @@ def make(
     callback: Callable[[IEvent[_T_Rule]], None],
 ):
     if len(ids) == 0:
-        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
+        return MakeSummary(
+            total=0, update=0, skip=0, fail=0, discard=0, detail={}
+        )
 
     main_ids = set(ids)
 
-    taskq = _toplogical_sort(id2rule, ids)
+    target_ids = _toplogical_sort(id2rule, ids)
 
     failed_ids: Set[int] = set()  # includes discarded ones
     updated_ids: Set[int] = set()
-    nskips: int = 0  # for stats report
-    nfails: int = 0  # for stats report
 
-    for i in taskq:
+    summary: dict[int, SummaryKey] = {}
+
+    for i in target_ids:
         r = id2rule[i]
 
         if any(dep in failed_ids for dep in r.deps):
@@ -90,9 +118,10 @@ def make(
 
         if result == Result.Update:
             updated_ids.add(i)
+            summary[i] = "update"
         elif result == Result.Fail:
-            nfails += 1
             failed_ids.add(i)
+            summary[i] = "fail"
             if not keep_going:
                 try:
                     callback(events.StopOnFail())
@@ -100,20 +129,18 @@ def make(
                     traceback.print_exc()
                 break
         elif result == Result.Fatal:
-            nfails += 1
             failed_ids.add(i)
+            summary[i] = "fail"
             break
         else:
             assert result == Result.Skip
-            nskips += 1
+            summary[i] = "skip"
 
-    return MakeSummary(
-        total=len(taskq),
-        update=len(updated_ids),
-        skip=nskips,
-        fail=nfails,
-        discard=len(taskq) - (len(updated_ids) + nskips + nfails),
-    )
+    for i in target_ids:
+        if i not in summary:
+            summary[i] = "discard"
+
+    return MakeSummary.create(summary)
 
 
 def process_rule(

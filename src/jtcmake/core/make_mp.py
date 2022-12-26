@@ -20,7 +20,7 @@ from typing import (
 
 from . import events
 from .abc import IRule, IEvent
-from .make import process_rule, Result, MakeSummary
+from .make import SummaryKey, process_rule, Result, MakeSummary
 
 
 def _collect_rules(
@@ -61,7 +61,9 @@ def make_mp_spawn(
     callback must be thread safe
     """
     if len(ids) == 0:
-        return MakeSummary(total=0, update=0, skip=0, fail=0, discard=0)
+        return MakeSummary(
+            total=0, update=0, skip=0, fail=0, discard=0, detail={}
+        )
 
     assert njobs >= 2
 
@@ -88,8 +90,7 @@ def make_mp_spawn(
     # state vars
     updated_ids: Set[int] = set()  # rules processed and not skipped
 
-    nskips = 0  # for stats report
-    nfails = 0  # for stats report
+    summary: dict[int, SummaryKey] = {}
 
     job_q: List[int] = []  # FIFO: visit nodes in depth-first order
 
@@ -121,24 +122,25 @@ def make_mp_spawn(
                 cv.wait()
 
     def set_result(i: int, res: Union[Result, None]):
-        nonlocal stop, nidles, nskips, nfails
+        nonlocal stop, nidles
 
         with cv:
             nidles += 1
             assert nidles <= njobs
 
             if res is None:  # fatal error
-                nfails += 1
+                summary[i] = "fail"
                 stop = True
             elif res == Result.Fail:
-                nfails += 1
+                summary[i] = "fail"
                 if not keep_going:
                     stop = True
             else:
                 if res == Result.Update:
                     updated_ids.add(i)
+                    summary[i] = "update"
                 else:
-                    nskips += 1
+                    summary[i] = "skip"
 
                 for nxt in b2a[i]:
                     dep_cnt[nxt] -= 1
@@ -176,13 +178,11 @@ def make_mp_spawn(
             stop = True
             cv.notify_all()
 
-    return MakeSummary(
-        total=len(ids),
-        update=len(updated_ids),
-        skip=nskips,
-        fail=nfails,
-        discard=len(ids) - (len(updated_ids) + nskips + nfails),
-    )
+    for i in ids:
+        if i not in summary:
+            summary[i] = "discard"
+
+    return MakeSummary.create(summary)
 
 
 def worker(
