@@ -1,23 +1,24 @@
 from __future__ import annotations
-from os import PathLike
+
 from abc import ABCMeta, abstractmethod
+from os import PathLike
 from typing import (
+    Callable,
     Dict,
+    Mapping,
     Sequence,
+    Tuple,
     TypeVar,
     Union,
-    Tuple,
     overload,
-    Mapping,
-    Callable,
 )
 
 from typing_extensions import ParamSpec
 
-from ..file import File, VFile
-from ..core import IGroup, IFile
-from ..rule import parse_args_output_files, Rule_init_parse_deco_func, Rule
 from ...utils.strpath import StrOrPath
+from ..core import IFile, IGroup
+from ..file import File, VFile
+from ..rule import Rule, Rule_init_parse_deco_func, parse_args_output_files
 
 P = ParamSpec("P")
 K = TypeVar("K", bound=str)

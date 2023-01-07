@@ -1,20 +1,21 @@
 from __future__ import annotations
-from multiprocessing.pool import Pool
-import traceback
+
 import enum
+import traceback
+from multiprocessing.pool import Pool
 from typing import (
     Callable,
     List,
     Literal,
     NamedTuple,
     Optional,
-    Set,
     Sequence,
+    Set,
     TypeVar,
 )
 
 from . import events
-from .abc import IRule, IEvent, UpdateResults
+from .abc import IEvent, IRule, UpdateResults
 
 
 class Result(enum.Enum):

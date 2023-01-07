@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Union, Set, TypeVar, Generic
+from typing import Callable, Generic, Set, TypeVar, Union
+
 from typing_extensions import TypeAlias
 
 

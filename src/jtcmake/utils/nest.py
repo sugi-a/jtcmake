@@ -1,13 +1,4 @@
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Mapping,
-    Set,
-    Type,
-    Sequence,
-)
-
+from typing import Any, Callable, Iterable, Mapping, Sequence, Set, Type
 
 T_Seq_Factory = Mapping[
     Type[Sequence[Any]], Callable[[Iterable[Any]], Sequence[Any]]

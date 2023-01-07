@@ -9,10 +9,10 @@ from jtcmake.group_tree.core import (
     IGroup,
     INode,
     IRule,
-    get_group_info_of_nodes,
-    parse_args_prefix,
     concat_prefix,
     gather_raw_rule_ids,
+    get_group_info_of_nodes,
+    parse_args_prefix,
 )
 
 

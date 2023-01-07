@@ -1,9 +1,10 @@
 from __future__ import annotations
-import os
-import sys
-import shutil
+
 import itertools
+import os
+import shutil
 import subprocess
+import sys
 from html import escape
 from pathlib import Path
 from typing import Literal, Optional, Sequence, Union
@@ -11,14 +12,11 @@ from typing import Literal, Optional, Sequence, Union
 from typing_extensions import TypeAlias
 
 from ...core.make import make
-from ..core import IGroup, IRule, get_group_info_of_nodes
 from ...logwriter import term_is_jupyter
-from .mermaid import (
-    collect_targets,
-    GroupTreeNode,
-    _relpath,  # pyright: ignore [reportPrivateUsage]
-    _parse_args_nodes,  # pyright: ignore [reportPrivateUsage]
-)
+from ..core import IGroup, IRule, get_group_info_of_nodes
+from .mermaid import _parse_args_nodes  # pyright: ignore [reportPrivateUsage]
+from .mermaid import _relpath  # pyright: ignore [reportPrivateUsage]
+from .mermaid import GroupTreeNode, collect_targets
 
 StrOrPath: TypeAlias = "Union[str, os.PathLike[str]]"
 
@@ -55,7 +53,7 @@ def print_graphviz(
         )
 
         if term_is_jupyter():
-            from IPython.display import display, SVG  # type: ignore
+            from IPython.display import SVG, display  # type: ignore
 
             svg = convert(dot_code, "svg").decode()
             display(SVG(svg))

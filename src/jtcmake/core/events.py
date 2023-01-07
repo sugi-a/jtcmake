@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import TypeVar
-from traceback import TracebackException
-from .abc import IEvent, IRule
 
+from traceback import TracebackException
+from typing import TypeVar
+
+from .abc import IEvent, IRule
 
 _T_Rule = TypeVar("_T_Rule", bound=IRule)
 

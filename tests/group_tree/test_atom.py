@@ -2,9 +2,9 @@ import pytest
 
 from jtcmake.group_tree.atom import (
     IAtom,
+    ILazyMemoValue,
     unwrap_memo_values,
     unwrap_real_values,
-    ILazyMemoValue,
 )
 
 

@@ -1,51 +1,40 @@
 from __future__ import annotations
+
+import hashlib
 import os
 import sys
 import time
-import hashlib
 from abc import ABCMeta, abstractmethod
-from pathlib import Path
 from logging import Logger
-from typing import (
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-    Sequence,
-    List,
-)
-
-from ..atom import unwrap_memo_values
-
-from ...memo import (
-    Memo,
-    IMemo,
-    string_normalizer,
-    string_deserializer,
-    string_serializer,
-)
+from pathlib import Path
+from typing import List, Optional, Sequence, Tuple, TypeVar, Union
 
 from ...core.make import MakeSummary
-
-from .selector import get_offspring_groups
-
 from ...logwriter import (
-    Loglevel,
-    WritableProtocol,
+    ColorTextWriter,
+    HTMLFileWriterOpenOnDemand,
     HTMLJupyterWriter,
     IWriter,
-    WritersWrapper,
-    HTMLFileWriterOpenOnDemand,
-    TextFileWriterOpenOnDemand,
     LoggerWriter,
-    ColorTextWriter,
+    Loglevel,
+    TextFileWriterOpenOnDemand,
     TextWriter,
-    typeguard_loglevel,
+    WritableProtocol,
+    WritersWrapper,
     term_is_jupyter,
+    typeguard_loglevel,
 )
-from ..core import IGroup, GroupTreeInfo, make, parse_args_prefix
+from ...memo import (
+    IMemo,
+    Memo,
+    string_deserializer,
+    string_normalizer,
+    string_serializer,
+)
 from ...utils.strpath import StrOrPath
-
+from ..atom import unwrap_memo_values
+from ..core import GroupTreeInfo, IGroup, make, parse_args_prefix
+from .selector import get_offspring_groups
 
 T = TypeVar("T")
 

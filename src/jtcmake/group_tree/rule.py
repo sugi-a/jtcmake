@@ -1,50 +1,50 @@
 from __future__ import annotations
-import os
+
 import inspect
-import time
+import os
 import re
-from pathlib import Path
+import time
 from os import PathLike
+from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Mapping,
-    Optional,
-    Tuple,
-    Dict,
-    Generic,
-    Union,
-    Sequence,
-    List,
-    TypeVar,
     Collection,
     Container,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
     overload,
 )
-from typing_extensions import TypeGuard, ParamSpec, Concatenate
 
-from ..raw_rule import IMemo
+from typing_extensions import Concatenate, ParamSpec, TypeGuard
 
 from ..core.make import MakeSummary
-
+from ..memo import Memo
+from ..raw_rule import IMemo
 from ..utils.dict_view import DictView
 from ..utils.nest import map_structure
 from ..utils.strpath import StrOrPath
 from .atom import unwrap_real_values
-from .file import File, VFile
 from .core import (
-    IRule,
     GroupTreeInfo,
-    IGroup,
-    concat_prefix,
-    require_tree_init,
-    make,
-    IFile,
     IAtom,
+    IFile,
+    IGroup,
+    IRule,
+    concat_prefix,
+    make,
+    require_tree_init,
 )
 from .event_logger import INoArgFunc
 from .fake_path import FakePath
-from ..memo import Memo
+from .file import File, VFile
 
 K = TypeVar("K", bound=str)
 P = ParamSpec("P")

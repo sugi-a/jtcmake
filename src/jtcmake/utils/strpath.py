@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from os import PathLike, fspath
 from typing import Union
+
 from typing_extensions import TypeAlias
 
 StrOrPath: TypeAlias = "Union[str, PathLike[str]]"

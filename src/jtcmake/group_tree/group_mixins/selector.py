@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import re
 from abc import ABCMeta
-from typing import List, Optional, Sequence, Literal, TypeVar, Union, Tuple, Any
+from typing import Any, List, Literal, Optional, Sequence, Tuple, TypeVar, Union
 
-from ..core import IGroup, IRule, IFile
+from ..core import IFile, IGroup, IRule
 
 SelectorKind = Literal["group", "rule", "file"]
 SELECTOR_KINDS: Tuple[Literal["group"], Literal["rule"], Literal["file"]] = (

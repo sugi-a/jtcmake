@@ -1,4 +1,4 @@
-from typing import Iterator, TypeVar, Mapping
+from typing import Iterator, Mapping, TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")

@@ -1,25 +1,25 @@
 from __future__ import annotations
-import os
+
 import json
-from pathlib import Path
-from hashlib import sha256
+import os
 from abc import ABCMeta
+from hashlib import sha256
 from numbers import Complex
+from pathlib import Path
 from typing import (
     Callable,
+    Generic,
     Iterable,
+    List,
     Mapping,
     Optional,
     Sequence,
     Set,
     Tuple,
-    List,
     TypeVar,
-    Generic,
 )
 
 from .raw_rule import IMemo
-
 
 ENCODING = "utf8"
 

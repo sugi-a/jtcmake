@@ -2,12 +2,12 @@ import os
 import time
 from pathlib import Path
 from typing import Any, Optional, Union
+
 import pytest
 
-from jtcmake.core.abc import UpdateResults
-
-from jtcmake.raw_rule import Rule, IMemo
 from jtcmake import raw_rule
+from jtcmake.core.abc import UpdateResults
+from jtcmake.raw_rule import IMemo, Rule
 
 Necessary = UpdateResults.Necessary
 PossiblyNecessary = UpdateResults.PossiblyNecessary

@@ -1,16 +1,15 @@
 from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Union
 
 import pytest
 
-from jtcmake import (
-    SELF,
-    GroupsGroup as GGroup,
-    RulesGroup as RGroup,
-    StaticGroupBase,
-)
+from jtcmake import SELF
+from jtcmake import GroupsGroup as GGroup
+from jtcmake import RulesGroup as RGroup
+from jtcmake import StaticGroupBase
 from jtcmake.group_tree.core import IGroup
 
 

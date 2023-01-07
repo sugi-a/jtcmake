@@ -2,6 +2,7 @@ from logging import getLogger
 
 import pytest
 
+from jtcmake.group_tree.group_mixins import basic
 from jtcmake.logwriter import (
     ColorTextWriter,
     HTMLFileWriterOpenOnDemand,
@@ -9,7 +10,6 @@ from jtcmake.logwriter import (
     TextFileWriterOpenOnDemand,
     TextWriter,
 )
-from jtcmake.group_tree.group_mixins import basic
 
 
 class Path_:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from jtcmake import UntypedGroup, SELF
+from jtcmake import SELF, UntypedGroup
 
 
 def write(p: Path, c: str):
