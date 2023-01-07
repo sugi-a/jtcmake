@@ -33,6 +33,7 @@ test = [
     "pyright>=1.1",
     "pytest>=7.2",
     "pytest-mock>=3.10",
+    "isort>=5.10",
 ]
 deploy = [
     "build>=0.9",
@@ -73,3 +74,7 @@ files = ["src/jtcmake"]
 [[tool.mypy.overrides]]
 module = "IPython.*"
 ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+line_length = 80
