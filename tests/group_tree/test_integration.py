@@ -47,3 +47,23 @@ def test_noskip(tmp_path: Path):
     flag = False
     g.make()
     assert flag
+
+
+def test_file_dir_collision():
+    def fn(_: Path):
+        ...
+
+    g = UntypedGroup()
+    g.add("a", fn)(SELF)
+
+    with pytest.raises(Exception):
+        g.add("a/b.txt", fn)(SELF)
+
+    g = UntypedGroup()
+    g.add("a/b.txt", fn)(SELF)
+
+    with pytest.raises(Exception):
+        g.add("a", fn)(SELF)
+
+    g = UntypedGroup()
+    g.add("a", fn)(SELF)

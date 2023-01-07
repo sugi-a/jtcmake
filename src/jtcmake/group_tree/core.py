@@ -5,6 +5,7 @@ import itertools
 from typing import (
     Callable,
     Collection,
+    Iterator,
     Mapping,
     Optional,
     Tuple,
@@ -276,6 +277,7 @@ class RuleStore:
         "idx2xpaths",
         "path2file",
         "idx2name",
+        "dirtree",
     )
 
     rules: List[_RawRule[int, INoArgFunc]]
@@ -283,6 +285,7 @@ class RuleStore:
     idx2xpaths: Dict[int, Sequence[str]]
     path2file: Dict[str, IFile]
     idx2name: Dict[int, Tuple[str, ...]]
+    dirtree: DirTree
 
     def __init__(self):
         self.rules = []
@@ -290,6 +293,7 @@ class RuleStore:
         self.idx2xpaths = {}
         self.path2file = {}
         self.idx2name = {}
+        self.dirtree = DirTree()
 
     def add(
         self,
@@ -305,6 +309,8 @@ class RuleStore:
                 raise ValueError(
                     f"File {f} is already used as an output of another rule"
                 )
+
+            self.dirtree.assert_no_collision(Path(f).parts, True)
 
         # Check IFile type consistency of xfiles
         for p, f in xp2f.items():
@@ -347,7 +353,78 @@ class RuleStore:
 
         self.idx2name[id] = name
 
+        for f in yp2f.values():
+            self.dirtree.add(Path(f).parts, True)
+
         return rule
+
+
+class DirTree(Mapping[str, object]):
+    trie: dict[str, DirTree | None]
+
+    def __init__(self) -> None:
+        self.trie = {}
+
+    def __getitem__(self, __key: str) -> DirTree | None:
+        return self.trie[__key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.trie)
+
+    def __len__(self) -> int:
+        return len(self.trie)
+
+    def assert_no_collision(
+        self, parts: tuple[str, ...], is_file: bool, depth: int = 0
+    ):
+        trie = self.trie
+
+        if len(parts) <= depth:
+            return
+
+        p0 = parts[depth]
+
+        if len(parts) == 1 and is_file:
+            if trie.get(p0) is not None:
+                raise Exception(
+                    f"Directory-vs-File collision was detected. "
+                    f"You tried to register a file {Path(*parts)}, "
+                    f"but it is already registered as a directory."
+                )
+        elif p0 in trie:
+            child = trie[p0]
+
+            if child is None:
+                raise Exception(
+                    f"Directory-vs-File collision was detected. "
+                    f"You tried to register a path {Path(*parts)}, but "
+                    f"{Path(*parts[: depth + 1])} is already registered "
+                    f"as a file. "
+                )
+            else:
+                child.assert_no_collision(parts, is_file, depth + 1)
+
+    def add(self, parts: tuple[str, ...], is_file: bool, depth: int = 0):
+        trie = self.trie
+
+        if len(parts) <= depth:
+            return
+
+        p0 = parts[depth]
+
+        if len(parts) == 1 and is_file:
+            if p0 not in trie:
+                trie[p0] = None
+
+            return
+
+        if p0 in trie:
+            child = trie[p0]
+            assert child is not None
+        else:
+            child = trie[p0] = DirTree()
+
+        child.add(parts, is_file, depth + 1)
 
 
 class GroupTreeInfo:
