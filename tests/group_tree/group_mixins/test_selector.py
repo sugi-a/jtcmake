@@ -44,7 +44,7 @@ def test_get_offspring_groups():
 def _create_group_for_test_select():
     """
     a/
-    |-- a (a)
+    |-- a (a.txt)
     |-- b (b1.txt, b2.txt)
     |-- c/
     |-- |-- d/
@@ -59,7 +59,7 @@ def _create_group_for_test_select():
 
     g = UntypedGroup()
 
-    g.add("a", _fn)(SELF)
+    g.add("a", "a.txt", _fn)(SELF)
     g.add("b", ["b1.txt", "b2.txt"], _fn)(SELF[0], SELF[1])
 
     g.add_group("c")
@@ -109,7 +109,7 @@ def test_group_select_files():
     g = _create_group_for_test_select()
 
     # no *
-    assert g.select_files("a/a") == [g.a.a]
+    assert g.select_files("a/a.txt") == [g.a[0]]
 
     # *, **
-    assert g.select_files("**/*.txt") == [g.b[0], g.b[1], g["a/b"].a[0]]
+    assert g.select_files("**/*.txt") == [g.a[0], g.b[0], g.b[1], g["a/b"].a[0]]

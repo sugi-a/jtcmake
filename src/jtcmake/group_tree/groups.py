@@ -159,7 +159,8 @@ class StaticGroupBase(BasicMixin, BasicInitMixin, SelectorMixin, MemoMixin):
 
             if tp == Rule:
                 # Rule
-                r: Rule[str] = Rule.__new__(Rule)
+                r_: Any = Rule.__new__(Rule)
+                r: Rule[str] = r_
                 r.__init_partial__(fqcname, self._info, None, self)
                 setattr(self, child_name, r)
                 self._rules[child_name] = r
