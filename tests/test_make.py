@@ -1,10 +1,11 @@
 from typing import Any, Callable, Iterable, List, Optional
+
 import pytest
 
-from jtcmake.core.abc import IEvent, IRule, UpdateResult, UpdateResults
-from jtcmake.core.make import make, MakeSummary
-from jtcmake.core.make_mp import make_mp_spawn
 from jtcmake.core import events
+from jtcmake.core.abc import IEvent, IRule, UpdateResult, UpdateResults
+from jtcmake.core.make import MakeSummary, make
+from jtcmake.core.make_mp import make_mp_spawn
 
 
 def fail(*args: object, exc: Optional[Exception] = None, **kwargs: object):

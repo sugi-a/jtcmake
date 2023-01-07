@@ -1,5 +1,6 @@
 import sys
-from jtcmake import stringify_dirtree, UntypedGroup, SELF
+
+from jtcmake import SELF, UntypedGroup, stringify_dirtree
 
 
 def test_print_dirtree():

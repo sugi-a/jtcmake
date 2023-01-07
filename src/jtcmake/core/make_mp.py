@@ -1,26 +1,26 @@
 from __future__ import annotations
-from multiprocessing.context import SpawnContext
+
 import sys
 import traceback
-from multiprocessing import get_context
-from threading import Thread, Condition
-
 from collections import defaultdict
+from multiprocessing import get_context
+from multiprocessing.context import SpawnContext
+from threading import Condition, Thread
 from typing import (
+    Callable,
     Dict,
+    List,
     Mapping,
+    Sequence,
     Set,
     Tuple,
-    Callable,
-    List,
-    Union,
-    Sequence,
     TypeVar,
+    Union,
 )
 
 from . import events
-from .abc import IRule, IEvent
-from .make import SummaryKey, process_rule, Result, MakeSummary
+from .abc import IEvent, IRule
+from .make import MakeSummary, Result, SummaryKey, process_rule
 
 
 def _collect_rules(

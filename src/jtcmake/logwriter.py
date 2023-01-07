@@ -1,6 +1,6 @@
 import abc
-import os
 import html
+import os
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -15,7 +15,7 @@ from typing import (
     TypeVar,
 )
 
-from typing_extensions import Literal, Protocol, runtime_checkable, TypeGuard
+from typing_extensions import Literal, Protocol, TypeGuard, runtime_checkable
 
 from .utils.strpath import StrOrPath
 
@@ -253,14 +253,14 @@ class HTMLJupyterWriter(IWriter):
 
     def __init__(self, loglevel: Loglevel, basedir: Optional[StrOrPath] = None):
         super().__init__(loglevel)
-        from IPython.display import display, HTML  # pyright: ignore
+        from IPython.display import HTML, display  # pyright: ignore
 
         del display, HTML
 
         self.basedir = Path(basedir if basedir else os.getcwd())
 
     def _write(self, *args: str, level: Loglevel):
-        from IPython.display import display, HTML  # pyright: ignore
+        from IPython.display import HTML, display  # pyright: ignore
 
         color = HTML_COLOR_MAP[level]
         bgcolor = HTML_BG_COLOR_MAP[level]

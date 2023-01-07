@@ -1,17 +1,18 @@
 from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import NamedTuple
+
+from typing_extensions import TypeAlias
 
 from jtcmake.logwriter import HTMLFileWriterOpenOnDemand
 
 from ...core.make import make
 from ..core import IRule, get_group_info_of_nodes
+from ..event_logger import RichStr, tostrs_func_call
 from ..group_mixins.basic import create_default_logwriter
 from ..group_mixins.selector import SelectorMixin
-from ..event_logger import tostrs_func_call, RichStr
-
-from typing_extensions import TypeAlias
 
 
 def print_method(rule: IRule):

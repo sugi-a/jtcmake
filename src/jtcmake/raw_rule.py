@@ -1,18 +1,19 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
+
 import os
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import (
     Callable,
+    Collection,
     Generic,
     Optional,
     Sequence,
     Set,
     TypeVar,
-    Collection,
 )
 
-from .core.abc import IRule, UpdateResults, UpdateResult
+from .core.abc import IRule, UpdateResult, UpdateResults
 
 
 class IMemo(metaclass=ABCMeta):

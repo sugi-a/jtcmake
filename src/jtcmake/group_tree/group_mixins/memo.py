@@ -1,6 +1,7 @@
 from typing import TypeVar
-from ..core import INode
+
 from ..atom import Atom
+from ..core import INode
 
 T = TypeVar("T")
 

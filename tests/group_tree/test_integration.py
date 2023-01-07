@@ -1,6 +1,8 @@
 from pathlib import Path
+
 import pytest
-from jtcmake import StaticGroupBase, Rule, UntypedGroup, SELF
+
+from jtcmake import SELF, Rule, StaticGroupBase, UntypedGroup
 
 
 class Group(StaticGroupBase):

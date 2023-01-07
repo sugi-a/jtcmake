@@ -1,13 +1,13 @@
-from abc import ABCMeta, abstractmethod
 import inspect
-from typing import Callable, List, Optional, Sequence, Mapping, Dict, Tuple
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from threading import Lock
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from ..raw_rule import Rule
-from ..core.abc import IEvent
 from ..core import events
+from ..core.abc import IEvent
 from ..logwriter import IWriter, RichStr
+from ..raw_rule import Rule
 
 
 class INoArgFunc(metaclass=ABCMeta):

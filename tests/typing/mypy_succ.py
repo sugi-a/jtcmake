@@ -1,13 +1,7 @@
 from pathlib import Path
 from typing import Literal
-from jtcmake import (
-    RulesGroup,
-    GroupsGroup,
-    StaticGroupBase,
-    Rule,
-    SELF,
-    VFile,
-)
+
+from jtcmake import SELF, GroupsGroup, Rule, RulesGroup, StaticGroupBase, VFile
 
 
 def func1(a: Path):

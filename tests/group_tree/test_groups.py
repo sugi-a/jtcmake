@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from typing import Generic, TypeVar, Union
 
 import pytest
 
 from jtcmake.group_tree import groups
-from jtcmake.group_tree.groups import GroupsGroup as GGroup, UntypedGroup
-
+from jtcmake.group_tree.groups import GroupsGroup as GGroup
+from jtcmake.group_tree.groups import UntypedGroup
 
 T = TypeVar("T")
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import shutil
 from pathlib import Path
 from typing import Literal, Union
 
-from jtcmake import SELF, Rule, GroupsGroup, StaticGroupBase
+from jtcmake import SELF, GroupsGroup, Rule, StaticGroupBase
 
 
 def write(dst: Path, c: str):

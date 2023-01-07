@@ -1,15 +1,15 @@
 from __future__ import annotations
-import os
-import sys
+
 import base64
 import hashlib
+import os
 import pathlib
+import sys
 from typing import Dict, Tuple
 
 from ..utils.strpath import StrOrPath
+from .atom import ILazyMemoValue, IMemoAtom
 from .core import IFile
-from .atom import IMemoAtom, ILazyMemoValue
-
 
 if sys.platform == "win32":
     _Path = pathlib.WindowsPath

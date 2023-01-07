@@ -1,18 +1,18 @@
 # type: ignore
 from __future__ import annotations
+
+import hashlib
 import os
 import sys
-import hashlib
-from pathlib import Path, WindowsPath, PosixPath
-from collections.abc import Container, Collection, Iterator
+from collections.abc import Collection, Container, Iterator
+from pathlib import Path, PosixPath, WindowsPath
 
 import pytest
 
-from jtcmake.group_tree.core import IFile
 from jtcmake.group_tree import rule
 from jtcmake.group_tree.atom import Atom
+from jtcmake.group_tree.core import IFile
 from jtcmake.group_tree.groups import UntypedGroup
-
 
 if sys.platform == "win32":
     _Path = WindowsPath

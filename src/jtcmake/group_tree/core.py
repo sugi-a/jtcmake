@@ -1,34 +1,38 @@
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
-import os
+
 import itertools
+import os
+from abc import ABCMeta, abstractmethod
+from pathlib import Path
 from typing import (
     Callable,
     Collection,
+    Dict,
     Iterator,
+    List,
     Mapping,
     Optional,
+    Sequence,
+    Set,
     Tuple,
     TypeVar,
-    Dict,
     Union,
-    overload,
-    Sequence,
-    List,
-    Set,
     final,
+    overload,
 )
-from typing_extensions import ParamSpec, Concatenate
-from pathlib import Path
 
-from ..raw_rule import Rule as _RawRule, IMemo
-from ..core.make import MakeSummary, make as _make
-from ..core.make_mp import make_mp_spawn
+from typing_extensions import Concatenate, ParamSpec
+
 from ..core.abc import IEvent
+from ..core.make import MakeSummary
+from ..core.make import make as _make
+from ..core.make_mp import make_mp_spawn
 from ..logwriter import IWriter
-from .event_logger import log_make_event, INoArgFunc
+from ..raw_rule import IMemo
+from ..raw_rule import Rule as _RawRule
 from ..utils.strpath import StrOrPath, fspath2str
 from .atom import IAtom
+from .event_logger import INoArgFunc, log_make_event
 
 
 class INode(metaclass=ABCMeta):

@@ -1,15 +1,16 @@
 from __future__ import annotations
-import os
+
 import itertools
+import os
+from collections import deque
 from html import escape
 from pathlib import Path
-from collections import deque
-from typing import Literal, Union, Optional, Sequence
+from typing import Literal, Optional, Sequence, Union
 
 from ...core.make import make
+from ...logwriter import term_is_jupyter
 from ...utils.strpath import StrOrPath
 from ..core import IGroup, IRule, get_group_info_of_nodes
-from ...logwriter import term_is_jupyter
 
 CDN_SCRIPT = "https://unpkg.com/mermaid@9.2.2/dist/mermaid.js"
 CDN_INTEGRITY = (
@@ -55,7 +56,7 @@ def print_mermaid(
         )
 
         if term_is_jupyter():
-            from IPython.display import display, HTML  # type: ignore
+            from IPython.display import HTML, display  # type: ignore
 
             html = embed_to_html(code, mermaidjs)
             display(HTML(html))

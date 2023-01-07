@@ -1,33 +1,30 @@
 from __future__ import annotations
+
 import inspect
 from typing import (
     Any,
+    Callable,
     Dict,
+    Generic,
     Mapping,
     Optional,
     Tuple,
     Type,
     TypeVar,
-    Generic,
     Union,
     get_origin,
     get_type_hints,
-    Callable,
     overload,
 )
 
-from ..utils.strpath import StrOrPath
 from ..utils.dict_view import DictView
-from .core import IGroup, GroupTreeInfo
-from .rule import Rule
-from .group_mixins.basic import (
-    BasicMixin,
-    BasicInitMixin,
-)
+from ..utils.strpath import StrOrPath
+from .core import GroupTreeInfo, IGroup
+from .group_mixins.basic import BasicInitMixin, BasicMixin
 from .group_mixins.dynamic_container import DynamicRuleContainerMixin
 from .group_mixins.memo import MemoMixin
 from .group_mixins.selector import SelectorMixin
-
+from .rule import Rule
 
 V = TypeVar("V")
 
