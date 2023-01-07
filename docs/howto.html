@@ -1,36 +1,73 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" />
+  <meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
   <title>JTCMake Tutorial &mdash; JTCMake  documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/js/theme.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="API Reference" href="reference.html" />
     <link rel="prev" title="Welcome to JTCMake’s documentation!" href="index.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+   
   <div class="wy-grid-for-nav">
+    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
+          
+
+          
             <a href="index.html" class="icon icon-home"> JTCMake
+          
+
+          
           </a>
+
+          
+            
+            
+          
+
+          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -38,7 +75,18 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">JTCMake Tutorial</a><ul>
@@ -90,32 +138,73 @@
 <li class="toctree-l1"><a class="reference internal" href="reference.html">API Reference</a></li>
 </ul>
 
+            
+          
         </div>
+        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">JTCMake</a>
+        
       </nav>
 
+
       <div class="wy-nav-content">
+        
         <div class="rst-content">
-          <div role="navigation" aria-label="Page navigation">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home"></a></li>
-      <li class="breadcrumb-item active">JTCMake Tutorial</li>
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>JTCMake Tutorial</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
+        
+          
             <a href="_sources/howto.rst.txt" rel="nofollow"> View page source</a>
+          
+        
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+            
   <section id="jtcmake-tutorial">
-<h1>JTCMake Tutorial<a class="headerlink" href="#jtcmake-tutorial" title="Permalink to this heading"></a></h1>
+<h1>JTCMake Tutorial<a class="headerlink" href="#jtcmake-tutorial" title="Permalink to this heading">¶</a></h1>
 <p>JTCMake is a general purpose incremental build framework.</p>
 <p>It shares the essence with Makefile:</p>
 <ul class="simple">
@@ -149,7 +238,7 @@ are provided.</p>
 </dd>
 </dl>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ pip install jtcmake
 </pre></div>
 </div>
@@ -157,19 +246,19 @@ are provided.</p>
 <a class="reference internal" href="reference.html#jtcmake.print_graphviz" title="jtcmake.print_graphviz"><code class="xref py py-func docutils literal notranslate"><span class="pre">jtcmake.print_graphviz()</span></code></a> function.</p>
 </section>
 <section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
 <p>Typical workflow using JTCMake consists of two steps:</p>
 <ol class="arabic simple">
 <li><p>Create a <em>group tree</em> and define <em>rules</em> as the nodes in the group tree</p></li>
 <li><p>Call <code class="docutils literal notranslate"><span class="pre">make()</span></code> on a sub-tree (or the root) to execute the rules</p></li>
 </ol>
 <section id="example-writing-to-a-file">
-<h3>Example: Writing to a file<a class="headerlink" href="#example-writing-to-a-file" title="Permalink to this heading"></a></h3>
+<h3>Example: Writing to a file<a class="headerlink" href="#example-writing-to-a-file" title="Permalink to this heading">¶</a></h3>
 <p>Our first example task is to write “Hello!” into <code class="docutils literal notranslate"><span class="pre">output/hello.txt</span></code>.
 For this task, we would write a Makefile below:</p>
 <div class="highlight-Makefile notranslate"><div class="highlight"><pre><span></span><span class="nf">outputs/hello.txt</span><span class="o">:</span>
-    mkdir -p <span class="nv">$$</span><span class="o">(</span>dirname <span class="nv">$@</span><span class="o">)</span>  <span class="c1"># make directory for hello.txt</span>
-    <span class="nb">echo</span> <span class="s2">&quot;Hello!&quot;</span> &gt; <span class="nv">$@</span>       <span class="c1"># write to hello.txt</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$$</span><span class="o">(</span>dirname<span class="w"> </span><span class="nv">$@</span><span class="o">)</span><span class="w">  </span><span class="c1"># make directory for hello.txt</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Hello!&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$@</span><span class="w">       </span><span class="c1"># write to hello.txt</span>
 </pre></div>
 </div>
 <p>and then call <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">make</span></code>. Its JTCMake counterpart looks like:</p>
@@ -200,7 +289,8 @@ You will see the following log after running <code class="docutils literal notra
 </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    errors</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = None,
 </span><span style="color: rgb(255, 128, 0);background-color: rgb(255, 255, 255);">    newline</span><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);"> = None,
   )
-</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre style="background-color: rgb(255, 255, 255)"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello.txt</span></pre></body></html><hr class="docutils" />
+</span></pre></body></html><html><head><meta charset="utf-8"><title>log</title></head><body><pre style="background-color: rgb(255, 255, 255)"><span style="color: rgb(0, 0, 0);background-color: rgb(255, 255, 255);">Done </span><span style="color: rgb(0, 204, 0);background-color: rgb(255, 255, 255);">hello.txt</span></pre></body></html>
+<hr class="docutils" />
 <p>On Jupyter Notebook and Jupyter Lab, Paths are printed as HTML links so you
 can quickly review the files.</p>
 <p>This example task is so simple that you actually don’t need a “framework”
@@ -211,7 +301,7 @@ and instead you would just write:</p>
 <p>JTCMake helps when your task involves many files to be output.</p>
 </section>
 <section id="example-build-script-for-a-c-language-project">
-<h3>Example: Build Script for a C language project<a class="headerlink" href="#example-build-script-for-a-c-language-project" title="Permalink to this heading"></a></h3>
+<h3>Example: Build Script for a C language project<a class="headerlink" href="#example-build-script-for-a-c-language-project" title="Permalink to this heading">¶</a></h3>
 <p>Let’s take a look at a more complex task: building a C language project.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -284,7 +374,7 @@ libb into the executables.</p></li>
 <span class="linenos">21</span>
 <span class="linenos">22</span>
 <span class="linenos">23</span><span class="k">def</span> <span class="nf">shell</span><span class="p">(</span><span class="o">*</span><span class="n">cmd_fragments</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
-<span class="linenos">24</span>    <span class="sd">&quot;&quot;&quot;Run shell script&quot;&quot;&quot;</span>
+<span class="linenos">24</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run shell script&quot;&quot;&quot;</span>
 <span class="linenos">25</span>    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">cmd_fragments</span><span class="p">))</span>
 <span class="linenos">26</span>    <span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
 <span class="linenos">27</span>    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
@@ -374,7 +464,7 @@ libb into the executables.</p></li>
 </pre></div>
 </div>
 <section id="visualization">
-<h4>Visualization<a class="headerlink" href="#visualization" title="Permalink to this heading"></a></h4>
+<h4>Visualization<a class="headerlink" href="#visualization" title="Permalink to this heading">¶</a></h4>
 <p>It is possible to visualize the group tree structure and rule dependencies.
 For example,</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">jtcmake</span>
@@ -385,7 +475,7 @@ For example,</p>
 structure are illustrated.</p>
 <img alt="_images/_tmp-graph-tool1.svg" src="_images/_tmp-graph-tool1.svg" /></section>
 <section id="dry-run">
-<h4>Dry-run<a class="headerlink" href="#dry-run" title="Permalink to this heading"></a></h4>
+<h4>Dry-run<a class="headerlink" href="#dry-run" title="Permalink to this heading">¶</a></h4>
 <p>Like most build tools, JTCMake can print which rules would be executed instead
 of actually executing them.
 It is as easy as running <code class="docutils literal notranslate"><span class="pre">make()</span></code> with <code class="docutils literal notranslate"><span class="pre">dry_run=True</span></code>.</p>
@@ -417,7 +507,7 @@ It is as easy as running <code class="docutils literal notranslate"><span class=
 </div>
 </section>
 <section id="skipping-completed-rules">
-<h4>Skipping Completed Rules<a class="headerlink" href="#skipping-completed-rules" title="Permalink to this heading"></a></h4>
+<h4>Skipping Completed Rules<a class="headerlink" href="#skipping-completed-rules" title="Permalink to this heading">¶</a></h4>
 <p>Just like Makefile, JTCMake by default checks the existence and modification
 timestamp of the input/output files of each rule, and if the output files are
 there and newer than the input files, JTCMake skips the rule to save
@@ -429,17 +519,17 @@ with the source files unchanged results in no-op.</p>
 </section>
 </section>
 <section id="summary">
-<h3>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h3>
+<h3>Summary<a class="headerlink" href="#summary" title="Permalink to this heading">¶</a></h3>
 <p>JTCMake performs incremental build in a define-and-run manner.
 Subsequent sections will describe the concepts and usage of JTCMake in detail.</p>
 </section>
 </section>
 <section id="core-concepts">
-<h2>Core Concepts<a class="headerlink" href="#core-concepts" title="Permalink to this heading"></a></h2>
+<h2>Core Concepts<a class="headerlink" href="#core-concepts" title="Permalink to this heading">¶</a></h2>
 <p>This chapter describes some major concepts of JTCMake.
 The actual APIs are explained in the <a class="reference internal" href="#construction-of-group-trees">Construction of Group Trees</a> chapter.</p>
 <section id="rules-and-dependency">
-<h3>Rules and Dependency<a class="headerlink" href="#rules-and-dependency" title="Permalink to this heading"></a></h3>
+<h3>Rules and Dependency<a class="headerlink" href="#rules-and-dependency" title="Permalink to this heading">¶</a></h3>
 <p>Rules are the the smallest unit of work. A rule consists of a <em>method</em> that
 takes some inputs (<em>input files</em> and other kind of Python objects like integers)
 and produces files (<em>output files</em>).</p>
@@ -450,7 +540,7 @@ depend on <em>A</em>.</p>
 JTCMake imposes a restriction on dependency graphs that they must be asyclic.</p>
 </section>
 <section id="up-to-date-criteria">
-<h3>“Up-to-date” Criteria<a class="headerlink" href="#up-to-date-criteria" title="Permalink to this heading"></a></h3>
+<h3>“Up-to-date” Criteria<a class="headerlink" href="#up-to-date-criteria" title="Permalink to this heading">¶</a></h3>
 <p>When ordered to perform “make” on a set of rules, JTCMake does not necessarily
 execute all of them: it skips the rules that are considered to be “up-to-date”.
 There are two major mechanisms used to judge whether a rule is skippable.</p>
@@ -472,18 +562,12 @@ each of them how to memoize them. For example, you can exclude certain inputs
 from the memoization list.</p>
 </section>
 <section id="group-tree-model">
-<h3>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading"></a></h3>
+<h3>Group Tree Model<a class="headerlink" href="#group-tree-model" title="Permalink to this heading">¶</a></h3>
 <p>JTCMake maintains the definition of rules in a tree called <em>group tree</em>,
 instead of storing them in a flat data structure.
 Group trees may contain three kinds of nodes:</p>
 <table class="docutils align-default" id="id2">
-<caption><span class="caption-text">Group Tree Nodes</span><a class="headerlink" href="#id2" title="Permalink to this table"></a></caption>
-<colgroup>
-<col style="width: 25%" />
-<col style="width: 25%" />
-<col style="width: 25%" />
-<col style="width: 25%" />
-</colgroup>
+<caption><span class="caption-text">Group Tree Nodes</span><a class="headerlink" href="#id2" title="Permalink to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Kind</p></th>
 <th class="head"><p>Role</p></th>
@@ -550,11 +634,11 @@ It again reduces the cognitive load to comprehend the tasks and their outputs.</
 </section>
 </section>
 <section id="construction-of-group-trees">
-<h2>Construction of Group Trees<a class="headerlink" href="#construction-of-group-trees" title="Permalink to this heading"></a></h2>
+<h2>Construction of Group Trees<a class="headerlink" href="#construction-of-group-trees" title="Permalink to this heading">¶</a></h2>
 <p>As described in the <a class="reference internal" href="#overview">Overview</a> chapter, our first step in the JTCMake workflow
 is to create a group tree that holds the definition of rules inside.</p>
 <section id="defining-rules">
-<h3>Defining Rules<a class="headerlink" href="#defining-rules" title="Permalink to this heading"></a></h3>
+<h3>Defining Rules<a class="headerlink" href="#defining-rules" title="Permalink to this heading">¶</a></h3>
 <p>This section explains how to define rules in a group tree.
 For the sake of simplicity, rules will be defined in a “flat” tree (tree with a
 depth of 1) of <code class="xref py py-class docutils literal notranslate"><span class="pre">RulesGroup</span></code>.
@@ -594,13 +678,6 @@ The key point here is to use the special constant <code class="xref py py-class 
 represent the node of the new rule. There are several notations using <code class="docutils literal notranslate"><span class="pre">SELF</span></code>
 to specify the output files.</p>
 <table class="docutils align-default">
-<colgroup>
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-</colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>File</p></th>
 <th class="head"><p>Attribute</p></th>
@@ -625,7 +702,7 @@ to specify the output files.</p>
 </tbody>
 </table>
 <section id="accessing-rule-file-nodes">
-<h4>Accessing Rule/File nodes<a class="headerlink" href="#accessing-rule-file-nodes" title="Permalink to this heading"></a></h4>
+<h4>Accessing Rule/File nodes<a class="headerlink" href="#accessing-rule-file-nodes" title="Permalink to this heading">¶</a></h4>
 <p>You can reference the rule node either by the attribute-access or indxing:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">jtcmake</span> <span class="kn">import</span> <span class="n">Rule</span>
 
@@ -653,7 +730,7 @@ to specify the output files.</p>
 </div>
 </section>
 <section id="simpified-notation-of-output-files">
-<h4>Simpified Notation of Output Files<a class="headerlink" href="#simpified-notation-of-output-files" title="Permalink to this heading"></a></h4>
+<h4>Simpified Notation of Output Files<a class="headerlink" href="#simpified-notation-of-output-files" title="Permalink to this heading">¶</a></h4>
 <p><code class="docutils literal notranslate"><span class="pre">output_files</span></code> passed to <code class="docutils literal notranslate"><span class="pre">add</span></code> can be a list (or tuple) of base-paths
 instead of a dict.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
@@ -711,7 +788,7 @@ output file and its basename is equal to to its path-base:</p>
 </div>
 </section>
 <section id="decorator-style-registration">
-<h4>Decorator-style Registration<a class="headerlink" href="#decorator-style-registration" title="Permalink to this heading"></a></h4>
+<h4>Decorator-style Registration<a class="headerlink" href="#decorator-style-registration" title="Permalink to this heading">¶</a></h4>
 <p>It is common that we need to define a dedicated method for a rule.
 In that case, the decorator-style rule definition helps make your code concise.</p>
 <p>Calling <code class="docutils literal notranslate"><span class="pre">add</span></code> with <code class="docutils literal notranslate"><span class="pre">method</span></code> omitted returns a decorator function.
@@ -736,7 +813,7 @@ function. All the arguments of the decorated function must have default values:<
 </div>
 </section>
 <section id="dependency-of-rules">
-<h4>Dependency of Rules<a class="headerlink" href="#dependency-of-rules" title="Permalink to this heading"></a></h4>
+<h4>Dependency of Rules<a class="headerlink" href="#dependency-of-rules" title="Permalink to this heading">¶</a></h4>
 <p>Supplying a rule’s outputs to another rule is as easy as putting the output
 file nodes of the former rule as the arguments of the method of the latter rule.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
@@ -765,7 +842,7 @@ and write</p>
 <p>to pass the first (0-th) output file of the source rule.</p>
 </section>
 <section id="original-files">
-<h4>Original Files<a class="headerlink" href="#original-files" title="Permalink to this heading"></a></h4>
+<h4>Original Files<a class="headerlink" href="#original-files" title="Permalink to this heading">¶</a></h4>
 <p>Like the C source files in <a class="reference internal" href="#example-build-script-for-a-c-language-project">Example: Build Script for a C language project</a> ,
 we often have input files that are not output files of a rule.
 Here, we will refer to such files as <em>original files</em>.</p>
@@ -790,7 +867,7 @@ Here, we will refer to such files as <em>original files</em>.</p>
 </div>
 </section>
 <section id="selfs-and-files-in-nested-arguments">
-<h4>SELFs and Files in Nested Arguments<a class="headerlink" href="#selfs-and-files-in-nested-arguments" title="Permalink to this heading"></a></h4>
+<h4>SELFs and Files in Nested Arguments<a class="headerlink" href="#selfs-and-files-in-nested-arguments" title="Permalink to this heading">¶</a></h4>
 <p>When passed to the <code class="docutils literal notranslate"><span class="pre">rule_adder</span></code> temporary function, <code class="docutils literal notranslate"><span class="pre">SELF</span></code> and Files may be
 placed in a compound structure of <code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">dict</span></code>, and <code class="docutils literal notranslate"><span class="pre">set</span></code> .
 i.e. JTCMake digs into nested structures like <code class="docutils literal notranslate"><span class="pre">[{&quot;a&quot;:</span> <span class="pre">(1,</span> <span class="pre">SELF.a)}]</span></code> to find
@@ -828,7 +905,7 @@ container types. JTCMake does not look inside other containers types like
 <code class="docutils literal notranslate"><span class="pre">collections.deque</span></code> or dataclasses.</p>
 </section>
 <section id="value-file">
-<h4>Value File<a class="headerlink" href="#value-file" title="Permalink to this heading"></a></h4>
+<h4>Value File<a class="headerlink" href="#value-file" title="Permalink to this heading">¶</a></h4>
 <p>As explained in <cite>“Up-to-date” Criteria</cite>, JTCMake performs content-based
 skippability check for <strong>value files</strong> rather than the mtime-based check.</p>
 <p>Owned (not original) files may be declared to be value files in two ways.
@@ -897,7 +974,7 @@ normal files are defined by <a class="reference internal" href="reference.html#j
 </section>
 </section>
 <section id="group-node-classes">
-<h3>Group Node Classes<a class="headerlink" href="#group-node-classes" title="Permalink to this heading"></a></h3>
+<h3>Group Node Classes<a class="headerlink" href="#group-node-classes" title="Permalink to this heading">¶</a></h3>
 <p>There are four classes that represent a group node.
 The reason why there are four but not one is solely the capability of
 fine-graned static program analysis.
@@ -907,14 +984,14 @@ and still be productive, you should use the other three classes
 (StaticGroupBase, GroupsGroup, and RulesGroup) with an IDE and static type
 checkers.</p>
 <p>Here is a summary of the classes.</p>
-<table class="colwidths-given docutils align-default" id="id3">
-<caption><span class="caption-text">Summary of Group Classes (1)</span><a class="headerlink" href="#id3" title="Permalink to this table"></a></caption>
+<table class="docutils align-default" id="id3">
+<caption><span class="caption-text">Summary of Group Classes (1)</span><a class="headerlink" href="#id3" title="Permalink to this table">¶</a></caption>
 <colgroup>
-<col style="width: 22%" />
-<col style="width: 22%" />
-<col style="width: 11%" />
-<col style="width: 11%" />
-<col style="width: 33%" />
+<col style="width: 22.2%" />
+<col style="width: 22.2%" />
+<col style="width: 11.1%" />
+<col style="width: 11.1%" />
+<col style="width: 33.3%" />
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Class Name</p></th>
@@ -952,7 +1029,7 @@ checkers.</p>
 </tbody>
 </table>
 <section id="staticgroupbase">
-<h4>StaticGroupBase<a class="headerlink" href="#staticgroupbase" title="Permalink to this heading"></a></h4>
+<h4>StaticGroupBase<a class="headerlink" href="#staticgroupbase" title="Permalink to this heading">¶</a></h4>
 <p><em>StaticGroupBase</em> is the base class for <em>static groups</em>.
 You should always subclass it to create a custom static group.
 When subclassing it, you must give the names and types of the child nodes
@@ -1131,7 +1208,7 @@ better support from IDEs and type checkers:</p>
 </div>
 </section>
 <section id="groupsgroup">
-<h4>GroupsGroup<a class="headerlink" href="#groupsgroup" title="Permalink to this heading"></a></h4>
+<h4>GroupsGroup<a class="headerlink" href="#groupsgroup" title="Permalink to this heading">¶</a></h4>
 <p><em>GroupsGroup</em> may have children of groups only.
 You should use this class instead of <a class="reference internal" href="#staticgroupbase">StaticGroupBase</a> when the child groups’
 names are dynamically determined at run time.</p>
@@ -1168,7 +1245,7 @@ and ignored at runtime.</p>
 </div>
 </section>
 <section id="rulesgroup">
-<h4>RulesGroup<a class="headerlink" href="#rulesgroup" title="Permalink to this heading"></a></h4>
+<h4>RulesGroup<a class="headerlink" href="#rulesgroup" title="Permalink to this heading">¶</a></h4>
 <p><em>RulesGroup</em> may have children of rules only.
 You should use this class instead of <a class="reference internal" href="#staticgroupbase">StaticGroupBase</a> when the child rules’
 names are dynamically determined at run time.</p>
@@ -1196,7 +1273,7 @@ names are dynamically determined at run time.</p>
 </div>
 </section>
 <section id="untypedgroup">
-<h4>UntypedGroup<a class="headerlink" href="#untypedgroup" title="Permalink to this heading"></a></h4>
+<h4>UntypedGroup<a class="headerlink" href="#untypedgroup" title="Permalink to this heading">¶</a></h4>
 <p><em>UntypedGroup</em> can have arbitrary number of groups and rules as children.
 This class is a dynamic container: you can add child groups/rules to an instance
 of UntypedGroup like you can insert items to a dict.</p>
@@ -1241,9 +1318,9 @@ only to keep them visually concise.</p>
 </section>
 </section>
 <section id="miscellaneous">
-<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this heading"></a></h2>
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this heading">¶</a></h2>
 <section id="make">
-<h3>Make<a class="headerlink" href="#make" title="Permalink to this heading"></a></h3>
+<h3>Make<a class="headerlink" href="#make" title="Permalink to this heading">¶</a></h3>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <ul class="simple">
@@ -1254,7 +1331,7 @@ only to keep them visually concise.</p>
 </div>
 </section>
 <section id="id1">
-<h3>Visualization<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h3>
+<h3>Visualization<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h3>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <ul class="simple">
@@ -1269,33 +1346,50 @@ only to keep them visually concise.</p>
 
 
            </div>
+           
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to JTCMake’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
         <a href="reference.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to JTCMake’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2022, Amane Sugiyama.</p>
-  </div>
+    <p>
+        &#169; Copyright 2022, Amane Sugiyama.
 
-  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
         </div>
       </div>
+
     </section>
+
   </div>
-  <script>
+  
+
+  <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>
